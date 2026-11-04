@@ -1,5 +1,5 @@
 {
-  "version": "8.9.9",
+  "version": "8.9.10",
   "releaseDate": "2026-11-04",
-  "description": "Lock screen keep-alive carrier, instant non-blocking multi-device sync, Service Worker auto-update, and authentic 500x500 high-res artwork."
+  "description": "True WebAudio background lockscreen session keeper, synchronous iOS remote play resume, and zero-conflict MediaSession."
 }

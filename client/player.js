@@ -36,6 +36,21 @@ class AudioPlayerEngine {
             } catch (e) {}
         }
 
+        this._keepAliveCtx = null;
+        this._keepAliveNode = null;
+        this._keepAliveGain = null;
+        this._keepAliveUnlocked = false;
+
+        // Auto-unlock background carrier on very first user gesture anywhere
+        const unlockHandler = () => {
+            this.initKeepAliveAudio();
+        };
+        if (typeof document !== 'undefined') {
+            document.addEventListener('touchstart', unlockHandler, { once: true, passive: true });
+            document.addEventListener('touchend', unlockHandler, { once: true, passive: true });
+            document.addEventListener('click', unlockHandler, { once: true, passive: true });
+        }
+
         this.queue = [];
         this.userQueue = [];
         this.isSequentialContext = false;
@@ -863,7 +878,7 @@ class AudioPlayerEngine {
 
     async playTrack(track, queue = null, index = -1, isSequential = null) {
         if (!track) return;
-        this.stopSilentKeepAlive();
+        this.initKeepAliveAudio();
 
         if (typeof isSequential === 'boolean') {
             this.isSequentialContext = isSequential;
@@ -1269,163 +1284,113 @@ class AudioPlayerEngine {
     }
 
         /**
-     * iOS Safari Lock Screen NowPlaying Keep-Alive Carrier
-     * Prevents iOS WebKit from suspending background audio and handing the lock screen over to Apple Music after 30-60s of pause.
+     * Audiophile Persistent Background Audio Session Carrier
+     * Keeps iOS AVAudioSessionCategoryPlayback alive continuously through WebAudio
+     * without interfering with HTML5 <audio> or MediaSession metadata.
      */
-    startSilentKeepAlive() {
+    initKeepAliveAudio() {
+        if (this._keepAliveUnlocked) return;
         if ('audioSession' in navigator) {
             try { navigator.audioSession.type = 'playback'; } catch (e) {}
         }
         try {
-            if (!this.audioCtx) {
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                if (AudioContextClass) {
-                    this.audioCtx = new AudioContextClass();
-                }
+            const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtxClass) return;
+            if (!this._keepAliveCtx) {
+                this._keepAliveCtx = new AudioCtxClass();
             }
-            if (this.audioCtx) {
-                if (this.audioCtx.state === 'suspended') {
-                    this.audioCtx.resume().catch(() => {});
-                }
-                if (!this._silentKeepAliveNode) {
-                    const buffer = this.audioCtx.createBuffer(1, 44100, 44100);
-                    const source = this.audioCtx.createBufferSource();
-                    source.buffer = buffer;
-                    source.loop = true;
-
-                    const gain = this.audioCtx.createGain();
-                    gain.gain.setValueAtTime(0.00001, this.audioCtx.currentTime);
-                    source.connect(gain);
-                    gain.connect(this.audioCtx.destination);
-                    source.start(0);
-
-                    this._silentKeepAliveNode = source;
-                    this._silentKeepAliveGain = gain;
-                }
+            if (this._keepAliveCtx.state === 'suspended') {
+                this._keepAliveCtx.resume().catch(() => {});
             }
+            if (!this._keepAliveNode) {
+                // Microscopic 1-second inaudible buffer that loops continuously
+                const buffer = this._keepAliveCtx.createBuffer(1, 44100, 44100);
+                const source = this._keepAliveCtx.createBufferSource();
+                source.buffer = buffer;
+                source.loop = true;
+
+                const gain = this._keepAliveCtx.createGain();
+                // 0.00001 gain ensures audio frames are continuously sent to CoreAudio destination
+                gain.gain.setValueAtTime(0.00001, this._keepAliveCtx.currentTime);
+                source.connect(gain);
+                gain.connect(this._keepAliveCtx.destination);
+                source.start(0);
+
+                this._keepAliveNode = source;
+                this._keepAliveGain = gain;
+            }
+            this._keepAliveUnlocked = true;
+            console.log('[AudioEngine] Persistent iOS WebAudio keep-alive carrier unlocked');
         } catch (e) {
-            console.warn('[LockScreen KeepAlive]: WebAudio carrier error:', e);
+            console.warn('[AudioEngine] Keep-alive setup warning:', e);
         }
+    }
 
-        try {
-            if (!this._silentAudioEl) {
-                this._silentAudioEl = document.createElement('audio');
-                this._silentAudioEl.loop = true;
-                this._silentAudioEl.volume = 0.0001;
-                this._silentAudioEl.playsInline = true;
-                this._silentAudioEl.setAttribute('playsinline', '');
-                this._silentAudioEl.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-            }
-            this._silentAudioEl.play().catch(() => {});
-        } catch (e) {}
-
-        if (this._lockScreenPulseInterval) clearInterval(this._lockScreenPulseInterval);
-        this._lockScreenPulseInterval = setInterval(() => {
-            if (!this.isPlaying && 'mediaSession' in navigator) {
-                navigator.mediaSession.playbackState = 'paused';
-                this.updatePositionState();
-                const cur = this.getCurrentTrack();
-                if (cur) this.updateMediaSession(cur);
-            }
-        }, 15000);
+    startSilentKeepAlive() {
+        this.initKeepAliveAudio();
+        if (this._keepAliveCtx && this._keepAliveCtx.state === 'suspended') {
+            this._keepAliveCtx.resume().catch(() => {});
+        }
     }
 
     stopSilentKeepAlive() {
-        if (this._lockScreenPulseInterval) {
-            clearInterval(this._lockScreenPulseInterval);
-            this._lockScreenPulseInterval = null;
-        }
-        if (this._silentKeepAliveNode) {
-            try {
-                this._silentKeepAliveNode.stop();
-                this._silentKeepAliveNode.disconnect();
-                if (this._silentKeepAliveGain) this._silentKeepAliveGain.disconnect();
-            } catch (e) {}
-            this._silentKeepAliveNode = null;
-            this._silentKeepAliveGain = null;
-        }
-        if (this._silentAudioEl) {
-            try {
-                this._silentAudioEl.pause();
-            } catch (e) {}
-        }
+        // Keep carrier active continuously in background so session never terminates
     }
 
     /**
      * iOS Safari Lock Screen Resume Handler
+     * Resumes playback synchronously directly within the remote command event
      */
-    async resumeFromLockScreen() {
-        this.stopSilentKeepAlive();
+    resumeFromLockScreen() {
         this.isPlaying = true;
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'playing';
         }
-        if (this.audioCtx && this.audioCtx.state === 'suspended') {
-            this.audioCtx.resume().catch(() => {});
+        if (this._keepAliveCtx && this._keepAliveCtx.state === 'suspended') {
+            this._keepAliveCtx.resume().catch(() => {});
         }
         const cur = this.getCurrentTrack();
         const active = this.audio;
 
         this.notifyInstancePlaybackStart();
 
-        // 1. Direct native play call synchronously within action handler to retain iOS user activation privilege
+        // Direct native play call SYNCHRONOUSLY without preceding await to retain iOS activation
         try {
             const p = active.play();
             if (p !== undefined) {
-                await p;
-                this.isPlaying = true;
-                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-                if (cur) this.updateMediaSession(cur);
-                this.updatePositionState();
-                if (this.onPlayStateChange) this.onPlayStateChange(true);
-                return;
-            }
-        } catch (err) {
-            console.warn('[LockScreen Resume]: Direct play failed, recovering audio stream...', err);
-        }
-
-        // 2. Stream reload recovery (handles socket closure/network standby during locked pause)
-        try {
-            const curTime = active.currentTime || 0;
-            const streamUrl = cur?.streamUrl || active.src;
-            if (streamUrl) {
-                active.src = streamUrl;
-                if (curTime > 0) {
-                    active.addEventListener('loadedmetadata', () => {
-                        try { active.currentTime = curTime; } catch(e){}
-                    }, { once: true });
-                }
-                active.load();
-                await active.play();
-                this.isPlaying = true;
-                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-                if (cur) this.updateMediaSession(cur);
-                this.updatePositionState();
-                if (this.onPlayStateChange) this.onPlayStateChange(true);
-                return;
-            }
-        } catch (reloadErr) {
-            console.warn('[LockScreen Resume]: Stream reload failed, resolving fresh stream...', reloadErr);
-        }
-
-        // 3. Fallback: Re-resolve stream URL if CDN token expired while locked
-        if (cur && typeof window !== 'undefined' && window.resolveTrackStreamUrl) {
-            try {
-                const freshUrl = await window.resolveTrackStreamUrl(cur);
-                if (freshUrl) {
-                    cur.streamUrl = freshUrl;
-                    active.src = freshUrl;
-                    active.load();
-                    await active.play();
+                p.then(() => {
                     this.isPlaying = true;
                     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
                     if (cur) this.updateMediaSession(cur);
                     this.updatePositionState();
                     if (this.onPlayStateChange) this.onPlayStateChange(true);
-                }
-            } catch (resolveErr) {
-                console.error('[LockScreen Resume]: Full recovery failed:', resolveErr);
+                }).catch((err) => {
+                    console.warn('[LockScreen Resume]: Direct play catch, attempting reload...', err);
+                    try {
+                        const curTime = active.currentTime || 0;
+                        const streamUrl = cur?.streamUrl || active.src;
+                        if (streamUrl) {
+                            active.src = streamUrl;
+                            if (curTime > 0) {
+                                active.addEventListener('loadedmetadata', () => {
+                                    try { active.currentTime = curTime; } catch(e){}
+                                }, { once: true });
+                            }
+                            active.load();
+                            active.play().then(() => {
+                                this.isPlaying = true;
+                                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+                                if (cur) this.updateMediaSession(cur);
+                                this.updatePositionState();
+                                if (this.onPlayStateChange) this.onPlayStateChange(true);
+                            }).catch(() => {});
+                        }
+                    } catch (e) {}
+                });
+                return;
             }
+        } catch (err) {
+            console.warn('[LockScreen Resume]: Direct synchronous play call threw:', err);
         }
     }
 
@@ -1552,7 +1517,7 @@ class AudioPlayerEngine {
         }
 
         if (!artUrl || !artUrl.startsWith('http')) {
-            artUrl = window.location.origin + '/apple-touch-icon.png';
+            artUrl = new URL('apple-touch-icon.png', window.location.href).href;
         } else if (artUrl.startsWith('http://')) {
             artUrl = artUrl.replace('http://', 'https://');
         }

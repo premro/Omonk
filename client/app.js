@@ -5676,7 +5676,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ================= MULTI-DEVICE AUTO-REFRESH & LIVE UPDATE SYNC =================
-    const CURRENT_APP_VERSION = "8.9.9";
+    const CURRENT_APP_VERSION = "8.9.10";
     let latestServerTimestamp = 0;
     const syncRefreshBtn = document.getElementById('syncRefreshBtn');
     const updateBanner = document.getElementById('updateAvailableBanner');
