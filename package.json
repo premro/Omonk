@@ -1,0 +1,19 @@
+{
+  "name": "omonk-music",
+  "version": "8.9.8",
+  "description": "Omonk - Lossless Studio High-Fidelity Music Streaming Platform",
+  "scripts": {
+    "test": "node -c client/app.js && node -c client/player.js && node -c functions/music_api/index.js",
+    "deploy": "catalyst deploy"
+  },
+  "keywords": [
+    "music",
+    "lossless",
+    "flac",
+    "streaming",
+    "pwa",
+    "zoho-catalyst"
+  ],
+  "author": "premnath.v@zohocorp.com",
+  "license": "UNLICENSED"
+}

@@ -1,0 +1,29 @@
+{
+  "defaults": {
+    "project": 1
+  },
+  "actives": {
+    "project": 1,
+    "env": 1
+  },
+  "projects": [
+    {
+      "idx": 1,
+      "id": "56281000000098032",
+      "name": "Omonk",
+      "domain": {
+        "id": "50046954547",
+        "name": "omonk-60079640926.development"
+      },
+      "timezone": "Asia/Kolkata",
+      "env": [
+        {
+          "idx": 1,
+          "id": "60079640926",
+          "name": "Development",
+          "type": 3
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,532 @@
+{
+  "Mission ISRO": {
+    "id": "pod_mission_isro",
+    "name": "Mission ISRO with Harsha Bhogle",
+    "publisher": "Harsha Bhogle • Spotify Original",
+    "avatar": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+    "badge": "Spotify Original Docuseries",
+    "description": "Born into violence, poverty and the desolation of colonial exploitation, newly independent India was a nation working hard to find its footing. The story of India’s space programme is an unlikely one, filled with impossible odds, extraordinary visionaries like Vikram Sarabhai, Homi Bhabha, Satish Dhawan, and A.P.J. Abdul Kalam. Narrated with gripping passion by Harsha Bhogle, with original score by Raghu Dixit.",
+    "category": "Science & History",
+    "rating": "4.9 ★ (18.2k)",
+    "episodesCount": 26,
+    "genres": [
+      "Science",
+      "History",
+      "Space",
+      "Indian Stories",
+      "Docudrama"
+    ],
+    "spotifyUrl": "https://open.spotify.com/show/2JXFCMLGVhTBtdz1WYxd4H",
+    "episodes": [
+      {
+        "id": "pod_isro_ep_1",
+        "title": "Episode 1: Saare Jahan Se Achcha",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "Opens with the historic 1984 exchange between Prime Minister Indira Gandhi and Rakesh Sharma. Harsha Bhogle takes listeners back to newly independent India, introducing Dr. Vikram Sarabhai and Dr. Homi J. Bhabha.",
+        "duration": 1820,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/7vi5zitnwth9NqDiRAoHnh/clip_439325_499325.mp3",
+        "pubDate": "Aug 15, 2020",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_2",
+        "title": "Episode 2: A Church in Thumba",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "Establishing the Thumba Equatorial Rocket Launching Station (TERLS) in a Kerala fishing village and operating out of St. Mary Magdalene Church.",
+        "duration": 1940,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/3Dxrhn2la42QcEeOiEZKhF/clip_171178_231178.mp3",
+        "pubDate": "Aug 22, 2020",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_3",
+        "title": "Episode 3: Bicycles and Bullock Carts",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "The iconic story of transporting rocket components, nose-cones, and payloads on bicycles and bullock carts across sandy shores.",
+        "duration": 1780,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/7vi5zitnwth9NqDiRAoHnh/clip_439325_499325.mp3",
+        "pubDate": "Aug 29, 2020",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_4",
+        "title": "Episode 4: The First Launch - Nike Apache",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "November 21, 1963: The first sodium vapor sounding rocket ascends into the twilight sky over the Arabian Sea, marking India's entry into the space age.",
+        "duration": 1860,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/3Dxrhn2la42QcEeOiEZKhF/clip_171178_231178.mp3",
+        "pubDate": "Sep 05, 2020",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_5",
+        "title": "Episode 5: SITE - Television to the Villages",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "The groundbreaking Satellite Instructional Television Experiment (SITE), delivering direct satellite broadcast education to over 2,400 rural Indian villages.",
+        "duration": 1810,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/7vi5zitnwth9NqDiRAoHnh/clip_439325_499325.mp3",
+        "pubDate": "Sep 12, 2020",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_6",
+        "title": "Episode 6: Aryabhata Ascending",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "April 19, 1975: India's first satellite Aryabhata launches from Kapustin Yar aboard a Soviet Kosmos-3M launch vehicle.",
+        "duration": 1920,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/3Dxrhn2la42QcEeOiEZKhF/clip_171178_231178.mp3",
+        "pubDate": "Sep 19, 2020",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_7",
+        "title": "Episode 7: The Birth of SLV-3 & Kalam",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "Dr. A.P.J. Abdul Kalam is appointed project director of India's first satellite launch vehicle, rallying a young team against immense technological hurdles.",
+        "duration": 1990,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/7vi5zitnwth9NqDiRAoHnh/clip_439325_499325.mp3",
+        "pubDate": "Sep 26, 2020",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_8",
+        "title": "Episode 8: Computer, put a hold! Don't launch it.",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "August 10, 1979: The nerve-wracking countdown of SLV-3's maiden experimental flight, a critical computer warning, and the lessons of failure.",
+        "duration": 1822,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/3Dxrhn2la42QcEeOiEZKhF/clip_171178_231178.mp3",
+        "pubDate": "Oct 03, 2020",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_9",
+        "title": "Episode 9: Rohini Reaches Orbit",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "July 18, 1980: Jubilation as SLV-3 E2 successfully places the Rohini RS-1 satellite into orbit, establishing India as the world's 6th spacefaring nation.",
+        "duration": 1890,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/7vi5zitnwth9NqDiRAoHnh/clip_439325_499325.mp3",
+        "pubDate": "Oct 10, 2020",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_10",
+        "title": "Episode 10: APPLE of Our Eyes",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "The Ariane Passenger Payload Experiment (APPLE) communications satellite, tested for antenna interference in the bed of an unmotorized wooden bullock cart.",
+        "duration": 1750,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/3Dxrhn2la42QcEeOiEZKhF/clip_171178_231178.mp3",
+        "pubDate": "Oct 17, 2020",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_11",
+        "title": "Episode 11: Sar Pe Laal Topi Russi",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "Navigating Cold War geopolitics, technical cooperation with Moscow, and the dramatic quest to acquire cryogenic rocket propulsion technology.",
+        "duration": 1960,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/7vi5zitnwth9NqDiRAoHnh/clip_439325_499325.mp3",
+        "pubDate": "Aug 20, 2021",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_12",
+        "title": "Episode 12: The Workhorse - PSLV",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "The design and flight test of the Polar Satellite Launch Vehicle, developing what would become one of the most reliable rockets in space exploration history.",
+        "duration": 1910,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/3Dxrhn2la42QcEeOiEZKhF/clip_171178_231178.mp3",
+        "pubDate": "Aug 27, 2021",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_13",
+        "title": "Episode 13: Sanctions & The Espionage Case",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "US sanctions on cryogenic technology transfers, and the dark turbulence of the false 1994 ISRO espionage case.",
+        "duration": 2040,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/7vi5zitnwth9NqDiRAoHnh/clip_439325_499325.mp3",
+        "pubDate": "Sep 10, 2021",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_14",
+        "title": "Episode 14: Eyes in the Skies",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "How India built one of the largest constellations of remote sensing and earth observation satellites, monitoring crops, borders, and ocean cyclones.",
+        "duration": 1870,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/3Dxrhn2la42QcEeOiEZKhF/clip_171178_231178.mp3",
+        "pubDate": "Sep 24, 2021",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_15",
+        "title": "Episode 15: The Naughty Boy Rocket",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "The formidable challenge of mastering cryogenic propulsion, the temperamental early GSLV flights, and the persistence that tamed the rocket.",
+        "duration": 1939,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/7vi5zitnwth9NqDiRAoHnh/clip_439325_499325.mp3",
+        "pubDate": "Nov 01, 2021",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      },
+      {
+        "id": "pod_isro_ep_16",
+        "title": "Episode 16: Beyond Earth - To The Moon & Mars",
+        "artist": "Harsha Bhogle",
+        "album": "Mission ISRO with Harsha Bhogle",
+        "description": "From finding water molecules on the Moon with Chandrayaan-1 to the historic Mars Orbiter Mission (Mangalyaan) and the dawn of Gaganyaan.",
+        "duration": 2110,
+        "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab6765630000ba8a94414250c8fd02c1b7b7154f",
+        "streamUrl": "https://podz-content.spotifycdn.com/audio/clips/3Dxrhn2la42QcEeOiEZKhF/clip_171178_231178.mp3",
+        "pubDate": "Nov 08, 2021",
+        "quality": "Podcast Audio Stream",
+        "isPodcast": true
+      }
+    ]
+  },
+  "The Ranveer Show": {
+    "id": "pod_ranveer_show",
+    "name": "The Ranveer Show (TRS)",
+    "publisher": "BeerBiceps aka Ranveer Allahbadia",
+    "avatar": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/58/6e/a9/586ea984-3bf8-302e-a8fd-2e7b002044d2/mza_2944927475341717105.jpg/600x600bb.jpg",
+    "badge": "India's #1 Talk Show",
+    "description": "India's smartest podcast hosting world-class leaders, scientists, spiritual masters, entrepreneurs, and artists.",
+    "category": "Interviews",
+    "feedUrl": "https://feeds.simplecast.com/7PWFZi_d",
+    "rating": "4.9 ★",
+    "episodesCount": 233,
+    "genres": [
+      "Interviews",
+      "Self-Improvement",
+      "Business",
+      "Spirituality"
+    ]
+  },
+  "Pacha Satta": {
+    "id": "pod_pacha_satta",
+    "name": "Pacha Satta - The RJ Balaji Show",
+    "publisher": "RJ Balaji",
+    "avatar": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/e9/f7/38/e9f73872-4525-04b7-c387-9c0ecf7a216b/mza_6876669847167594338.jpg/600x600bb.jpg",
+    "badge": "Tamil Comedy",
+    "description": "Fun, witty, unfiltered banter, movie discussions, and social satire by RJ Balaji.",
+    "category": "Comedy",
+    "feedUrl": "https://anchor.fm/s/ea563a70/podcast/rss",
+    "rating": "4.9 ★",
+    "episodesCount": 65,
+    "genres": [
+      "Tamil",
+      "Comedy",
+      "Talk Show"
+    ]
+  },
+  "WTF is with Nikhil Kamath": {
+    "id": "pod_nikhil_kamath",
+    "name": "WTF is with Nikhil Kamath",
+    "publisher": "Nikhil Kamath",
+    "avatar": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/e9/bf/52/e9bf5260-23d2-c17f-4ccc-53bfff1fcbc6/mza_14068779774742314751.jpeg/600x600bb.jpg",
+    "badge": "Top Business & Tech",
+    "description": "In-depth, candid conversations on business, technology, AI, health, philosophy and the future with industry titans.",
+    "category": "Business",
+    "feedUrl": "https://feeds.hubhopper.com/664690fdea0d7a6f61a052da119934d3.rss",
+    "rating": "4.9 ★",
+    "episodesCount": 56,
+    "genres": [
+      "Business",
+      "Technology",
+      "Startups",
+      "Finance"
+    ]
+  },
+  "The Joe Rogan Experience": {
+    "id": "pod_joe_rogan",
+    "name": "The Joe Rogan Experience",
+    "publisher": "Joe Rogan",
+    "avatar": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/2e/66/e8/2e66e849-207e-095a-d60f-6dbdb4fcafb5/mza_14425023460891140426.jpeg/600x600bb.jpg",
+    "badge": "World #1 Show",
+    "description": "The most widely listened talk show in the world featuring comedians, researchers, authors, fighters, and visionaries.",
+    "category": "Comedy",
+    "feedUrl": "https://feeds.megaphone.fm/GLT1412515089",
+    "rating": "4.9 ★",
+    "episodesCount": 2766,
+    "genres": [
+      "Comedy",
+      "Culture",
+      "Science",
+      "Interviews"
+    ]
+  },
+  "On Purpose with Jay Shetty": {
+    "id": "pod_jay_shetty",
+    "name": "On Purpose with Jay Shetty",
+    "publisher": "Jay Shetty",
+    "avatar": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ce/28/ed/ce28ed58-1943-22fe-c13c-a022c296bfd9/mza_9074901717975655208.jpg/600x600bb.jpg",
+    "badge": "Mindfulness & Health",
+    "description": "Fascinating conversations with insightful people sharing their wisdom, mental health journeys, and life purposes.",
+    "category": "Self-Improvement",
+    "feedUrl": "https://feeds.megaphone.fm/on-purpose",
+    "rating": "4.9 ★",
+    "episodesCount": 890,
+    "genres": [
+      "Mindfulness",
+      "Self-Help",
+      "Health",
+      "Life Lessons"
+    ]
+  },
+  "Modern Wisdom": {
+    "id": "pod_modern_wisdom",
+    "name": "Modern Wisdom",
+    "publisher": "Chris Williamson",
+    "avatar": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/7f/73/99/7f739968-f65e-f679-d1fd-c727118c69f0/mza_17156407142775783271.jpg/600x600bb.jpg",
+    "badge": "Top Intellect",
+    "description": "Learn from the greatest minds on earth. Human psychology, productivity, philosophy, fitness, and modern living.",
+    "category": "Education",
+    "feedUrl": "https://feeds.megaphone.fm/SIXMSB5088139739",
+    "rating": "4.9 ★",
+    "episodesCount": 1161,
+    "genres": [
+      "Philosophy",
+      "Science",
+      "Productivity",
+      "Society"
+    ]
+  },
+  "Finshots Daily": {
+    "id": "pod_finshots_daily",
+    "name": "Finshots Daily",
+    "publisher": "Finshots",
+    "avatar": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts114/v4/b5/e4/39/b5e4395d-3334-30aa-dc4a-afa27464c041/mza_4139100016695234083.jpg/600x600bb.jpg",
+    "badge": "Top Financial Insights",
+    "description": "A daily 5-minute wrap-up of the most important financial and business news in India, explained in plain English.",
+    "category": "Business",
+    "feedUrl": "https://anchor.fm/s/37a76020/podcast/rss",
+    "rating": "4.9 ★",
+    "episodesCount": 1655,
+    "genres": [
+      "Finance",
+      "Economy",
+      "Markets",
+      "Daily News"
+    ]
+  },
+  "Figuring Out": {
+    "id": "pod_raj_shamani",
+    "name": "Raj Shamani - Figuring Out",
+    "publisher": "Raj Shamani",
+    "avatar": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/68/7c/b6/687cb672-9921-8575-2e5f-a0a4e852e11c/mza_14065798655603034565.jpg/600x600bb.jpg",
+    "badge": "Youth Business Top Hit",
+    "description": "Entrepreneurship, startup lessons, personal finance, and inspiring interviews with young creators and billionaires.",
+    "category": "Business",
+    "feedUrl": "https://feeds.hubhopper.com/5dbf44cce7f33b25a7cf2f466204e035.rss",
+    "rating": "4.9 ★",
+    "episodesCount": 31,
+    "genres": [
+      "Business",
+      "Startups",
+      "Youth",
+      "Finance"
+    ]
+  },
+  "The Desi Crime Podcast": {
+    "id": "pod_desi_crime",
+    "name": "The Desi Crime Podcast",
+    "publisher": "Aryaan Misra & Aishwarya Singh",
+    "avatar": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/ec/03/9d/ec039d63-cd4c-cd64-c383-4fc5f2d52ba2/mza_9043652444527747789.png/600x600bb.jpg",
+    "badge": "#1 Desi True Crime",
+    "description": "Gripping investigations into infamous, unsolved, and mysterious true crime stories from across South Asia.",
+    "category": "True Crime",
+    "feedUrl": "https://feeds.acast.com/public/shows/6a55242c7987e974eaf4ba29",
+    "rating": "4.9 ★",
+    "episodesCount": 277,
+    "genres": [
+      "True Crime",
+      "Mystery",
+      "History",
+      "Investigation"
+    ]
+  },
+  "Huberman Lab": {
+    "id": "pod_huberman_lab",
+    "name": "Huberman Lab",
+    "publisher": "Scicomm Media / Dr. Andrew Huberman",
+    "avatar": "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=500",
+    "badge": "Top Health & Science",
+    "description": "Dr. Andrew Huberman discusses neuroscience: how our brain and its connections with the organs of our body control our perceptions and behaviors.",
+    "category": "Science",
+    "feedUrl": "https://feeds.megaphone.fm/hubermanlab",
+    "rating": "4.9 ★",
+    "episodesCount": 451,
+    "genres": [
+      "Health",
+      "Science",
+      "Neuroscience",
+      "Fitness"
+    ]
+  },
+  "Idhayathin Kural": {
+    "id": "pod_idhayathin_kural",
+    "name": "Idhayathin Kural - A Feel Good Tamil Podcast ☺️",
+    "publisher": "Naveen Radhakrishnan",
+    "avatar": "https://d3t3ozftmdmh3i.cloudfront.net/production/podcast_uploaded_nologo/6683260/6683260-1594910352514-998818c1fafe4.jpg",
+    "badge": "Tamil Top Hit",
+    "description": "Tamil's #1 Feel Good Podcast sharing positivity, personal stories, life lessons and uplifting conversations.",
+    "category": "Self-Improvement",
+    "feedUrl": "https://anchor.fm/s/2dce90c8/podcast/rss",
+    "rating": "4.9 ★",
+    "episodesCount": 238,
+    "genres": [
+      "Tamil",
+      "Self-Help",
+      "Personal Stories"
+    ]
+  },
+  "Open Ah Peslama": {
+    "id": "pod_open_ah_peslama",
+    "name": "Open Ah Peslama? (Tamil Podcast)",
+    "publisher": "Vetri & Friends",
+    "avatar": "https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=500",
+    "badge": "Tamil Banter",
+    "description": "Casual, relatable talks on relationships, everyday life dilemmas, movies, cinema, and pop culture in Tamil.",
+    "category": "Comedy",
+    "feedUrl": "https://anchor.fm/s/b1fb25a0/podcast/rss",
+    "rating": "4.8 ★",
+    "episodesCount": 105,
+    "genres": [
+      "Tamil",
+      "Relationships",
+      "Culture"
+    ]
+  },
+  "Metro Kaadhal": {
+    "id": "pod_metro_kaadhal",
+    "name": "Metro Kaadhal (Tamil Podcast)",
+    "publisher": "Metro Vibe Media",
+    "avatar": "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=500",
+    "badge": "Tamil Romance",
+    "description": "Soulful stories of love, heartbreaks, reunions, and unspoken feelings in modern city lives.",
+    "category": "Stories",
+    "feedUrl": "https://anchor.fm/s/adc0ff8c/podcast/rss",
+    "rating": "4.9 ★",
+    "episodesCount": 12,
+    "genres": [
+      "Tamil",
+      "Romance",
+      "Audio Drama"
+    ]
+  },
+  "Vada Poche": {
+    "id": "pod_vada_poche",
+    "name": "Vada Poche Tamil Podcast",
+    "publisher": "Vada Poche Network",
+    "avatar": "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500",
+    "badge": "Tamil Humor",
+    "description": "Hilarious discussions, relatable nostalgic memories, school/college tales, and Tamil cinema roasts.",
+    "category": "Comedy",
+    "feedUrl": "https://anchor.fm/s/1dd43844/podcast/rss",
+    "rating": "4.8 ★",
+    "episodesCount": 325,
+    "genres": [
+      "Tamil",
+      "Comedy",
+      "Pop Culture"
+    ]
+  },
+  "Om Creem": {
+    "id": "pod_om_creem",
+    "name": "Om Creem - Tamil Mystery Podcast",
+    "publisher": "Om Creem Media",
+    "avatar": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=500",
+    "badge": "Tamil Mystery & Paranormal",
+    "description": "True paranormal encounters, ancient folklore mysteries, unsolved historical cases, and thrillers in Tamil.",
+    "category": "Mystery",
+    "feedUrl": "https://anchor.fm/s/293c124c/podcast/rss",
+    "rating": "4.9 ★",
+    "episodesCount": 159,
+    "genres": [
+      "Tamil",
+      "Horror",
+      "Mystery",
+      "Paranormal"
+    ]
+  },
+  "TED Talks Daily": {
+    "id": "pod_ted_talks",
+    "name": "TED Talks Daily",
+    "publisher": "TED",
+    "avatar": "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=500",
+    "badge": "World Thought Leaders",
+    "description": "Every weekday, TED Talks Daily brings you the latest talks in audio. Join host and journalist Elise Hu for thought-provoking ideas on every subject imaginable.",
+    "category": "Ideas",
+    "feedUrl": "https://feeds.feedburner.com/tedtalks_audio",
+    "rating": "4.8 ★",
+    "episodesCount": 2839,
+    "genres": [
+      "Ideas",
+      "Technology",
+      "Design",
+      "Inspiration"
+    ]
+  },
+  "Lex Fridman": {
+    "id": "pod_lex_fridman",
+    "name": "Lex Fridman Podcast",
+    "publisher": "Lex Fridman",
+    "avatar": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3e/e3/9c/3ee39c89-de08-47a6-7f3d-3849cef6d255/mza_16657851278549137484.png/600x600bb.jpg",
+    "badge": "AI & Deep Thinking",
+    "description": "Conversations about AI, science, technology, history, philosophy, and the general nature of intelligence, consciousness, and power.",
+    "category": "Technology",
+    "feedUrl": "https://lexfridman.com/feed/podcast/",
+    "rating": "4.9 ★",
+    "episodesCount": 502,
+    "genres": [
+      "AI",
+      "Technology",
+      "Science",
+      "Philosophy"
+    ]
+  }
+}
