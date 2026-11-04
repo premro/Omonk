@@ -1273,7 +1273,16 @@ class AudioPlayerEngine {
      * Prevents iOS WebKit from suspending background audio and handing the lock screen over to Apple Music after 30-60s of pause.
      */
     startSilentKeepAlive() {
+        if ('audioSession' in navigator) {
+            try { navigator.audioSession.type = 'playback'; } catch (e) {}
+        }
         try {
+            if (!this.audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    this.audioCtx = new AudioContextClass();
+                }
+            }
             if (this.audioCtx) {
                 if (this.audioCtx.state === 'suspended') {
                     this.audioCtx.resume().catch(() => {});

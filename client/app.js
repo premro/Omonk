@@ -5676,7 +5676,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ================= MULTI-DEVICE AUTO-REFRESH & LIVE UPDATE SYNC =================
-    const CURRENT_APP_VERSION = "8.9.5";
+    const CURRENT_APP_VERSION = "8.9.9";
     let latestServerTimestamp = 0;
     const syncRefreshBtn = document.getElementById('syncRefreshBtn');
     const updateBanner = document.getElementById('updateAvailableBanner');
@@ -5720,29 +5720,54 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function triggerInstantRefresh() {
         if (syncRefreshBtn) {
             syncRefreshBtn.innerHTML = '<span>⏳ Syncing...</span>';
+            syncRefreshBtn.disabled = true;
         }
-        showToast('Syncing top charts & app state...', '🔄');
+        showToast('Refreshing app state & clearing cache...', '🔄');
+
+        // 1. Kick off non-blocking serverless sync with strict 2.5s timeout (never hangs)
         try {
-            await fetch(`${API_PREFIX}/api/sync-charts?timeframe=all&force=true&_t=${Date.now()}`).catch(() => {});
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2500);
+            await fetch(`${API_PREFIX}/api/sync-charts?timeframe=all&_t=${Date.now()}`, {
+                signal: controller.signal
+            }).catch(() => {});
+            clearTimeout(timeoutId);
         } catch (e) {}
+
+        // 2. Clear all Service Worker caches and notify active workers
         try {
-            if ('serviceWorker' in navigator) {
-                const regs = await navigator.serviceWorker.getRegistrations();
-                for (const reg of regs) {
-                    await reg.update();
-                }
-            }
             if ('caches' in window) {
                 const keys = await caches.keys();
                 await Promise.all(keys.map(k => caches.delete(k)));
             }
+            if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                for (const reg of regs) {
+                    await reg.update().catch(() => {});
+                    if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+            }
         } catch (e) {}
+
+        // 3. Clear session storage
+        try {
+            sessionStorage.clear();
+        } catch (e) {}
+
+        if (syncRefreshBtn) {
+            syncRefreshBtn.innerHTML = '<span>✅ Synced!</span>';
+        }
+        showToast('App refreshed successfully!', '✅');
 
         try {
             syncBroadcast?.postMessage({ type: 'APP_UPDATED', timestamp: Date.now() });
         } catch (e) {}
 
-        window.location.reload(true);
+        // 4. Force hard reload with timestamp parameter to bypass iOS standalone PWA cache
+        setTimeout(() => {
+            const base = window.location.href.split('?')[0];
+            window.location.replace(`${base}?_v=${Date.now()}`);
+        }, 400);
     }
 
     syncRefreshBtn?.addEventListener('click', () => {

@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Omonk • Hi-Res Lossless Player</title>
-    <link rel="stylesheet" href="styles.css?v=8.9.5">
-        <link rel="icon" type="image/x-icon" href="favicon.ico?v=8.9.8">
-    <link rel="icon" type="image/png" sizes="64x64" href="favicon.png?v=8.9.8">
-    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=8.9.8">
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=8.9.8">
-    <link rel="manifest" href="manifest.json?v=8.9.8">
+    <link rel="stylesheet" href="styles.css?v=8.9.9">
+        <link rel="icon" type="image/x-icon" href="favicon.ico?v=8.9.9">
+    <link rel="icon" type="image/png" sizes="64x64" href="favicon.png?v=8.9.9">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=8.9.9">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=8.9.9">
+    <link rel="manifest" href="manifest.json?v=8.9.9">
     <meta name="theme-color" content="#090817">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -750,14 +750,47 @@
     </div>
 
     <!-- Core Application & Subsystem Scripts -->
-    <script src="offline.js?v=8.9.5"></script>
-    <script src="algorithm.js?v=8.9.5"></script>
-    <script src="profile.js?v=8.9.5"></script>
-    <script src="vibeEngine.js?v=8.9.5"></script>
-    <script src="player.js?v=8.9.5"></script>
-    <script src="lyrics.js?v=8.9.5"></script>
-    <script src="importer.js?v=8.9.5"></script>
-    <script src="miniplayer.js?v=8.9.5"></script>
-    <script src="app.js?v=8.9.5"></script>
+    <script src="offline.js?v=8.9.9"></script>
+    <script src="algorithm.js?v=8.9.9"></script>
+    <script src="profile.js?v=8.9.9"></script>
+    <script src="vibeEngine.js?v=8.9.9"></script>
+    <script src="player.js?v=8.9.9"></script>
+    <script src="lyrics.js?v=8.9.9"></script>
+    <script src="importer.js?v=8.9.9"></script>
+    <script src="miniplayer.js?v=8.9.9"></script>
+    <script src="app.js?v=8.9.9"></script>
+    <!-- Service Worker Auto-Update & Offline PWA Engine -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js?v=8.9.9').then((reg) => {
+                    console.log('[PWA] Service Worker registered:', reg.scope);
+                    reg.update().catch(() => {});
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        if (newWorker) {
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('[PWA] New version ready! Refreshing app...');
+                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                    window.location.reload();
+                                }
+                            });
+                        }
+                    });
+                }).catch((err) => {
+                    console.warn('[PWA] Service Worker registration failed:', err);
+                });
+
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (!refreshing) {
+                        refreshing = true;
+                        window.location.reload();
+                    }
+                });
+            });
+        }
+    </script>
 </body>
 </html>

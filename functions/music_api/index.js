@@ -738,14 +738,9 @@ module.exports = async (req, res) => {
                 }
             };
 
-            const doLiveSpotifySync = async () => {
-                for (const l of targetLangs) {
-                    await syncSingleLang(l);
-                }
-            };
-
-            doLiveSpotifySync().then(() => {
-                const primaryLang = targetLangs[0] || 'tamil';
+            const primaryLang = targetLangs[0] || 'tamil';
+            // Sync primary language first so response returns rapidly (<1.5s) without timeout
+            syncSingleLang(primaryLang).then(() => {
                 const currentDaily = (chartsData.charts && chartsData.charts[primaryLang] && chartsData.charts[primaryLang]['daily']) || [];
                 res.writeHead(200, {
                     'Content-Type': 'application/json',
@@ -756,20 +751,29 @@ module.exports = async (req, res) => {
                 });
                 res.end(JSON.stringify({
                     success: true,
-                    message: `Charts synchronized from Spotify Live for ${targetLangs.join(', ').toUpperCase()}`,
+                    message: `Charts synchronized for ${primaryLang.toUpperCase()}`,
                     languages: targetLangs,
                     timeframe: reqTimeframe,
                     count: currentDaily.length,
                     topTrack: currentDaily[0]?.title || '',
                     last_sync: new Date().toISOString()
                 }));
+
+                // Background sync remaining languages if requested
+                if (targetLangs.length > 1) {
+                    (async () => {
+                        for (let i = 1; i < targetLangs.length; i++) {
+                            await syncSingleLang(targetLangs[i]).catch(() => {});
+                        }
+                    })().catch(() => {});
+                }
             }).catch(() => {
                 res.writeHead(200, {
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*',
                     'Cache-Control': 'no-cache, no-store, must-revalidate'
                 });
-                res.end(JSON.stringify({ success: true, message: 'Sync complete with active Spotify cache' }));
+                res.end(JSON.stringify({ success: true, message: 'Sync complete with active cache' }));
             });
             return;
         }
