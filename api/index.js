@@ -966,18 +966,32 @@ function isSameSongOrReprise(candTitle, seedTitle) {
             (async () => {
                 const list = [];
                 const seen = new Set();
-                if (songId) seen.add(songId);
+                if (songId) seen.add(String(songId));
                 if (seedTitle) seen.add(seedTitle.toLowerCase().trim());
 
-                // 1. Query Upstream native suggestions if song ID is available
-                if (songId) {
+                // 1. Resolve real Saavn ID if missing or using an OMonk chart ID (sp_... or omonk_...)
+                if (!songId || String(songId).startsWith('sp_') || String(songId).startsWith('omonk_')) {
+                    const resolveQuery = [seedTitle, seedArtist].filter(Boolean).join(' ').trim();
+                    if (resolveQuery) {
+                        try {
+                            const resolved = await searchEngine.searchAll(resolveQuery, 1, lang);
+                            if (resolved && resolved.songs && resolved.songs.length > 0 && resolved.songs[0].id) {
+                                songId = resolved.songs[0].id;
+                                seen.add(String(songId));
+                            }
+                        } catch (e) {}
+                    }
+                }
+
+                // 2. Query Upstream native suggestions using resolved song ID
+                if (songId && !String(songId).startsWith('sp_') && !String(songId).startsWith('omonk_')) {
                     try {
-                        const sug = await searchEngine.fetchHttps(`/api/songs/${encodeURIComponent(songId)}/suggestions`);
+                        const sug = await searchEngine.fetchHttps('/api/songs/' + encodeURIComponent(songId) + '/suggestions');
                         if (sug && sug.data && Array.isArray(sug.data)) {
                             sug.data.map(searchEngine.normalizeSong).forEach(s => {
-                                if (s && s.streamUrl && !seen.has(s.id) && !seen.has(s.title.toLowerCase().trim()) && !isSameSongOrReprise(s.title, seedTitle)) {
-                                    seen.add(s.id);
-                                    seen.add(s.title.toLowerCase().trim());
+                                if (s && s.streamUrl && !seen.has(String(s.id)) && !seen.has((s.title || '').toLowerCase().trim()) && !isSameSongOrReprise(s.title, seedTitle)) {
+                                    seen.add(String(s.id));
+                                    seen.add((s.title || '').toLowerCase().trim());
                                     list.push(s);
                                 }
                             });
@@ -985,85 +999,83 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     } catch (e) {}
                 }
 
-                // 2. Identify Vibe & Expand Companion Bangers
-                const combo = `${seedTitle} ${seedArtist} ${seedAlbum}`.toLowerCase();
+                // 3. Artist companions (songs by the actual artist of the playing track)
+                const cleanArtist = (seedArtist || '').split(/[,&]/)[0].replace(/[.-_]/g, ' ').trim();
+                if (list.length < 15 && cleanArtist) {
+                    try {
+                        const artRes = await searchEngine.searchAll(cleanArtist + ' hits', 6, lang);
+                        if (artRes && artRes.songs) {
+                            artRes.songs.forEach(s => {
+                                if (s && s.streamUrl && !seen.has(String(s.id)) && !seen.has((s.title || '').toLowerCase().trim()) && !isSameSongOrReprise(s.title, seedTitle)) {
+                                    seen.add(String(s.id));
+                                    seen.add((s.title || '').toLowerCase().trim());
+                                    list.push(s);
+                                }
+                            });
+                        }
+                    } catch (e) {}
+                }
+
+                // 4. Album / Movie companions (other tracks from the exact same album/film)
+                if (list.length < 15 && seedAlbum && !seedAlbum.toLowerCase().includes('single') && !seedAlbum.toLowerCase().includes('compilation')) {
+                    try {
+                        const albRes = await searchEngine.searchAll(seedAlbum + ' songs', 5, lang);
+                        if (albRes && albRes.songs) {
+                            albRes.songs.forEach(s => {
+                                if (s && s.streamUrl && !seen.has(String(s.id)) && !seen.has((s.title || '').toLowerCase().trim()) && !isSameSongOrReprise(s.title, seedTitle)) {
+                                    seen.add(String(s.id));
+                                    seen.add((s.title || '').toLowerCase().trim());
+                                    list.push(s);
+                                }
+                            });
+                        }
+                    } catch (e) {}
+                }
+
+                // 5. Curated Hit Charts from the same language
+                if (list.length < 20) {
+                    try {
+                        const chartHits = (chartsData.charts && chartsData.charts[lang] && chartsData.charts[lang].daily) || [];
+                        for (const ch of chartHits) {
+                            if (ch && !seen.has(String(ch.id)) && !seen.has((ch.title || '').toLowerCase().trim()) && !isSameSongOrReprise(ch.title, seedTitle)) {
+                                seen.add(String(ch.id));
+                                seen.add((ch.title || '').toLowerCase().trim());
+                                list.push(ch);
+                                if (list.length >= 20) break;
+                            }
+                        }
+                    } catch (e) {}
+                }
+
+                // 6. Contextual genre queries if pool still needs songs
+                const combo = (seedTitle + ' ' + seedArtist + ' ' + seedAlbum).toLowerCase();
                 const isKuthuParty = /machi|bottle|open the bottle|kuthu|party|dance|billa|mankatha|local|sarakku|vethalai|potendi|aaluma|dappan|tasmac|thara local|item|baila/i.test(combo);
                 const isSadPathos = /sad|pathos|heartbreak|valikudhu|valiye|pirivu|azhugai|kanave|thenpaandi|kanne kalaimane|poove sempoove|amma endru/i.test(combo);
 
-                if (isKuthuParty) {
-                    const partyQueries = ['vethalaiya potendi', 'vaada bin laada', 'aaluma doluma', 'naa ready', 'sodakku', 'marana mass', 'danga maari oodhari'];
-                    for (const pq of partyQueries) {
+                if (list.length < 20) {
+                    let fallbackQueries = [];
+                    if (isKuthuParty) {
+                        fallbackQueries = [lang + ' party dance hits', lang + ' kuthu hits'];
+                    } else if (isSadPathos) {
+                        fallbackQueries = [lang + ' sad melody hits', lang + ' pathos hits'];
+                    } else {
+                        fallbackQueries = [lang + ' top hits', lang + ' latest hits'];
+                    }
+                    for (const fq of fallbackQueries) {
                         if (list.length >= 25) break;
                         try {
-                            const res = await searchEngine.searchAll(pq, 2, 'tamil');
+                            const res = await searchEngine.searchAll(fq, 3, lang);
                             if (res && res.songs) {
                                 res.songs.forEach(s => {
-                                    if (s && s.streamUrl && !seen.has(s.id) && !seen.has(s.title.toLowerCase().trim()) && !isSameSongOrReprise(s.title, seedTitle)) {
-                                        seen.add(s.id);
-                                        seen.add(s.title.toLowerCase().trim());
+                                    if (s && s.streamUrl && !seen.has(String(s.id)) && !seen.has((s.title || '').toLowerCase().trim()) && !isSameSongOrReprise(s.title, seedTitle)) {
+                                        seen.add(String(s.id));
+                                        seen.add((s.title || '').toLowerCase().trim());
                                         list.push(s);
                                     }
                                 });
                             }
                         } catch (e) {}
                     }
-                } else if (isSadPathos) {
-                    const sadQueries = ['thenpaandi cheemayile', 'kanne kalaimane', 'poove sempoove', 'aarariraro', 'amma endru'];
-                    for (const sq of sadQueries) {
-                        if (list.length >= 25) break;
-                        try {
-                            const res = await searchEngine.searchAll(sq, 2, lang);
-                            if (res && res.songs) {
-                                res.songs.forEach(s => {
-                                    if (s && s.streamUrl && !seen.has(s.id) && !seen.has(s.title.toLowerCase().trim()) && !isSameSongOrReprise(s.title, seedTitle)) {
-                                        seen.add(s.id);
-                                        seen.add(s.title.toLowerCase().trim());
-                                        list.push(s);
-                                    }
-                                });
-                            }
-                        } catch (e) {}
-                    }
-                } else {
-                    // Romantic Melody / Acoustic Vibe Match
-                    const melodyQueries = [
-                        `${lang} romantic melody hits`,
-                        `${lang} 90s melody hits`,
-                        'ar rahman romantic melody',
-                        'harris jayaraj melody hits'
-                    ];
-                    for (const mq of melodyQueries) {
-                        if (list.length >= 20) break;
-                        try {
-                            const res = await searchEngine.searchAll(mq, 3, lang);
-                            if (res && res.songs) {
-                                res.songs.forEach(s => {
-                                    if (s && s.streamUrl && !seen.has(s.id) && !seen.has(s.title.toLowerCase().trim()) && !isSameSongOrReprise(s.title, seedTitle)) {
-                                        seen.add(s.id);
-                                        seen.add(s.title.toLowerCase().trim());
-                                        list.push(s);
-                                    }
-                                });
-                            }
-                        } catch (e) {}
-                    }
-                }
-
-                // If pool is still small, query artist hits (with strict reprise exclusion)
-                if (list.length < 12 && seedArtist) {
-                    const primary = seedArtist.split(/[,&]/)[0].replace(/[.\-_]/g, ' ').trim();
-                    try {
-                        const res = await searchEngine.searchAll(`${primary} hits`, 8, lang);
-                        if (res && res.songs) {
-                            res.songs.forEach(s => {
-                                if (s && s.streamUrl && !seen.has(s.id) && !seen.has(s.title.toLowerCase().trim()) && !isSameSongOrReprise(s.title, seedTitle)) {
-                                    seen.add(s.id);
-                                    seen.add(s.title.toLowerCase().trim());
-                                    list.push(s);
-                                }
-                            });
-                        }
-                    } catch (e) {}
                 }
 
                 // 3. Precision Vibe Re-Ranking:
