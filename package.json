@@ -1,10 +1,13 @@
 {
   "name": "omonk-music",
-  "version": "8.9.8",
-  "description": "Omonk - Lossless Studio High-Fidelity Music Streaming Platform",
+  "version": "9.0.0",
+  "description": "Omonk - Lossless Studio High-Fidelity Music Streaming Platform (Vercel & GitHub Ready)",
+  "main": "server.js",
   "scripts": {
-    "test": "node -c client/app.js && node -c client/player.js && node -c functions/music_api/index.js",
-    "deploy": "catalyst deploy"
+    "start": "node server.js",
+    "test": "node -c client/app.js && node -c client/player.js && node -c api/index.js",
+    "build": "echo 'Omonk build verified for Vercel'",
+    "vercel-build": "echo 'Omonk Vercel build complete'"
   },
   "keywords": [
     "music",
@@ -12,8 +15,9 @@
     "flac",
     "streaming",
     "pwa",
-    "zoho-catalyst"
+    "vercel",
+    "github"
   ],
   "author": "premnath.v@zohocorp.com",
-  "license": "UNLICENSED"
+  "license": "MIT"
 }

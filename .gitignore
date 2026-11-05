@@ -6,6 +6,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Vercel & Deployments
+.vercel/
+
+# Catalyst Legacy Artifacts (no longer needed)
+.catalystrc
+catalyst-debug.log
+
 # Environment & Credentials
 .env
 .env.local
