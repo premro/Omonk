@@ -561,6 +561,14 @@ function resolveYouTubeTracks(inputUrl) {
 }
 
 module.exports = async (req, res) => {
+    if (req.url && req.url.includes('__debug')) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({
+            url: req.url,
+            headers: req.headers,
+            query: req.query
+        }, null, 2));
+    }
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
