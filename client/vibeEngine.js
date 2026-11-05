@@ -700,11 +700,25 @@
       if (res.ok) {
         const json = await res.json();
         const tracks = json.tracks || [];
+        function cleanAlbumKey(alb) {
+          if (!alb) return '';
+          return alb.replace(/\(.*?\)/g, '')
+                    .replace(/original motion picture soundtrack|soundtrack|single|ost|ep|theme/gi, '')
+                    .trim().toLowerCase();
+        }
+        const albumSeen = new Set();
+        const seedAlbKey = cleanAlbumKey(seedTrack.album);
+        if (seedAlbKey && seedAlbKey.length > 2) albumSeen.add(seedAlbKey);
+
         for (const t of tracks) {
           const titleKey = (t.title || '').toLowerCase().trim();
+          const tAlb = cleanAlbumKey(t.album);
+          if (tAlb && tAlb.length > 2 && albumSeen.has(tAlb)) continue; // Spotify Rule: Max 1 per album
+
           if (t && t.streamUrl && !seen.has(String(t.id)) && !seen.has(titleKey)) {
             seen.add(String(t.id));
             seen.add(titleKey);
+            if (tAlb && tAlb.length > 2) albumSeen.add(tAlb);
             queue.push(t);
             if (queue.length >= count) break;
           }
@@ -739,6 +753,24 @@
     if (seedTrack.title) {
       seen.add((seedTrack.title + ' ' + (seedTrack.artist || '')).toLowerCase().trim());
     }
+
+    function cleanAlbKey(alb) {
+      if (!alb) return '';
+      return alb.replace(/\(.*?\)/g, '')
+                .replace(/original motion picture soundtrack|soundtrack|single|ost|ep|theme/gi, '')
+                .trim().toLowerCase();
+    }
+    function cleanArtKey(art) {
+      if (!art) return '';
+      return art.split(/[,&]/)[0].replace(/[.\-_]/g, ' ').trim().toLowerCase();
+    }
+
+    const albumCount = new Map();
+    const artistCount = new Map();
+    const seedAlbKey = cleanAlbKey(seedTrack.album);
+    if (seedAlbKey && seedAlbKey.length > 2) albumCount.set(seedAlbKey, 1);
+    const seedArtKey = cleanArtKey(seedTrack.artist);
+    if (seedArtKey) artistCount.set(seedArtKey, 1);
 
     function addCandidate(raw) {
       if (!raw) return;
@@ -794,6 +826,18 @@
 
       seen.add(key);
       seen.add(id);
+      // Spotify Cluster Diversity Rules:
+      const candAlbKey = cleanAlbKey(album);
+      if (candAlbKey && candAlbKey.length > 2) {
+        if ((albumCount.get(candAlbKey) || 0) >= 1) return; // Max 1 per album
+      }
+      const candArtKey = cleanArtKey(artist);
+      if (candArtKey) {
+        if ((artistCount.get(candArtKey) || 0) >= 2) return; // Max 2 per artist
+      }
+
+      if (candAlbKey && candAlbKey.length > 2) albumCount.set(candAlbKey, (albumCount.get(candAlbKey) || 0) + 1);
+      if (candArtKey) artistCount.set(candArtKey, (artistCount.get(candArtKey) || 0) + 1);
       candidates.push(cand);
     }
 

@@ -969,6 +969,66 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 if (songId) seen.add(String(songId));
                 if (seedTitle) seen.add(seedTitle.toLowerCase().trim());
 
+                function cleanAlbumKey(alb) {
+                    if (!alb) return '';
+                    return alb.replace(/\(.*?\)/g, '')
+                              .replace(/original motion picture soundtrack|soundtrack|single|ost|ep|theme/gi, '')
+                              .trim().toLowerCase();
+                }
+
+                function cleanArtistKey(art) {
+                    if (!art) return '';
+                    return art.split(/[,&]/)[0].replace(/[.\-_]/g, ' ').trim().toLowerCase();
+                }
+
+                // Spotify-style Acoustic Cluster & Diversity Tracking
+                const albumCount = new Map();
+                const artistCount = new Map();
+
+                // Initialize with seed track so other songs from the exact same album are NOT repeated
+                const seedAlbKey = cleanAlbumKey(seedAlbum);
+                if (seedAlbKey && seedAlbKey.length > 2) {
+                    albumCount.set(seedAlbKey, 1);
+                }
+
+                const seedArtKey = cleanArtistKey(seedArtist);
+                if (seedArtKey) {
+                    artistCount.set(seedArtKey, 1);
+                }
+
+                function addCandidate(s) {
+                    if (!s || !s.title || !s.streamUrl) return false;
+                    const sId = String(s.id || '');
+                    const titleKey = (s.title || '').toLowerCase().trim();
+                    if (sId && seen.has(sId)) return false;
+                    if (seen.has(titleKey)) return false;
+                    if (isSameSongOrReprise(s.title, seedTitle)) return false;
+
+                    // Exclude static compilation album
+                    if (s.album && /romantic melody/i.test(s.album)) return false;
+
+                    // Spotify Diversity Rule 1: Strict Album Diversity (Max 1 song per album/movie across the queue!)
+                    const albKey = cleanAlbumKey(s.album);
+                    if (albKey && albKey.length > 2) {
+                        const count = albumCount.get(albKey) || 0;
+                        if (count >= 1) return false;
+                    }
+
+                    // Spotify Diversity Rule 2: Artist Diversity (Max 2 songs per primary artist)
+                    const artKey = cleanArtistKey(s.artist);
+                    if (artKey) {
+                        const aCount = artistCount.get(artKey) || 0;
+                        if (aCount >= 2) return false;
+                    }
+
+                    if (sId) seen.add(sId);
+                    seen.add(titleKey);
+                    if (albKey && albKey.length > 2) albumCount.set(albKey, (albumCount.get(albKey) || 0) + 1);
+                    if (artKey) artistCount.set(artKey, (artistCount.get(artKey) || 0) + 1);
+                    list.push(s);
+                    return true;
+                }
+
                 // 1. Resolve real Saavn ID if missing or using an OMonk chart ID (sp_... or omonk_...)
                 if (!songId || String(songId).startsWith('sp_') || String(songId).startsWith('omonk_')) {
                     const resolveQuery = [seedTitle, seedArtist].filter(Boolean).join(' ').trim();
@@ -988,66 +1048,35 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     try {
                         const sug = await searchEngine.fetchHttps('/api/songs/' + encodeURIComponent(songId) + '/suggestions');
                         if (sug && sug.data && Array.isArray(sug.data)) {
-                            sug.data.map(searchEngine.normalizeSong).forEach(s => {
-                                if (s && s.streamUrl && !seen.has(String(s.id)) && !seen.has((s.title || '').toLowerCase().trim()) && !isSameSongOrReprise(s.title, seedTitle)) {
-                                    seen.add(String(s.id));
-                                    seen.add((s.title || '').toLowerCase().trim());
-                                    list.push(s);
-                                }
-                            });
+                            sug.data.map(searchEngine.normalizeSong).forEach(addCandidate);
                         }
                     } catch (e) {}
                 }
 
-                // 3. Artist companions (songs by the actual artist of the playing track)
-                const cleanArtist = (seedArtist || '').split(/[,&]/)[0].replace(/[.-_]/g, ' ').trim();
+                // 3. Companion tracks by complementary or same artist (distinct albums only)
+                const cleanArtist = (seedArtist || '').split(/[,&]/)[0].replace(/[.\-_]/g, ' ').trim();
                 if (list.length < 15 && cleanArtist) {
                     try {
-                        const artRes = await searchEngine.searchAll(cleanArtist + ' hits', 6, lang);
+                        const artRes = await searchEngine.searchAll(cleanArtist + ' hits', 8, lang);
                         if (artRes && artRes.songs) {
-                            artRes.songs.forEach(s => {
-                                if (s && s.streamUrl && !seen.has(String(s.id)) && !seen.has((s.title || '').toLowerCase().trim()) && !isSameSongOrReprise(s.title, seedTitle)) {
-                                    seen.add(String(s.id));
-                                    seen.add((s.title || '').toLowerCase().trim());
-                                    list.push(s);
-                                }
-                            });
+                            artRes.songs.forEach(addCandidate);
                         }
                     } catch (e) {}
                 }
 
-                // 4. Album / Movie companions (other tracks from the exact same album/film)
-                if (list.length < 15 && seedAlbum && !seedAlbum.toLowerCase().includes('single') && !seedAlbum.toLowerCase().includes('compilation')) {
-                    try {
-                        const albRes = await searchEngine.searchAll(seedAlbum + ' songs', 5, lang);
-                        if (albRes && albRes.songs) {
-                            albRes.songs.forEach(s => {
-                                if (s && s.streamUrl && !seen.has(String(s.id)) && !seen.has((s.title || '').toLowerCase().trim()) && !isSameSongOrReprise(s.title, seedTitle)) {
-                                    seen.add(String(s.id));
-                                    seen.add((s.title || '').toLowerCase().trim());
-                                    list.push(s);
-                                }
-                            });
-                        }
-                    } catch (e) {}
-                }
-
-                // 5. Curated Hit Charts from the same language
+                // 4. Sample diverse curated Hit Charts from the same language
                 if (list.length < 20) {
                     try {
-                        const chartHits = (chartsData.charts && chartsData.charts[lang] && chartsData.charts[lang].daily) || [];
-                        for (const ch of chartHits) {
-                            if (ch && !seen.has(String(ch.id)) && !seen.has((ch.title || '').toLowerCase().trim()) && !isSameSongOrReprise(ch.title, seedTitle)) {
-                                seen.add(String(ch.id));
-                                seen.add((ch.title || '').toLowerCase().trim());
-                                list.push(ch);
-                                if (list.length >= 20) break;
-                            }
+                        const dailyHits = (chartsData.charts && chartsData.charts[lang] && chartsData.charts[lang].daily) || [];
+                        const weeklyHits = (chartsData.charts && chartsData.charts[lang] && chartsData.charts[lang].weekly) || [];
+                        for (const ch of dailyHits.concat(weeklyHits)) {
+                            addCandidate(ch);
+                            if (list.length >= 20) break;
                         }
                     } catch (e) {}
                 }
 
-                // 6. Contextual genre queries if pool still needs songs
+                // 5. Contextual genre & mood queries to complete the cluster
                 const combo = (seedTitle + ' ' + seedArtist + ' ' + seedAlbum).toLowerCase();
                 const isKuthuParty = /machi|bottle|open the bottle|kuthu|party|dance|billa|mankatha|local|sarakku|vethalai|potendi|aaluma|dappan|tasmac|thara local|item|baila/i.test(combo);
                 const isSadPathos = /sad|pathos|heartbreak|valikudhu|valiye|pirivu|azhugai|kanave|thenpaandi|kanne kalaimane|poove sempoove|amma endru/i.test(combo);
@@ -1064,15 +1093,9 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     for (const fq of fallbackQueries) {
                         if (list.length >= 25) break;
                         try {
-                            const res = await searchEngine.searchAll(fq, 3, lang);
+                            const res = await searchEngine.searchAll(fq, 6, lang);
                             if (res && res.songs) {
-                                res.songs.forEach(s => {
-                                    if (s && s.streamUrl && !seen.has(String(s.id)) && !seen.has((s.title || '').toLowerCase().trim()) && !isSameSongOrReprise(s.title, seedTitle)) {
-                                        seen.add(String(s.id));
-                                        seen.add((s.title || '').toLowerCase().trim());
-                                        list.push(s);
-                                    }
-                                });
+                                res.songs.forEach(addCandidate);
                             }
                         } catch (e) {}
                     }

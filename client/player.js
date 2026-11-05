@@ -853,12 +853,35 @@ class AudioPlayerEngine {
                 if (cur && (cur.id === track.id || (cur.title || '').toLowerCase().trim() === (track.title || '').toLowerCase().trim())) {
                     const historyIds = new Set((this.history || []).map(h => String(h.id)));
                     const historyTitles = new Set((this.history || []).map(h => (h.title || '').toLowerCase().trim()));
-                    const remaining = radioTracks.filter(t => 
-                        (t.id && t.id !== cur.id) && 
-                        !isSameSongOrReprise(t.title, cur.title) &&
-                        !historyIds.has(String(t.id)) &&
-                        !historyTitles.has((t.title || '').toLowerCase().trim())
-                    );
+                    function cleanAlbumKey(alb) {
+                        if (!alb) return '';
+                        return alb.replace(/\(.*?\)/g, '')
+                                  .replace(/original motion picture soundtrack|soundtrack|single|ost|ep|theme/gi, '')
+                                  .trim().toLowerCase();
+                    }
+                    const albumSeen = new Set();
+                    const curAlbKey = cleanAlbumKey(cur.album);
+                    if (curAlbKey && curAlbKey.length > 2) {
+                        albumSeen.add(curAlbKey); // Spotify Rule: Seed track's album is excluded from queue
+                    }
+
+                    const remaining = [];
+                    for (const t of radioTracks) {
+                        if (!t || !t.id || t.id === cur.id) continue;
+                        if (isSameSongOrReprise(t.title, cur.title)) continue;
+                        if (historyIds.has(String(t.id))) continue;
+                        const tTitle = (t.title || '').toLowerCase().trim();
+                        if (historyTitles.has(tTitle)) continue;
+
+                        // Spotify Rule: Max 1 track per album across queue
+                        const tAlb = cleanAlbumKey(t.album);
+                        if (tAlb && tAlb.length > 2) {
+                            if (albumSeen.has(tAlb)) continue;
+                            albumSeen.add(tAlb);
+                        }
+
+                        remaining.push(t);
+                    }
                     this.queue = [cur, ...remaining];
                     this.currentIndex = 0;
                     if (this.onQueueChange) this.onQueueChange(this.queue, this.currentIndex);

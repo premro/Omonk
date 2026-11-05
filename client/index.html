@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Omonk • Hi-Res Lossless Player</title>
-    <link rel="stylesheet" href="styles.css?v=8.9.11">
-        <link rel="icon" type="image/x-icon" href="favicon.ico?v=8.9.11">
-    <link rel="icon" type="image/png" sizes="64x64" href="favicon.png?v=8.9.11">
-    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=8.9.11">
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=8.9.11">
-    <link rel="manifest" href="manifest.json?v=8.9.11">
+    <link rel="stylesheet" href="styles.css?v=8.9.12">
+        <link rel="icon" type="image/x-icon" href="favicon.ico?v=8.9.12">
+    <link rel="icon" type="image/png" sizes="64x64" href="favicon.png?v=8.9.12">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=8.9.12">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=8.9.12">
+    <link rel="manifest" href="manifest.json?v=8.9.12">
     <meta name="theme-color" content="#090817">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,7 +17,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <script>
         (function() {
-            const CURRENT_BUILD = '8.9.11';
+            const CURRENT_BUILD = '8.9.12';
             const storedBuild = localStorage.getItem('omonk_build_v');
             if (storedBuild !== CURRENT_BUILD) {
                 localStorage.setItem('omonk_build_v', CURRENT_BUILD);
@@ -757,20 +757,20 @@
     </div>
 
     <!-- Core Application & Subsystem Scripts -->
-    <script src="offline.js?v=8.9.11"></script>
-    <script src="algorithm.js?v=8.9.11"></script>
-    <script src="profile.js?v=8.9.11"></script>
-    <script src="vibeEngine.js?v=8.9.11"></script>
-    <script src="player.js?v=8.9.11"></script>
-    <script src="lyrics.js?v=8.9.11"></script>
-    <script src="importer.js?v=8.9.11"></script>
-    <script src="miniplayer.js?v=8.9.11"></script>
-    <script src="app.js?v=8.9.11"></script>
+    <script src="offline.js?v=8.9.12"></script>
+    <script src="algorithm.js?v=8.9.12"></script>
+    <script src="profile.js?v=8.9.12"></script>
+    <script src="vibeEngine.js?v=8.9.12"></script>
+    <script src="player.js?v=8.9.12"></script>
+    <script src="lyrics.js?v=8.9.12"></script>
+    <script src="importer.js?v=8.9.12"></script>
+    <script src="miniplayer.js?v=8.9.12"></script>
+    <script src="app.js?v=8.9.12"></script>
     <!-- Service Worker Auto-Update & Offline PWA Engine -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js?v=8.9.11').then((reg) => {
+                navigator.serviceWorker.register('./sw.js?v=8.9.12').then((reg) => {
                     console.log('[PWA] Service Worker registered:', reg.scope);
                     reg.update().catch(() => {});
                     reg.addEventListener('updatefound', () => {
