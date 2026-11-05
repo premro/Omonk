@@ -11,6 +11,8 @@ yarn-error.log*
 
 # Catalyst Legacy Artifacts (no longer needed)
 .catalystrc
+catalyst.json
+functions/
 catalyst-debug.log
 
 # Environment & Credentials

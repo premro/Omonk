@@ -1,7 +1,6 @@
 const GLOBAL_API_PREFIX = (typeof window !== 'undefined' && (
     window.location.hostname.includes('catalystserverless') ||
-    window.location.hostname.includes('zohocatalyst') ||
-    window.location.pathname.startsWith('/app')
+    window.location.hostname.includes('zohocatalyst') 
 )) ? '/server/music_api' : '';
 if (typeof window !== 'undefined' && !window.API_PREFIX) {
     window.API_PREFIX = GLOBAL_API_PREFIX;
@@ -17,8 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentView = 'home';
     const isCatalyst = typeof window !== 'undefined' && (
         window.location.hostname.includes('catalystserverless') ||
-        window.location.hostname.includes('zohocatalyst') ||
-        window.location.pathname.startsWith('/app')
+        window.location.hostname.includes('zohocatalyst') 
     );
     const API_PREFIX = isCatalyst ? '/server/music_api' : '';
 
@@ -3110,8 +3108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const isCatalyst = typeof window !== 'undefined' && (
                     window.location.hostname.includes('catalystserverless') ||
-                    window.location.hostname.includes('zohocatalyst') ||
-                    window.location.pathname.startsWith('/app')
+                    window.location.hostname.includes('zohocatalyst') 
                 );
                 const prefix = window.API_PREFIX || (isCatalyst ? '/server/music_api' : '');
                 const res = await fetch(`${prefix}/api/album?id=${encodeURIComponent(album.id)}`);
@@ -3172,8 +3169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const isCatalyst = typeof window !== 'undefined' && (
                     window.location.hostname.includes('catalystserverless') ||
-                    window.location.hostname.includes('zohocatalyst') ||
-                    window.location.pathname.startsWith('/app')
+                    window.location.hostname.includes('zohocatalyst') 
                 );
                 const prefix = window.API_PREFIX || (isCatalyst ? '/server/music_api' : '');
                 const res = await fetch(`${prefix}/api/album?id=${encodeURIComponent(album.id)}`);
@@ -4298,13 +4294,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateSidePanel(track) {
         if (!sidePanel || !sideNowPlayingContent) return;
         if (!track) {
-            track = AudioPlayer.getCurrentTrack() || (AudioPlayer.queue && AudioPlayer.queue[0]) || {
-                id: 'default_track',
-                title: "Radhimaa - From \"Think Indie\"",
-                artist: "Sai Abhyankkar, Nargis Teji, Asma Teji, Vivek, Sai Smriti",
-                album: "Think Indie",
-                artwork: "assets/foryou_latest_tamil.jpg"
-            };
+            track = AudioPlayer.getCurrentTrack();
+        }
+        if (!track) {
+            if (sideEmptyState) sideEmptyState.style.display = 'flex';
+            if (sideNowPlayingContent) sideNowPlayingContent.style.display = 'none';
+            const sideQueueCount = document.getElementById('sideQueueCount');
+            if (sideQueueCount) sideQueueCount.textContent = (AudioPlayer.queue && AudioPlayer.queue.length) ? String(AudioPlayer.queue.length) : '0';
+            return;
         }
 
         if (sideEmptyState) sideEmptyState.style.display = 'none';
@@ -5536,134 +5533,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     await bootApp();
 
-    // Pre-seed default track & queue matching reference screenshot
-    if (!AudioPlayer.queue || AudioPlayer.queue.length === 0) {
-        const defaultQueue = [
-            {
-                id: 'omonk_default_seed',
-                title: "Party Dance Theme",
-                artist: "Arrol Corelli",
-                album: "Party Dance",
-                artwork: "assets/foryou_radar.jpg",
-                image: "assets/foryou_radar.jpg",
-                duration: 75
-            },
-            {
-                id: 'omonk_q_1',
-                title: "It's Time to Dance and Party Cheer",
-                artist: "Vandemataram Srinivas, Indian Songs...",
-                artwork: "assets/foryou_finds.jpg",
-                image: "assets/foryou_finds.jpg",
-                duration: 180
-            },
-            {
-                id: 'omonk_q_2',
-                title: "Penne..Penne",
-                artist: "Yugendran",
-                artwork: "assets/foryou_friday.jpg",
-                image: "assets/foryou_friday.jpg",
-                duration: 210
-            },
-            {
-                id: 'omonk_q_3',
-                title: "Assa Assami",
-                artist: "Anuradha Sriram",
-                artwork: "assets/foryou_mood.jpg",
-                image: "assets/foryou_mood.jpg",
-                duration: 240
-            },
-            {
-                id: 'omonk_q_4',
-                title: "Hukum - Thalaivar Alappara",
-                artist: "Anirudh Ravichander",
-                artwork: "assets/artists/anirudh.jpg",
-                image: "assets/artists/anirudh.jpg",
-                duration: 206
-            },
-            {
-                id: 'omonk_q_5',
-                title: "Chaleya",
-                artist: "Anirudh Ravichander, Arijit Singh",
-                artwork: "assets/foryou_tamil50.jpg",
-                image: "assets/foryou_tamil50.jpg",
-                duration: 200
-            },
-            {
-                id: 'omonk_q_6',
-                title: "Badass",
-                artist: "Anirudh Ravichander",
-                artwork: "assets/foryou_chill.jpg",
-                image: "assets/foryou_chill.jpg",
-                duration: 229
-            },
-            {
-                id: 'omonk_q_7',
-                title: "Arabic Kuthu",
-                artist: "Anirudh Ravichander, Jonita Gandhi",
-                artwork: "assets/foryou_friday.jpg",
-                image: "assets/foryou_friday.jpg",
-                duration: 280
-            },
-            {
-                id: 'omonk_q_8',
-                title: "Naa Ready",
-                artist: "Thalapathy Vijay, Anirudh Ravichander",
-                artwork: "assets/foryou_finds.jpg",
-                image: "assets/foryou_finds.jpg",
-                duration: 248
-            },
-            {
-                id: 'omonk_q_9',
-                title: "Vathi Coming",
-                artist: "Anirudh Ravichander, Gana Balachandar",
-                artwork: "assets/foryou_radar.jpg",
-                image: "assets/foryou_radar.jpg",
-                duration: 230
-            },
-            {
-                id: 'omonk_q_10',
-                title: "Chellamma",
-                artist: "Anirudh Ravichander, Jonita Gandhi",
-                artwork: "assets/foryou_mood.jpg",
-                image: "assets/foryou_mood.jpg",
-                duration: 236
-            },
-            {
-                id: 'omonk_q_11',
-                title: "Kaavaalaa",
-                artist: "Anirudh Ravichander, Shilpa Rao",
-                artwork: "assets/foryou_chill.jpg",
-                image: "assets/foryou_chill.jpg",
-                duration: 191
-            },
-            {
-                id: 'omonk_q_12',
-                title: "Marana Mass",
-                artist: "Anirudh Ravichander, SPB",
-                artwork: "assets/artists/ar_rahman.jpg",
-                image: "assets/artists/ar_rahman.jpg",
-                duration: 216
-            },
-            {
-                id: 'omonk_q_13',
-                title: "Rowdy Baby",
-                artist: "Dhanush, Dhee",
-                artwork: "assets/foryou_tamil50.jpg",
-                image: "assets/foryou_tamil50.jpg",
-                duration: 281
-            },
-            {
-                id: 'omonk_q_14',
-                title: "Why This Kolaveri Di",
-                artist: "Dhanush, Anirudh Ravichander",
-                artwork: "assets/artists/anirudh.jpg",
-                image: "assets/artists/anirudh.jpg",
-                duration: 245
-            }
-        ];
-        AudioPlayer.queue = defaultQueue;
-        AudioPlayer.currentIndex = 0;
-        AudioPlayer.currentTrack = defaultQueue[0];
+    if (!AudioPlayer.queue) {
+        AudioPlayer.queue = [];
+        AudioPlayer.currentIndex = -1;
     }
     updateSidePanel(AudioPlayer.getCurrentTrack() || AudioPlayer.queue[0]);
     renderSideQueueContent();

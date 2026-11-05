@@ -811,8 +811,7 @@ class AudioPlayerEngine {
             if (!radioTracks || radioTracks.length <= 1) {
                 const isCatalyst = typeof window !== 'undefined' && (
                     window.location.hostname.includes('catalystserverless') ||
-                    window.location.hostname.includes('zohocatalyst') ||
-                    window.location.pathname.startsWith('/app')
+                    window.location.hostname.includes('zohocatalyst') 
                 );
                 const prefix = window.API_PREFIX || (isCatalyst ? '/server/music_api' : '');
                 const qParams = new URLSearchParams({
@@ -833,8 +832,7 @@ class AudioPlayerEngine {
                 try {
                     const isCatalyst = typeof window !== 'undefined' && (
                         window.location.hostname.includes('catalystserverless') ||
-                        window.location.hostname.includes('zohocatalyst') ||
-                        window.location.pathname.startsWith('/app')
+                        window.location.hostname.includes('zohocatalyst') 
                     );
                     const prefix = window.API_PREFIX || (isCatalyst ? '/server/music_api' : '');
                     const artistQuery = (track.artist || '').split(/[,&]/)[0].trim();

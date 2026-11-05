@@ -29,8 +29,7 @@
 
             window.IS_CATALYST = typeof window !== 'undefined' && (
                 window.location.hostname.includes('catalystserverless') ||
-                window.location.hostname.includes('zohocatalyst') ||
-                window.location.pathname.startsWith('/app')
+                window.location.hostname.includes('zohocatalyst') 
             );
             window.API_PREFIX = window.IS_CATALYST ? '/server/music_api' : '';
             if (window.API_PREFIX) {
@@ -235,7 +234,7 @@
                         </div>
                         <div class="side-panel-tabs">
                             <button class="side-tab-btn active" id="sideTabNowPlaying" data-side-tab="nowplaying">Now Playing</button>
-                            <button class="side-tab-btn" id="sideTabQueue" data-side-tab="queue">Queue (<span id="sideQueueCount">15</span>)</button>
+                            <button class="side-tab-btn" id="sideTabQueue" data-side-tab="queue">Queue (<span id="sideQueueCount">0</span>)</button>
                             <button class="side-tab-btn" id="sidePanelMiniplayerBtn" onclick="if(window.Miniplayer) window.Miniplayer.toggle();" title="Float Miniplayer (Shift+M)">Miniplayer ⤢</button>
                         </div>
                         <button class="side-panel-close-btn" id="closeSidePanelBtn" title="Close Panel">✕</button>
@@ -243,12 +242,12 @@
 
                     <!-- Tab 1: Now Playing Body -->
                     <div class="side-panel-tab-body active" id="sideBodyNowPlaying">
-                        <div class="side-empty-state" id="sideEmptyState" style="display: none;">
+                        <div class="side-empty-state" id="sideEmptyState" style="display: flex;">
                             <div style="font-size: 40px; margin-bottom: 12px; opacity: 0.6;">🎵</div>
                             <div style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px;">Nothing Playing Right Now</div>
                             <div style="font-size: 13px; color: var(--text-muted); max-width: 240px; line-height: 1.4;">Pick any song, album, or podcast to see detailed metadata, artwork, and notes on the side.</div>
                         </div>
-                        <div class="side-now-playing-content" id="sideNowPlayingContent">
+                        <div class="side-now-playing-content" id="sideNowPlayingContent" style="display: none;">
                             <!-- Populated dynamically with Now Playing card + Next in Queue -->
                         </div>
                     </div>
@@ -271,7 +270,7 @@
                 </div>
                 <div class="player-track-info">
                     <div class="player-track-title-row">
-                        <div id="playerTitle" class="player-track-title">Party Dance Theme</div>
+                        <div id="playerTitle" class="player-track-title">No track playing</div>
                         <div class="playing-bars" id="nowPlayingBars" style="display: none;" title="Playing">
                             <span class="playing-bar"></span>
                             <span class="playing-bar"></span>
@@ -279,10 +278,10 @@
                             <span class="playing-bar"></span>
                         </div>
                     </div>
-                    <div id="playerArtist" class="player-track-artist">Arrol Corelli</div>
+                    <div id="playerArtist" class="player-track-artist">Select a track to play</div>
                     <div class="player-badge-pill hi-res" id="playerQualityBadge" title="Master Audio Quality" style="cursor: pointer; user-select: none;">FLAC • 320kbps</div>
                 </div>
-                <button class="action-icon-btn active" id="playerLikeBtn" title="Save to Liked Songs">❤️</button>
+                <button class="action-icon-btn" id="playerLikeBtn" title="Save to Liked Songs">🤍</button>
                 <button class="action-icon-btn" id="playerAddToPlaylistBtn" title="Add to Playlist">➕</button>
                 <button class="action-icon-btn" id="playerMobileDownloadBtn" title="Download Offline" style="display: none;">⬇️</button>
             </div>
@@ -323,13 +322,13 @@
                     </button>
                 </div>
                 <div class="scrubber-container">
-                    <span class="time-stamp" id="currentTime">0:10</span>
+                    <span class="time-stamp" id="currentTime">0:00</span>
                     <div class="progress-track" id="progressTrack">
-                        <div class="progress-fill" id="progressFill" style="width: 15%;">
+                        <div class="progress-fill" id="progressFill" style="width: 0%;">
                             <div class="progress-handle"></div>
                         </div>
                     </div>
-                    <span class="time-stamp" id="totalDuration">1:15</span>
+                    <span class="time-stamp" id="totalDuration">0:00</span>
                 </div>
             </div>
 

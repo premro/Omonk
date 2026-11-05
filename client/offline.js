@@ -13,8 +13,7 @@ function getApiPrefix() {
     }
     if (typeof window !== 'undefined' && (
         window.location.hostname.includes('catalystserverless') ||
-        window.location.hostname.includes('zohocatalyst') ||
-        window.location.pathname.startsWith('/app')
+        window.location.hostname.includes('zohocatalyst') 
     )) {
         return '/server/music_api';
     }

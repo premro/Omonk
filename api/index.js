@@ -575,8 +575,30 @@ module.exports = async (req, res) => {
     try {
         const u = new URL(req.url, 'http://localhost');
         let pathname = u.pathname || '';
+
+        // Extract route from Vercel rewrite or proxy headers
+        if (u.searchParams.has('__path')) {
+            const rawParam = u.searchParams.get('__path');
+            pathname = '/api/' + rawParam.replace(/^\/?api\/?/, '');
+        } else if (req.headers && req.headers['x-matched-path']) {
+            try {
+                pathname = new URL(req.headers['x-matched-path'], 'http://localhost').pathname;
+            } catch (e) {
+                pathname = (req.headers['x-matched-path'] || '').split('?')[0];
+            }
+        } else if (req.headers && req.headers['x-invoke-path']) {
+            pathname = (req.headers['x-invoke-path'] || '').split('?')[0];
+        } else if (req.headers && req.headers['x-forwarded-uri']) {
+            pathname = (req.headers['x-forwarded-uri'] || '').split('?')[0];
+        } else if (req.query && req.query.path) {
+            pathname = '/api/' + (Array.isArray(req.query.path) ? req.query.path.join('/') : req.query.path);
+        }
+
         pathname = pathname.replace(/^\/server\/music_api/, '');
         pathname = pathname.replace(/^\/music_api/, '');
+        if (pathname === '/api/index.js' || pathname === '/api/index') {
+            pathname = '/api';
+        }
 
         // -------------------------------------------------------------
         // Stateless Ping & Healthcheck

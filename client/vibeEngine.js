@@ -610,8 +610,7 @@
     if (!currentTrack) return null;
     const isCatalyst = typeof window !== 'undefined' && (
       window.location.hostname.includes('catalystserverless') ||
-      window.location.hostname.includes('zohocatalyst') ||
-      window.location.pathname.startsWith('/app')
+      window.location.hostname.includes('zohocatalyst') 
     );
     const prefix = (typeof window !== 'undefined' && window.API_PREFIX) ? window.API_PREFIX : (isCatalyst ? '/server/music_api' : '');
 
@@ -680,8 +679,7 @@
     if (!seedTrack) return [];
     const isCatalyst = typeof window !== 'undefined' && (
       window.location.hostname.includes('catalystserverless') ||
-      window.location.hostname.includes('zohocatalyst') ||
-      window.location.pathname.startsWith('/app')
+      window.location.hostname.includes('zohocatalyst') 
     );
     const prefix = isCatalyst ? '/server/music_api' : '';
 
@@ -731,8 +729,7 @@
     if (!seedTrack) return [];
     const isCatalyst = typeof window !== 'undefined' && (
       window.location.hostname.includes('catalystserverless') ||
-      window.location.hostname.includes('zohocatalyst') ||
-      window.location.pathname.startsWith('/app')
+      window.location.hostname.includes('zohocatalyst') 
     );
     const prefix = isCatalyst ? '/server/music_api' : '';
 
