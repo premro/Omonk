@@ -762,6 +762,9 @@
       }
 
       const album = (typeof raw.album === 'string' ? raw.album : raw.album?.name) || 'Studio Single';
+      if (album && /romantic melody/i.test(album) && (!seedTrack.album || !seedTrack.album.toLowerCase().includes('romantic melody'))) {
+        return; // Exclude legacy static Romantic Melody compilation album
+      }
 
       let artwork = raw.artwork || raw.image;
       if (Array.isArray(artwork)) {
@@ -830,7 +833,7 @@
         const vibeKeyword = seedVibe === 'sad' ? 'sad pathos melody' :
                             seedVibe === 'dance' ? 'dance kuthu party' :
                             seedVibe === 'mass' ? 'mass bgm theme' :
-                            seedVibe === 'romantic' ? 'romantic melody' :
+                            seedVibe === 'romantic' ? 'latest love hits' :
                             seedVibe === 'chill' ? 'chill lofi relax' : 'melody hits';
         const searchQ = `${seedLang} ${vibeKeyword} hits`;
 
@@ -916,7 +919,7 @@
         let vibeKeyword = sourceVibe === 'sad' ? 'sad pathos melody' :
                           sourceVibe === 'dance' ? 'dance kuthu party' :
                           sourceVibe === 'mass' ? 'mass bgm theme' :
-                          sourceVibe === 'romantic' ? 'romantic melody kadhal' :
+                          sourceVibe === 'romantic' ? 'latest love hits' :
                           sourceVibe === 'chill' ? 'chill lofi relax' : 'hit songs';
 
         const primaryArt = (sourceTrack.artist || '').split(/[,&]/)[0].trim();
