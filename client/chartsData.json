@@ -3,78 +3,78 @@
     {
       "code": "tamil",
       "name": "Tamil",
-      "flag": "🇮🇳",
-      "native": "தமிழ்",
+      "flag": "\ud83c\uddee\ud83c\uddf3",
+      "native": "\u0ba4\u0bae\u0bbf\u0bb4\u0bcd",
       "color": "from-amber-500 to-rose-600"
     },
     {
       "code": "telugu",
       "name": "Telugu",
-      "flag": "🇮🇳",
-      "native": "తెలుగు",
+      "flag": "\ud83c\uddee\ud83c\uddf3",
+      "native": "\u0c24\u0c46\u0c32\u0c41\u0c17\u0c41",
       "color": "from-red-500 to-orange-500"
     },
     {
       "code": "hindi",
       "name": "Hindi",
-      "flag": "🇮🇳",
-      "native": "हिन्दी",
+      "flag": "\ud83c\uddee\ud83c\uddf3",
+      "native": "\u0939\u093f\u0928\u094d\u0926\u0940",
       "color": "from-emerald-500 to-teal-600"
     },
     {
       "code": "malayalam",
       "name": "Malayalam",
-      "flag": "🇮🇳",
-      "native": "മലയാളം",
+      "flag": "\ud83c\uddee\ud83c\uddf3",
+      "native": "\u0d2e\u0d32\u0d2f\u0d3e\u0d33\u0d02",
       "color": "from-cyan-500 to-blue-600"
     },
     {
       "code": "kannada",
       "name": "Kannada",
-      "flag": "🇮🇳",
-      "native": "ಕನ್ನಡ",
+      "flag": "\ud83c\uddee\ud83c\uddf3",
+      "native": "\u0c95\u0ca8\u0ccd\u0ca8\u0ca1",
       "color": "from-yellow-500 to-amber-600"
     },
     {
       "code": "punjabi",
       "name": "Punjabi",
-      "flag": "🇮🇳",
-      "native": "ਪੰਜਾਬੀ",
+      "flag": "\ud83c\uddee\ud83c\uddf3",
+      "native": "\u0a2a\u0a70\u0a1c\u0a3e\u0a2c\u0a40",
       "color": "from-pink-500 to-rose-500"
     },
     {
       "code": "english",
       "name": "English / Global",
-      "flag": "🌐",
+      "flag": "\ud83c\udf10",
       "native": "Global",
       "color": "from-purple-500 to-indigo-600"
     },
     {
       "code": "spanish",
       "name": "Spanish / Latin",
-      "flag": "🇪🇸",
-      "native": "Español",
+      "flag": "\ud83c\uddea\ud83c\uddf8",
+      "native": "Espa\u00f1ol",
       "color": "from-orange-500 to-red-600"
     },
     {
       "code": "kpop",
       "name": "K-Pop",
-      "flag": "🇰🇷",
-      "native": "한국어",
+      "flag": "\ud83c\uddf0\ud83c\uddf7",
+      "native": "\ud55c\uad6d\uc5b4",
       "color": "from-fuchsia-500 to-purple-600"
     },
     {
       "code": "japanese",
       "name": "Japanese / Anime",
-      "flag": "🇯🇵",
-      "native": "日本語",
+      "flag": "\ud83c\uddef\ud83c\uddf5",
+      "native": "\u65e5\u672c\u8a9e",
       "color": "from-indigo-500 to-sky-600"
     },
     {
       "code": "french",
       "name": "French",
-      "flag": "🇫🇷",
-      "native": "Français",
+      "flag": "\ud83c\uddeb\ud83c\uddf7",
+      "native": "Fran\u00e7ais",
       "color": "from-blue-500 to-violet-600"
     }
   ],
@@ -3989,9 +3989,9 @@
         },
         {
           "id": "sp_hindi_4",
-          "title": "Vaaroon Forever - From “Mirzapur The Movie”",
+          "title": "Vaaroon Forever - From \u201cMirzapur The Movie\u201d",
           "artist": "Anand Bhaskar, Romy, Shreya Ghoshal, Ginny Diwan",
-          "album": "Vaaroon Forever (From “Mirzapur The Movie”)",
+          "album": "Vaaroon Forever (From \u201cMirzapur The Movie\u201d)",
           "duration": 252,
           "artwork": "https://c.saavncdn.com/381/Vaaroon-Forever-From-Mirzapur-The-Movie-Hindi-2026-20260817160523-500x500.jpg",
           "source": "Curated Hot Hits Hindi",
@@ -4037,9 +4037,9 @@
         },
         {
           "id": "sp_hindi_8",
-          "title": "Tujhko - From “Cocktail 2”",
+          "title": "Tujhko - From \u201cCocktail 2\u201d",
           "artist": "Pritam, Arijit Singh, Sunidhi Chauhan, Amitabh Bhattacharya",
-          "album": "VALLAH (From “Cocktail 2”)",
+          "album": "VALLAH (From \u201cCocktail 2\u201d)",
           "duration": 342,
           "artwork": "https://c.saavncdn.com/735/VALLAH-From-Cocktail-2-Hindi-2026-20260609152523-500x500.jpg",
           "source": "Curated Hot Hits Hindi",
@@ -4085,7 +4085,7 @@
         },
         {
           "id": "sp_hindi_12",
-          "title": "Sanson Ki Mala - From “Mirzapur The Movie”",
+          "title": "Sanson Ki Mala - From \u201cMirzapur The Movie\u201d",
           "artist": "Madhur Sharma, Vaibhav Pani, Nusrat Fateh Ali Khan",
           "album": "Mirzapur The Movie",
           "duration": 188,
@@ -4313,9 +4313,9 @@
         },
         {
           "id": "sp_hindi_31",
-          "title": "Mashooqa - From “Cocktail 2”",
+          "title": "Mashooqa - From \u201cCocktail 2\u201d",
           "artist": "Pritam, Mahmood, Raghav Chaitanya, Amitabh Bhattacharya, Ruaa Kayy",
-          "album": "Mashooqa (From “Cocktail 2”)",
+          "album": "Mashooqa (From \u201cCocktail 2\u201d)",
           "duration": 230,
           "artwork": "https://c.saavncdn.com/465/Mashooqa-From-Cocktail-2-Hindi-2026-20260519130936-500x500.jpg",
           "source": "Curated Hot Hits Hindi",
@@ -4349,9 +4349,9 @@
         },
         {
           "id": "sp_hindi_34",
-          "title": "Do Numbari - From “Mirzapur The Movie”",
+          "title": "Do Numbari - From \u201cMirzapur The Movie\u201d",
           "artist": "Dhanda Nyoliwala",
-          "album": "Vaaroon Forever (From “Mirzapur The Movie”)",
+          "album": "Vaaroon Forever (From \u201cMirzapur The Movie\u201d)",
           "duration": 164,
           "artwork": "https://c.saavncdn.com/381/Vaaroon-Forever-From-Mirzapur-The-Movie-Hindi-2026-20260817160523-500x500.jpg",
           "source": "Curated Hot Hits Hindi",
@@ -4638,9 +4638,9 @@
         },
         {
           "id": "sp_hindi_4",
-          "title": "Vaaroon Forever - From “Mirzapur The Movie”",
+          "title": "Vaaroon Forever - From \u201cMirzapur The Movie\u201d",
           "artist": "Anand Bhaskar, Romy, Shreya Ghoshal, Ginny Diwan",
-          "album": "Vaaroon Forever (From “Mirzapur The Movie”)",
+          "album": "Vaaroon Forever (From \u201cMirzapur The Movie\u201d)",
           "duration": 252,
           "artwork": "https://c.saavncdn.com/381/Vaaroon-Forever-From-Mirzapur-The-Movie-Hindi-2026-20260817160523-500x500.jpg",
           "source": "Curated Hot Hits Hindi",
@@ -4686,9 +4686,9 @@
         },
         {
           "id": "sp_hindi_8",
-          "title": "Tujhko - From “Cocktail 2”",
+          "title": "Tujhko - From \u201cCocktail 2\u201d",
           "artist": "Pritam, Arijit Singh, Sunidhi Chauhan, Amitabh Bhattacharya",
-          "album": "VALLAH (From “Cocktail 2”)",
+          "album": "VALLAH (From \u201cCocktail 2\u201d)",
           "duration": 342,
           "artwork": "https://c.saavncdn.com/735/VALLAH-From-Cocktail-2-Hindi-2026-20260609152523-500x500.jpg",
           "source": "Curated Hot Hits Hindi",
@@ -4734,7 +4734,7 @@
         },
         {
           "id": "sp_hindi_12",
-          "title": "Sanson Ki Mala - From “Mirzapur The Movie”",
+          "title": "Sanson Ki Mala - From \u201cMirzapur The Movie\u201d",
           "artist": "Madhur Sharma, Vaibhav Pani, Nusrat Fateh Ali Khan",
           "album": "Mirzapur The Movie",
           "duration": 188,
@@ -4962,9 +4962,9 @@
         },
         {
           "id": "sp_hindi_31",
-          "title": "Mashooqa - From “Cocktail 2”",
+          "title": "Mashooqa - From \u201cCocktail 2\u201d",
           "artist": "Pritam, Mahmood, Raghav Chaitanya, Amitabh Bhattacharya, Ruaa Kayy",
-          "album": "Mashooqa (From “Cocktail 2”)",
+          "album": "Mashooqa (From \u201cCocktail 2\u201d)",
           "duration": 230,
           "artwork": "https://c.saavncdn.com/465/Mashooqa-From-Cocktail-2-Hindi-2026-20260519130936-500x500.jpg",
           "source": "Curated Hot Hits Hindi",
@@ -4998,9 +4998,9 @@
         },
         {
           "id": "sp_hindi_34",
-          "title": "Do Numbari - From “Mirzapur The Movie”",
+          "title": "Do Numbari - From \u201cMirzapur The Movie\u201d",
           "artist": "Dhanda Nyoliwala",
-          "album": "Vaaroon Forever (From “Mirzapur The Movie”)",
+          "album": "Vaaroon Forever (From \u201cMirzapur The Movie\u201d)",
           "duration": 164,
           "artwork": "https://c.saavncdn.com/381/Vaaroon-Forever-From-Mirzapur-The-Movie-Hindi-2026-20260817160523-500x500.jpg",
           "source": "Curated Hot Hits Hindi",
@@ -5152,7 +5152,7 @@
         },
         {
           "id": "sp_malayalam_4",
-          "title": "Amsham - അംശം",
+          "title": "Amsham - \u0d05\u0d02\u0d36\u0d02",
           "artist": "Aksomaniac, M.H.R, Bhumi, Circle Tone",
           "album": "Hit Songs Malayalam",
           "duration": 282,
@@ -5628,7 +5628,7 @@
         },
         {
           "id": "sp_malayalam_4",
-          "title": "Amsham - അംശം",
+          "title": "Amsham - \u0d05\u0d02\u0d36\u0d02",
           "artist": "Aksomaniac, M.H.R, Bhumi, Circle Tone",
           "album": "Hit Songs Malayalam",
           "duration": 282,
@@ -6185,7 +6185,7 @@
         },
         {
           "id": "sp_malayalam_4",
-          "title": "Amsham - അംശം",
+          "title": "Amsham - \u0d05\u0d02\u0d36\u0d02",
           "artist": "Aksomaniac, M.H.R, Bhumi, Circle Tone",
           "album": "Hit Songs Malayalam",
           "duration": 282,
@@ -6627,7 +6627,7 @@
       "daily": [
         {
           "id": "sp_kannada_1",
-          "title": "Premada Oorali Title Song (From “Premada Oorali”) -(Version 1)",
+          "title": "Premada Oorali Title Song (From \u201cPremada Oorali\u201d) -(Version 1)",
           "artist": "Sunaad Gowtham",
           "album": "Premada Oorali Title Song Version 1 (From \"Premada Oorali\")",
           "duration": 102,
@@ -7166,7 +7166,7 @@
       "weekly": [
         {
           "id": "sp_kannada_1",
-          "title": "Premada Oorali Title Song (From “Premada Oorali”) -(Version 1)",
+          "title": "Premada Oorali Title Song (From \u201cPremada Oorali\u201d) -(Version 1)",
           "artist": "Sunaad Gowtham",
           "album": "Premada Oorali Title Song Version 1 (From \"Premada Oorali\")",
           "duration": 102,
@@ -7723,7 +7723,7 @@
       "monthly": [
         {
           "id": "sp_kannada_1",
-          "title": "Premada Oorali Title Song (From “Premada Oorali”) -(Version 1)",
+          "title": "Premada Oorali Title Song (From \u201cPremada Oorali\u201d) -(Version 1)",
           "artist": "Sunaad Gowtham",
           "album": "Premada Oorali Title Song Version 1 (From \"Premada Oorali\")",
           "duration": 102,
@@ -9831,10 +9831,10 @@
           "id": "sp_english_1",
           "title": "Housewife",
           "artist": "Tate McRae",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 209,
           "artwork": "https://c.saavncdn.com/146/Housewife-English-2026-20261101023156-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:2sFepQNyl1WjpROruP8bJ0",
           "spotifyId": "2sFepQNyl1WjpROruP8bJ0",
           "chartType": "daily"
@@ -9842,11 +9842,11 @@
         {
           "id": "sp_english_2",
           "title": "Nicole Kidman",
-          "artist": "ADÉLA",
-          "album": "Today’s Top Hits",
+          "artist": "AD\u00c9LA",
+          "album": "Today\u2019s Top Hits",
           "duration": 181,
           "artwork": "https://c.saavncdn.com/948/PRIMA-English-2026-20260904063612-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:70cHKK8bHAfJrOGVnfRG9J",
           "spotifyId": "70cHKK8bHAfJrOGVnfRG9J",
           "chartType": "daily"
@@ -9855,10 +9855,10 @@
           "id": "sp_english_3",
           "title": "BbY WOW",
           "artist": "KAROL G, Judeline, rusowsky",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 226,
           "artwork": "https://c.saavncdn.com/846/NO-ME-ARREPIENTO-DE-SENTIR-TANTO-Spanish-2026-20260807103515-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:3h5T5JypYU7huFiVYhv1dr",
           "spotifyId": "3h5T5JypYU7huFiVYhv1dr",
           "chartType": "daily"
@@ -9867,10 +9867,10 @@
           "id": "sp_english_4",
           "title": "expectations (feat. Chappell Roan)",
           "artist": "Olivia Rodrigo, Chappell Roan",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 224,
           "artwork": "https://c.saavncdn.com/206/expectations-English-2026-20261016065032-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:3XmwAZpIMNpTJy8faw3ajD",
           "spotifyId": "3XmwAZpIMNpTJy8faw3ajD",
           "chartType": "daily"
@@ -9879,10 +9879,10 @@
           "id": "sp_english_5",
           "title": "Stop The Wedding!",
           "artist": "Ashe",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 199,
           "artwork": "https://c.saavncdn.com/403/Stop-The-Wedding-English-2026-20260804123614-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:3zOYmiNOuyDL0ClxJcEJ0T",
           "spotifyId": "3zOYmiNOuyDL0ClxJcEJ0T",
           "chartType": "daily"
@@ -9891,10 +9891,10 @@
           "id": "sp_english_6",
           "title": "Earrings",
           "artist": "Malcolm Todd",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 152,
           "artwork": "https://c.saavncdn.com/188/Sweet-Boy-English-2024-20240401230241-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:0eAuGrXyGFYwur9ARUe7LJ",
           "spotifyId": "0eAuGrXyGFYwur9ARUe7LJ",
           "chartType": "daily"
@@ -9903,10 +9903,10 @@
           "id": "sp_english_7",
           "title": "Loser",
           "artist": "Tame Impala",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 223,
           "artwork": "https://c.saavncdn.com/786/Loser-English-2025-20250904002111-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:7bxaFZ1O3cHkgLKMsdC3xR",
           "spotifyId": "7bxaFZ1O3cHkgLKMsdC3xR",
           "chartType": "daily"
@@ -9915,10 +9915,10 @@
           "id": "sp_english_8",
           "title": "hate that i made you love me",
           "artist": "Ariana Grande",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 198,
           "artwork": "https://c.saavncdn.com/741/hate-that-i-made-you-love-me-English-2026-20260529103543-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:20jbSiX29FDX4oQxBXyUEi",
           "spotifyId": "20jbSiX29FDX4oQxBXyUEi",
           "chartType": "daily"
@@ -9927,10 +9927,10 @@
           "id": "sp_english_9",
           "title": "Lies (feat. Lana Del Rey)",
           "artist": "Zach Bryan, Lana Del Rey",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 221,
           "artwork": "https://c.saavncdn.com/142/Lies-feat-Lana-Del-Rey-English-2026-20261016013354-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:4EVSMqqVEehvyyOBmjNTlA",
           "spotifyId": "4EVSMqqVEehvyyOBmjNTlA",
           "chartType": "daily"
@@ -9939,10 +9939,10 @@
           "id": "sp_english_10",
           "title": "Great Expectation",
           "artist": "SIENNA SPIRO",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 174,
           "artwork": "https://c.saavncdn.com/473/Visitor-English-2026-20260703142538-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:7ujApz6iFP3PmKIDGcaGbe",
           "spotifyId": "7ujApz6iFP3PmKIDGcaGbe",
           "chartType": "daily"
@@ -9951,10 +9951,10 @@
           "id": "sp_english_11",
           "title": "Patient Zero",
           "artist": "Taylor Swift",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 226,
           "artwork": "https://c.saavncdn.com/895/Patient-Zero-English-2026-20261016103552-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:11hcBLPtbMp4aQI6zGQLub",
           "spotifyId": "11hcBLPtbMp4aQI6zGQLub",
           "chartType": "daily"
@@ -9963,10 +9963,10 @@
           "id": "sp_english_12",
           "title": "Tarantino",
           "artist": "LISA",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 171,
           "artwork": "https://c.saavncdn.com/672/PRESS-PLAY-English-2026-20261021222507-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:3bgnrHHwyYRtz3ykzAVImy",
           "spotifyId": "3bgnrHHwyYRtz3ykzAVImy",
           "chartType": "daily"
@@ -9975,10 +9975,10 @@
           "id": "sp_english_13",
           "title": "Dai Dai",
           "artist": "Shakira, Burna Boy",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 223,
           "artwork": "https://c.saavncdn.com/037/Dai-Dai-English-2026-20260807003044-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:0kosUz0jePvjiz4ctmR6wL",
           "spotifyId": "0kosUz0jePvjiz4ctmR6wL",
           "chartType": "daily"
@@ -9987,10 +9987,10 @@
           "id": "sp_english_14",
           "title": "Babydoll",
           "artist": "Dominic Fike",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 98,
           "artwork": "https://c.saavncdn.com/168/Don-t-Forget-About-Me-Demos-English-2020-20200107235155-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:7yNf9YjeO5JXUE3JEBgnYc",
           "spotifyId": "7yNf9YjeO5JXUE3JEBgnYc",
           "chartType": "daily"
@@ -9999,10 +9999,10 @@
           "id": "sp_english_15",
           "title": "Choosin' Texas",
           "artist": "Ella Langley",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 232,
           "artwork": "https://c.saavncdn.com/690/Choosin-Texas-English-2025-20251014222333-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:65DbTqJKhbwqYbZ1Okr0rc",
           "spotifyId": "65DbTqJKhbwqYbZ1Okr0rc",
           "chartType": "daily"
@@ -10011,10 +10011,10 @@
           "id": "sp_english_16",
           "title": "Man I Need",
           "artist": "Olivia Dean",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 184,
           "artwork": "https://c.saavncdn.com/562/Man-I-Need-English-2025-20250815063620-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:1qbmS6ep2hbBRaEZFpn7BX",
           "spotifyId": "1qbmS6ep2hbBRaEZFpn7BX",
           "chartType": "daily"
@@ -10023,10 +10023,10 @@
           "id": "sp_english_17",
           "title": "the cure",
           "artist": "Olivia Rodrigo",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 297,
           "artwork": "https://c.saavncdn.com/313/the-cure-English-2026-20260522103519-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:4EoJ151oQ5jY48z4RhSE96",
           "spotifyId": "4EoJ151oQ5jY48z4RhSE96",
           "chartType": "daily"
@@ -10035,10 +10035,10 @@
           "id": "sp_english_18",
           "title": "Self Aware",
           "artist": "Temper City",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 181,
           "artwork": "https://c.saavncdn.com/353/Self-Aware-English-2026-20260417063113-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:4qW3BbQAwZsrnu8a3ZRdyT",
           "spotifyId": "4qW3BbQAwZsrnu8a3ZRdyT",
           "chartType": "daily"
@@ -10046,11 +10046,11 @@
         {
           "id": "sp_english_19",
           "title": "Ain't In LA",
-          "artist": "ADÉLA",
-          "album": "Today’s Top Hits",
+          "artist": "AD\u00c9LA",
+          "album": "Today\u2019s Top Hits",
           "duration": 185,
           "artwork": "https://c.saavncdn.com/818/Ain-t-In-LA-English-2026-20260723233552-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:02HyFYmpzt02VJ8k0CqxKj",
           "spotifyId": "02HyFYmpzt02VJ8k0CqxKj",
           "chartType": "daily"
@@ -10059,10 +10059,10 @@
           "id": "sp_english_20",
           "title": "Angel Of My Dreams",
           "artist": "JADE",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 198,
           "artwork": "https://c.saavncdn.com/967/Angel-Of-My-Dreams-English-2024-20240717222704-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:3Zu0AWO9PN2lP2kCls5mkq",
           "spotifyId": "3Zu0AWO9PN2lP2kCls5mkq",
           "chartType": "daily"
@@ -10071,10 +10071,10 @@
           "id": "sp_english_21",
           "title": "stupid song",
           "artist": "Olivia Rodrigo",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 210,
           "artwork": "https://c.saavncdn.com/361/you-seem-pretty-sad-for-a-girl-so-in-love-English-2026-20260612063606-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:4LfCY65LvojKjWEnU7fNN4",
           "spotifyId": "4LfCY65LvojKjWEnU7fNN4",
           "chartType": "daily"
@@ -10083,10 +10083,10 @@
           "id": "sp_english_22",
           "title": "Animal",
           "artist": "KATSEYE",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 158,
           "artwork": "https://c.saavncdn.com/455/Animal-English-2026-20260725050543-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:3ouNEk0tv5TTi8VWMe1xbX",
           "spotifyId": "3ouNEk0tv5TTi8VWMe1xbX",
           "chartType": "daily"
@@ -10095,10 +10095,10 @@
           "id": "sp_english_24",
           "title": "Rein Me In (with Olivia Dean)",
           "artist": "Sam Fender, Olivia Dean",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 339,
           "artwork": "https://c.saavncdn.com/121/Salon-Music-2026-English-2026-20260916101100-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:7MZHqgTVTnN6xZGYAcEEAf",
           "spotifyId": "7MZHqgTVTnN6xZGYAcEEAf",
           "chartType": "daily"
@@ -10107,10 +10107,10 @@
           "id": "sp_english_25",
           "title": "Coming Up Roses",
           "artist": "Harry Styles",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 249,
           "artwork": "https://c.saavncdn.com/112/Kiss-All-The-Time-Disco-Occasionally-English-2026-20260305103237-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:0QPdjsMOUhwouq1NS3HwfQ",
           "spotifyId": "0QPdjsMOUhwouq1NS3HwfQ",
           "chartType": "daily"
@@ -10119,10 +10119,10 @@
           "id": "sp_english_26",
           "title": "WHERE IS MY HUSBAND!",
           "artist": "RAYE",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 197,
           "artwork": "https://c.saavncdn.com/458/WHERE-IS-MY-HUSBAND-English-2025-20260325184754-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:55lijDD6OAjLFFUHU9tcDm",
           "spotifyId": "55lijDD6OAjLFFUHU9tcDm",
           "chartType": "daily"
@@ -10131,10 +10131,10 @@
           "id": "sp_english_27",
           "title": "Risk It All",
           "artist": "Bruno Mars",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 204,
           "artwork": "https://c.saavncdn.com/286/The-Romantic-English-2026-20260414043226-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:5y2ijHECwFYWqcAHKTZgzD",
           "spotifyId": "5y2ijHECwFYWqcAHKTZgzD",
           "chartType": "daily"
@@ -10143,10 +10143,10 @@
           "id": "sp_english_28",
           "title": "UNETHICAL",
           "artist": "Faouzia",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 220,
           "artwork": "https://c.saavncdn.com/017/UNETHICAL-English-2025-20250722213311-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:6QKpHmO41jkd9pTp0FfmHs",
           "spotifyId": "6QKpHmO41jkd9pTp0FfmHs",
           "chartType": "daily"
@@ -10155,10 +10155,10 @@
           "id": "sp_english_29",
           "title": "Orbiter",
           "artist": "Noah Kahan",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 287,
           "artwork": "https://c.saavncdn.com/236/The-Great-Divide-The-Last-Of-The-Bugs-English-2026-20260425064958-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:4W6yulge3h7FSy0zGFrNKs",
           "spotifyId": "4W6yulge3h7FSy0zGFrNKs",
           "chartType": "daily"
@@ -10167,10 +10167,10 @@
           "id": "sp_english_30",
           "title": "DtMF",
           "artist": "Bad Bunny",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 237,
           "artwork": "https://c.saavncdn.com/442/DeB-TiRAR-M-S-FOToS-Spanish-2025-20250105162840-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:3sK8wGT43QFpWrvNQsrQya",
           "spotifyId": "3sK8wGT43QFpWrvNQsrQya",
           "chartType": "daily"
@@ -10179,10 +10179,10 @@
           "id": "sp_english_31",
           "title": "STORM II",
           "artist": "GENER8ION, Yung Lean",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 173,
           "artwork": "https://c.saavncdn.com/637/STORM-English-2026-20260402043237-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:0FZd4IaxB12sUTKSUUGwWq",
           "spotifyId": "0FZd4IaxB12sUTKSUUGwWq",
           "chartType": "daily"
@@ -10191,10 +10191,10 @@
           "id": "sp_english_32",
           "title": "Midnight Sun",
           "artist": "Zara Larsson",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 190,
           "artwork": "https://c.saavncdn.com/961/Midnight-Sun-Girls-Trip-English-2026-20260713222122-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:37UCSVSqiPGdR1DijOFyYY",
           "spotifyId": "37UCSVSqiPGdR1DijOFyYY",
           "chartType": "daily"
@@ -10203,10 +10203,10 @@
           "id": "sp_english_33",
           "title": "Raindance (feat. Tems)",
           "artist": "Dave, Tems",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 220,
           "artwork": "https://c.saavncdn.com/633/The-Boy-Who-Played-the-Harp-English-2025-20251024053611-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:3oTuTpF1F3A7rEC6RKsMRz",
           "spotifyId": "3oTuTpF1F3A7rEC6RKsMRz",
           "chartType": "daily"
@@ -10215,10 +10215,10 @@
           "id": "sp_english_34",
           "title": "Janice STFU",
           "artist": "Drake",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 237,
           "artwork": "https://c.saavncdn.com/992/ICEMAN-English-2026-20260524030434-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:514joG57v4yKTsfQmz7stz",
           "spotifyId": "514joG57v4yKTsfQmz7stz",
           "chartType": "daily"
@@ -10227,10 +10227,10 @@
           "id": "sp_english_35",
           "title": "Boston",
           "artist": "STELLA LEFTY",
-          "album": "Today’s Top Hits",
+          "album": "Today\u2019s Top Hits",
           "duration": 171,
           "artwork": "https://c.saavncdn.com/011/Is-This-Heaven-Extended-English-2026-20260702073233-500x500.jpg",
-          "source": "Curated Today’s Top Hits",
+          "source": "Curated Today\u2019s Top Hits",
           "spotifyUri": "spotify:track:36idurZmYRjJ56KQ8JD9bN",
           "spotifyId": "36idurZmYRjJ56KQ8JD9bN",
           "chartType": "daily"
@@ -10692,7 +10692,7 @@
         },
         {
           "id": "sp_english_19",
-          "title": "Niña Mafia",
+          "title": "Ni\u00f1a Mafia",
           "artist": "Victor Mendivil",
           "album": "New Music Friday",
           "duration": 220,
@@ -11287,7 +11287,7 @@
         },
         {
           "id": "sp_spanish_12",
-          "title": "Ahí",
+          "title": "Ah\u00ed",
           "artist": "KAROL G, Drake",
           "album": "Viva Latino",
           "duration": 177,
@@ -11395,7 +11395,7 @@
         },
         {
           "id": "sp_spanish_21",
-          "title": "Niña Mafia",
+          "title": "Ni\u00f1a Mafia",
           "artist": "Victor Mendivil",
           "album": "Viva Latino",
           "duration": 220,
@@ -11432,7 +11432,7 @@
         {
           "id": "sp_spanish_24",
           "title": "Peli De Terror",
-          "artist": "Køddy G, THE FAVORITES, Fharid On the Beat",
+          "artist": "K\u00f8ddy G, THE FAVORITES, Fharid On the Beat",
           "album": "Viva Latino",
           "duration": 163,
           "artwork": "https://c.saavncdn.com/858/Peli-De-Terror-Spanish-2026-20261017033613-500x500.jpg",
@@ -11455,7 +11455,7 @@
         },
         {
           "id": "sp_spanish_26",
-          "title": "CHÉVERE (premium_remix)",
+          "title": "CH\u00c9VERE (premium_remix)",
           "artist": "ARIA VEGA, Ryan Castro",
           "album": "Viva Latino",
           "duration": 220,
@@ -11467,7 +11467,7 @@
         },
         {
           "id": "sp_spanish_27",
-          "title": "El Árbol",
+          "title": "El \u00c1rbol",
           "artist": "Camilo",
           "album": "Viva Latino",
           "duration": 182,
@@ -11599,14 +11599,14 @@
         },
         {
           "title": "Movin' To The Sun",
-          "artist": "HUGEL, Imael Angel & Ultra Naté",
+          "artist": "HUGEL, Imael Angel & Ultra Nat\u00e9",
           "album": "Apple Music Top Songs (ES)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/96/61/7a/96617ab5-51da-7cfc-97e5-c5a6a893c210/1087654.jpg/500x500bb.png",
           "source": "Apple Music Top Songs (ES)"
         },
         {
-          "title": "No Me Quitas El Sueño",
+          "title": "No Me Quitas El Sue\u00f1o",
           "artist": "Candela del Sur",
           "album": "Apple Music Top Songs (ES)",
           "duration": 210,
@@ -11886,7 +11886,7 @@
         },
         {
           "id": "sp_spanish_12",
-          "title": "Ahí",
+          "title": "Ah\u00ed",
           "artist": "KAROL G, Drake",
           "album": "Viva Latino",
           "duration": 177,
@@ -11994,7 +11994,7 @@
         },
         {
           "id": "sp_spanish_21",
-          "title": "Niña Mafia",
+          "title": "Ni\u00f1a Mafia",
           "artist": "Victor Mendivil",
           "album": "Viva Latino",
           "duration": 220,
@@ -12031,7 +12031,7 @@
         {
           "id": "sp_spanish_24",
           "title": "Peli De Terror",
-          "artist": "Køddy G, THE FAVORITES, Fharid On the Beat",
+          "artist": "K\u00f8ddy G, THE FAVORITES, Fharid On the Beat",
           "album": "Viva Latino",
           "duration": 163,
           "artwork": "https://c.saavncdn.com/858/Peli-De-Terror-Spanish-2026-20261017033613-500x500.jpg",
@@ -12054,7 +12054,7 @@
         },
         {
           "id": "sp_spanish_26",
-          "title": "CHÉVERE (premium_remix)",
+          "title": "CH\u00c9VERE (premium_remix)",
           "artist": "ARIA VEGA, Ryan Castro",
           "album": "Viva Latino",
           "duration": 220,
@@ -12066,7 +12066,7 @@
         },
         {
           "id": "sp_spanish_27",
-          "title": "El Árbol",
+          "title": "El \u00c1rbol",
           "artist": "Camilo",
           "album": "Viva Latino",
           "duration": 182,
@@ -12198,14 +12198,14 @@
         },
         {
           "title": "Movin' To The Sun",
-          "artist": "HUGEL, Imael Angel & Ultra Naté",
+          "artist": "HUGEL, Imael Angel & Ultra Nat\u00e9",
           "album": "Apple Music Top Songs (ES)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/96/61/7a/96617ab5-51da-7cfc-97e5-c5a6a893c210/1087654.jpg/500x500bb.png",
           "source": "Apple Music Top Songs (ES)"
         },
         {
-          "title": "No Me Quitas El Sueño",
+          "title": "No Me Quitas El Sue\u00f1o",
           "artist": "Candela del Sur",
           "album": "Apple Music Top Songs (ES)",
           "duration": 210,
@@ -12413,7 +12413,7 @@
         },
         {
           "id": "sp_spanish_12",
-          "title": "Ahí",
+          "title": "Ah\u00ed",
           "artist": "KAROL G, Drake",
           "album": "Viva Latino",
           "duration": 177,
@@ -12521,7 +12521,7 @@
         },
         {
           "id": "sp_spanish_21",
-          "title": "Niña Mafia",
+          "title": "Ni\u00f1a Mafia",
           "artist": "Victor Mendivil",
           "album": "Viva Latino",
           "duration": 220,
@@ -12558,7 +12558,7 @@
         {
           "id": "sp_spanish_24",
           "title": "Peli De Terror",
-          "artist": "Køddy G, THE FAVORITES, Fharid On the Beat",
+          "artist": "K\u00f8ddy G, THE FAVORITES, Fharid On the Beat",
           "album": "Viva Latino",
           "duration": 163,
           "artwork": "https://c.saavncdn.com/858/Peli-De-Terror-Spanish-2026-20261017033613-500x500.jpg",
@@ -12581,7 +12581,7 @@
         },
         {
           "id": "sp_spanish_26",
-          "title": "CHÉVERE (premium_remix)",
+          "title": "CH\u00c9VERE (premium_remix)",
           "artist": "ARIA VEGA, Ryan Castro",
           "album": "Viva Latino",
           "duration": 220,
@@ -12593,7 +12593,7 @@
         },
         {
           "id": "sp_spanish_27",
-          "title": "El Árbol",
+          "title": "El \u00c1rbol",
           "artist": "Camilo",
           "album": "Viva Latino",
           "duration": 182,
@@ -12725,14 +12725,14 @@
         },
         {
           "title": "Movin' To The Sun",
-          "artist": "HUGEL, Imael Angel & Ultra Naté",
+          "artist": "HUGEL, Imael Angel & Ultra Nat\u00e9",
           "album": "Apple Music Top Songs (ES)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/96/61/7a/96617ab5-51da-7cfc-97e5-c5a6a893c210/1087654.jpg/500x500bb.png",
           "source": "Apple Music Top Songs (ES)"
         },
         {
-          "title": "No Me Quitas El Sueño",
+          "title": "No Me Quitas El Sue\u00f1o",
           "artist": "Candela del Sur",
           "album": "Apple Music Top Songs (ES)",
           "duration": 210,
@@ -12803,10 +12803,10 @@
           "id": "sp_kpop_1",
           "title": "Looks Can Kill",
           "artist": "IVE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 196,
           "artwork": "https://c.saavncdn.com/376/Looks-Can-Kill-Korean-2026-20261026143544-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:39sjfpQLGBJnvwTox6LLkn",
           "spotifyId": "39sjfpQLGBJnvwTox6LLkn",
           "chartType": "daily"
@@ -12815,10 +12815,10 @@
           "id": "sp_kpop_2",
           "title": "Tarantino",
           "artist": "LISA",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 171,
           "artwork": "https://c.saavncdn.com/672/PRESS-PLAY-English-2026-20261021222507-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3bgnrHHwyYRtz3ykzAVImy",
           "spotifyId": "3bgnrHHwyYRtz3ykzAVImy",
           "chartType": "daily"
@@ -12827,22 +12827,22 @@
           "id": "sp_kpop_3",
           "title": "Drip",
           "artist": "ATEEZ",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 182,
           "artwork": "https://c.saavncdn.com/814/Drip-Korean-2026-20261006155938-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5JaMKAodzzLdFM2ARRTXb9",
           "spotifyId": "5JaMKAodzzLdFM2ARRTXb9",
           "chartType": "daily"
         },
         {
           "id": "sp_kpop_4",
-          "title": "긴 소원 (Birthday Wish)",
+          "title": "\uae34 \uc18c\uc6d0 (Birthday Wish)",
           "artist": "NMIXX",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 200,
           "artwork": "https://c.saavncdn.com/751/Wish-Haryanvi-2020-20201125145926-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:6F0vhKF4fy9WQi39JPQnCv",
           "spotifyId": "6F0vhKF4fy9WQi39JPQnCv",
           "chartType": "daily"
@@ -12851,10 +12851,10 @@
           "id": "sp_kpop_5",
           "title": "NEON",
           "artist": "A2O LITE, A2O",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 208,
           "artwork": "https://c.saavncdn.com/403/NEON-Korean-2026-20261008133337-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5PvLNQRNRj61y3CU4SFIY4",
           "spotifyId": "5PvLNQRNRj61y3CU4SFIY4",
           "chartType": "daily"
@@ -12863,10 +12863,10 @@
           "id": "sp_kpop_6",
           "title": "Insomnia",
           "artist": "RIIZE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 195,
           "artwork": "https://c.saavncdn.com/874/Insomnia-English-2026-20261020221447-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5jC3lBWBcVdby76sqWwqAE",
           "spotifyId": "5jC3lBWBcVdby76sqWwqAE",
           "chartType": "daily"
@@ -12875,10 +12875,10 @@
           "id": "sp_kpop_7",
           "title": "DESERVE",
           "artist": "BABYMONSTER",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 190,
           "artwork": "https://c.saavncdn.com/528/DESERVE-Korean-2026-20261023045949-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:7It5Iy4mnJWMhESt7qfipt",
           "spotifyId": "7It5Iy4mnJWMhESt7qfipt",
           "chartType": "daily"
@@ -12887,10 +12887,10 @@
           "id": "sp_kpop_8",
           "title": "seesaw (Feat. IU)",
           "artist": "Crush, IU",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 181,
           "artwork": "https://c.saavncdn.com/608/seesaw-Feat-IU-Unknown-2026-20261014190139-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3lTdjfpGVeYLeHfrczXw1a",
           "spotifyId": "3lTdjfpGVeYLeHfrczXw1a",
           "chartType": "daily"
@@ -12899,10 +12899,10 @@
           "id": "sp_kpop_9",
           "title": "CRASH",
           "artist": "ALLDAY PROJECT",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 173,
           "artwork": "https://c.saavncdn.com/953/CRASH-English-2026-20260924104919-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1pU7ywmV4nJsgJcnuPMLyw",
           "spotifyId": "1pU7ywmV4nJsgJcnuPMLyw",
           "chartType": "daily"
@@ -12911,10 +12911,10 @@
           "id": "sp_kpop_10",
           "title": "Illusion",
           "artist": "ONEW",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 157,
           "artwork": "https://c.saavncdn.com/769/Illusion-Unknown-2026-20261015125253-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:6BWxQgYLrm70Vo6XDsMONU",
           "spotifyId": "6BWxQgYLrm70Vo6XDsMONU",
           "chartType": "daily"
@@ -12923,10 +12923,10 @@
           "id": "sp_kpop_11",
           "title": "GO HARD",
           "artist": "MEOVV",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 188,
           "artwork": "https://c.saavncdn.com/530/GO-HARD-English-2026-20261009130301-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3P2MygdWs8lorZnwV3KrsJ",
           "spotifyId": "3P2MygdWs8lorZnwV3KrsJ",
           "chartType": "daily"
@@ -12935,10 +12935,10 @@
           "id": "sp_kpop_12",
           "title": "Come into my world!",
           "artist": "WOODZ",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 204,
           "artwork": "https://c.saavncdn.com/469/Come-into-my-world-Unknown-2026-20261020181207-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5zacvTOytsVSZneiZT5J7u",
           "spotifyId": "5zacvTOytsVSZneiZT5J7u",
           "chartType": "daily"
@@ -12947,10 +12947,10 @@
           "id": "sp_kpop_13",
           "title": "SaWaDiKa",
           "artist": "LISA",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 189,
           "artwork": "https://c.saavncdn.com/572/SaWaDiKa-English-2026-20260904062942-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1VWiDyYTrqQhhmnWANWkFa",
           "spotifyId": "1VWiDyYTrqQhhmnWANWkFa",
           "chartType": "daily"
@@ -12959,10 +12959,10 @@
           "id": "sp_kpop_14",
           "title": "Bloody Paradise",
           "artist": "ENHYPEN",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 131,
           "artwork": "https://c.saavncdn.com/909/THE-SIN-BLISS-JAY-Ver-English-2026-20260824103323-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:0r2JVOjI7H1jhXzXBOorKu",
           "spotifyId": "0r2JVOjI7H1jhXzXBOorKu",
           "chartType": "daily"
@@ -12971,10 +12971,10 @@
           "id": "sp_kpop_15",
           "title": "Dime Girl (Feat. NOWIMYOUNG)",
           "artist": "YENA, NOWIMYOUNG",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 148,
           "artwork": "https://c.saavncdn.com/323/Dime-Girl-Feat-NOWIMYOUNG-Unknown-2026-20261002175642-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:71QaFkKKm3tbsWdwwuX9pI",
           "spotifyId": "71QaFkKKm3tbsWdwwuX9pI",
           "chartType": "daily"
@@ -12983,10 +12983,10 @@
           "id": "sp_kpop_16",
           "title": "BAD",
           "artist": "ATEEZ",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 156,
           "artwork": "https://c.saavncdn.com/944/GOLDEN-HOUR-Part-5-Korean-2026-20260723115543-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:55UDXtbNJBAdTdUdbRu8T3",
           "spotifyId": "55UDXtbNJBAdTdUdbRu8T3",
           "chartType": "daily"
@@ -12995,10 +12995,10 @@
           "id": "sp_kpop_17",
           "title": "Star Trace",
           "artist": "PLAVE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 179,
           "artwork": "https://c.saavncdn.com/999/HYPERDRIVE-Korean-2026-20261001104058-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1uH8RqO7kx4je1VS91Oe02",
           "spotifyId": "1uH8RqO7kx4je1VS91Oe02",
           "chartType": "daily"
@@ -13007,10 +13007,10 @@
           "id": "sp_kpop_18",
           "title": "FALLEN ANGEL",
           "artist": "JENNIE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 199,
           "artwork": "https://c.saavncdn.com/273/Fallen-Angel-Digital-EP-English-2026-20260828085344-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1ZyTTzndFMzzZUtOpKaqN7",
           "spotifyId": "1ZyTTzndFMzzZUtOpKaqN7",
           "chartType": "daily"
@@ -13019,10 +13019,10 @@
           "id": "sp_kpop_19",
           "title": "Made My Night",
           "artist": "LE SSERAFIM",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 126,
           "artwork": "https://c.saavncdn.com/089/Made-My-Night-Remixes-English-2026-20260910013320-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5MOIAV008posdOGmxiJBsi",
           "spotifyId": "5MOIAV008posdOGmxiJBsi",
           "chartType": "daily"
@@ -13031,10 +13031,10 @@
           "id": "sp_kpop_20",
           "title": "I SPY",
           "artist": "NCT WISH",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 185,
           "artwork": "https://c.saavncdn.com/930/Are-We-There-Yet-Kids-Car-Songs-Stories-English-2011-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3kcGkOmFXtaFjVdz7ge1WL",
           "spotifyId": "3kcGkOmFXtaFjVdz7ge1WL",
           "chartType": "daily"
@@ -13042,11 +13042,11 @@
         {
           "id": "sp_kpop_21",
           "title": "new trick",
-          "artist": "ROSÉ",
-          "album": "K-Pop ON! (온)",
+          "artist": "ROS\u00c9",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 183,
           "artwork": "https://c.saavncdn.com/142/new-trick-English-2026-20260917013815-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:20QSTolol0EyLCVoOmGgAs",
           "spotifyId": "20QSTolol0EyLCVoOmGgAs",
           "chartType": "daily"
@@ -13055,10 +13055,10 @@
           "id": "sp_kpop_22",
           "title": "TATA",
           "artist": "Loco, MINAMI",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 164,
           "artwork": "https://c.saavncdn.com/341/Tatah-Unknown-2023-20250106034018-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1difmbWM3MPS6GpydyChS1",
           "spotifyId": "1difmbWM3MPS6GpydyChS1",
           "chartType": "daily"
@@ -13067,10 +13067,10 @@
           "id": "sp_kpop_23",
           "title": "SUN KISS",
           "artist": "TUIDE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 181,
           "artwork": "https://c.saavncdn.com/600/TUNE-PLAY-English-2026-20260824150356-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:7Jpb9OejYYIwsBIVQwceRy",
           "spotifyId": "7Jpb9OejYYIwsBIVQwceRy",
           "chartType": "daily"
@@ -13079,10 +13079,10 @@
           "id": "sp_kpop_24",
           "title": "LEMONADE",
           "artist": "aespa",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 187,
           "artwork": "https://c.saavncdn.com/792/LEMONADE-Zedd-Remix-English-2026-20260528003843-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:2oR7jPvWPC08Su4KYmKR3O",
           "spotifyId": "2oR7jPvWPC08Su4KYmKR3O",
           "chartType": "daily"
@@ -13091,10 +13091,10 @@
           "id": "sp_kpop_25",
           "title": "Kick Off The Wall (Feat. iann dior)",
           "artist": "KickFlip, iann dior",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 180,
           "artwork": "https://c.saavncdn.com/589/KICK-OFF-THE-WALL-Pt-1-Korean-2026-20261006143148-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:22roUAQiFGI1Gug73QMHzl",
           "spotifyId": "22roUAQiFGI1Gug73QMHzl",
           "chartType": "daily"
@@ -13103,10 +13103,10 @@
           "id": "sp_kpop_26",
           "title": "This & That",
           "artist": "Stray Kids",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 185,
           "artwork": "https://c.saavncdn.com/425/THIS-THAT-English-2026-20260807093511-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5fpxAkg76WAje8y1RPNEQ3",
           "spotifyId": "5fpxAkg76WAje8y1RPNEQ3",
           "chartType": "daily"
@@ -13115,10 +13115,10 @@
           "id": "sp_kpop_27",
           "title": "ICONIC HEART - Korean Version",
           "artist": "Hearts2Hearts",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 189,
           "artwork": "https://c.saavncdn.com/423/ICONIC-HEART-Korean-2026-20260809213515-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:2BLHTFy1rAtYwmm0uEFAuj",
           "spotifyId": "2BLHTFy1rAtYwmm0uEFAuj",
           "chartType": "daily"
@@ -13127,10 +13127,10 @@
           "id": "sp_kpop_28",
           "title": "ANIMAL",
           "artist": "BOYNEXTDOOR",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 147,
           "artwork": "https://c.saavncdn.com/643/HOME-DELUXE-Korean-2026-20260928170737-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3U7iIHygNSOcjcL98KwHQg",
           "spotifyId": "3U7iIHygNSOcjcL98KwHQg",
           "chartType": "daily"
@@ -13139,10 +13139,10 @@
           "id": "sp_kpop_29",
           "title": "Hit 'Em",
           "artist": "MEOVV",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 168,
           "artwork": "https://c.saavncdn.com/295/BITE-NOW-English-2026-20260528020434-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:0oFpuvfX2uwcuIGTMJr2kt",
           "spotifyId": "0oFpuvfX2uwcuIGTMJr2kt",
           "chartType": "daily"
@@ -13151,10 +13151,10 @@
           "id": "sp_kpop_30",
           "title": "Good Goodbye",
           "artist": "HWASA",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 223,
           "artwork": "https://c.saavncdn.com/473/Good-Goodbye-Unknown-2025-20251015181653-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3cLXrotzCjYCkN73PewALM",
           "spotifyId": "3cLXrotzCjYCkN73PewALM",
           "chartType": "daily"
@@ -13163,10 +13163,10 @@
           "id": "sp_kpop_31",
           "title": "Obsessed with Youth",
           "artist": "Xdinary Heroes",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 196,
           "artwork": "https://c.saavncdn.com/381/IMPULSE-Korean-2026-20261001235924-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:4H0NRY1CSAKgV7przexSxY",
           "spotifyId": "4H0NRY1CSAKgV7przexSxY",
           "chartType": "daily"
@@ -13175,10 +13175,10 @@
           "id": "sp_kpop_32",
           "title": "It's Me",
           "artist": "ILLIT",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 138,
           "artwork": "https://c.saavncdn.com/195/MAMIHLAPINATAPAI-Korean-2026-20260430143132-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1D5L58KLBbceOynTP4DQnY",
           "spotifyId": "1D5L58KLBbceOynTP4DQnY",
           "chartType": "daily"
@@ -13187,10 +13187,10 @@
           "id": "sp_kpop_33",
           "title": "Catch Catch",
           "artist": "YENA",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 180,
           "artwork": "https://c.saavncdn.com/749/LOVE-CATCHER-Korean-2026-20260305083210-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:2O9bMJticxbQ8FH3NiQ7Xh",
           "spotifyId": "2O9bMJticxbQ8FH3NiQ7Xh",
           "chartType": "daily"
@@ -13199,10 +13199,10 @@
           "id": "sp_kpop_34",
           "title": "REDRED",
           "artist": "CORTIS",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 163,
           "artwork": "https://c.saavncdn.com/810/GREENGREEN-Korean-2026-20260504143155-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:2fCwv2ppU5nTRTckomIGsd",
           "spotifyId": "2fCwv2ppU5nTRTckomIGsd",
           "chartType": "daily"
@@ -13211,10 +13211,10 @@
           "id": "sp_kpop_35",
           "title": "CLICK",
           "artist": "JISOO",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 159,
           "artwork": "https://c.saavncdn.com/855/CLICK-Korean-2026-20260904223242-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1zyNO73bPNPC6KBi3raNmZ",
           "spotifyId": "1zyNO73bPNPC6KBi3raNmZ",
           "chartType": "daily"
@@ -13342,10 +13342,10 @@
           "id": "sp_kpop_1",
           "title": "Looks Can Kill",
           "artist": "IVE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 196,
           "artwork": "https://c.saavncdn.com/376/Looks-Can-Kill-Korean-2026-20261026143544-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:39sjfpQLGBJnvwTox6LLkn",
           "spotifyId": "39sjfpQLGBJnvwTox6LLkn",
           "chartType": "weekly"
@@ -13354,10 +13354,10 @@
           "id": "sp_kpop_2",
           "title": "Tarantino",
           "artist": "LISA",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 171,
           "artwork": "https://c.saavncdn.com/672/PRESS-PLAY-English-2026-20261021222507-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3bgnrHHwyYRtz3ykzAVImy",
           "spotifyId": "3bgnrHHwyYRtz3ykzAVImy",
           "chartType": "weekly"
@@ -13366,22 +13366,22 @@
           "id": "sp_kpop_3",
           "title": "Drip",
           "artist": "ATEEZ",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 182,
           "artwork": "https://c.saavncdn.com/814/Drip-Korean-2026-20261006155938-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5JaMKAodzzLdFM2ARRTXb9",
           "spotifyId": "5JaMKAodzzLdFM2ARRTXb9",
           "chartType": "weekly"
         },
         {
           "id": "sp_kpop_4",
-          "title": "긴 소원 (Birthday Wish)",
+          "title": "\uae34 \uc18c\uc6d0 (Birthday Wish)",
           "artist": "NMIXX",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 200,
           "artwork": "https://c.saavncdn.com/751/Wish-Haryanvi-2020-20201125145926-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:6F0vhKF4fy9WQi39JPQnCv",
           "spotifyId": "6F0vhKF4fy9WQi39JPQnCv",
           "chartType": "weekly"
@@ -13390,10 +13390,10 @@
           "id": "sp_kpop_5",
           "title": "NEON",
           "artist": "A2O LITE, A2O",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 208,
           "artwork": "https://c.saavncdn.com/403/NEON-Korean-2026-20261008133337-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5PvLNQRNRj61y3CU4SFIY4",
           "spotifyId": "5PvLNQRNRj61y3CU4SFIY4",
           "chartType": "weekly"
@@ -13402,10 +13402,10 @@
           "id": "sp_kpop_6",
           "title": "Insomnia",
           "artist": "RIIZE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 195,
           "artwork": "https://c.saavncdn.com/874/Insomnia-English-2026-20261020221447-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5jC3lBWBcVdby76sqWwqAE",
           "spotifyId": "5jC3lBWBcVdby76sqWwqAE",
           "chartType": "weekly"
@@ -13414,10 +13414,10 @@
           "id": "sp_kpop_7",
           "title": "DESERVE",
           "artist": "BABYMONSTER",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 190,
           "artwork": "https://c.saavncdn.com/528/DESERVE-Korean-2026-20261023045949-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:7It5Iy4mnJWMhESt7qfipt",
           "spotifyId": "7It5Iy4mnJWMhESt7qfipt",
           "chartType": "weekly"
@@ -13426,10 +13426,10 @@
           "id": "sp_kpop_8",
           "title": "seesaw (Feat. IU)",
           "artist": "Crush, IU",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 181,
           "artwork": "https://c.saavncdn.com/608/seesaw-Feat-IU-Unknown-2026-20261014190139-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3lTdjfpGVeYLeHfrczXw1a",
           "spotifyId": "3lTdjfpGVeYLeHfrczXw1a",
           "chartType": "weekly"
@@ -13438,10 +13438,10 @@
           "id": "sp_kpop_9",
           "title": "CRASH",
           "artist": "ALLDAY PROJECT",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 173,
           "artwork": "https://c.saavncdn.com/953/CRASH-English-2026-20260924104919-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1pU7ywmV4nJsgJcnuPMLyw",
           "spotifyId": "1pU7ywmV4nJsgJcnuPMLyw",
           "chartType": "weekly"
@@ -13450,10 +13450,10 @@
           "id": "sp_kpop_10",
           "title": "Illusion",
           "artist": "ONEW",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 157,
           "artwork": "https://c.saavncdn.com/769/Illusion-Unknown-2026-20261015125253-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:6BWxQgYLrm70Vo6XDsMONU",
           "spotifyId": "6BWxQgYLrm70Vo6XDsMONU",
           "chartType": "weekly"
@@ -13462,10 +13462,10 @@
           "id": "sp_kpop_11",
           "title": "GO HARD",
           "artist": "MEOVV",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 188,
           "artwork": "https://c.saavncdn.com/530/GO-HARD-English-2026-20261009130301-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3P2MygdWs8lorZnwV3KrsJ",
           "spotifyId": "3P2MygdWs8lorZnwV3KrsJ",
           "chartType": "weekly"
@@ -13474,10 +13474,10 @@
           "id": "sp_kpop_12",
           "title": "Come into my world!",
           "artist": "WOODZ",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 204,
           "artwork": "https://c.saavncdn.com/469/Come-into-my-world-Unknown-2026-20261020181207-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5zacvTOytsVSZneiZT5J7u",
           "spotifyId": "5zacvTOytsVSZneiZT5J7u",
           "chartType": "weekly"
@@ -13486,10 +13486,10 @@
           "id": "sp_kpop_13",
           "title": "SaWaDiKa",
           "artist": "LISA",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 189,
           "artwork": "https://c.saavncdn.com/572/SaWaDiKa-English-2026-20260904062942-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1VWiDyYTrqQhhmnWANWkFa",
           "spotifyId": "1VWiDyYTrqQhhmnWANWkFa",
           "chartType": "weekly"
@@ -13498,10 +13498,10 @@
           "id": "sp_kpop_14",
           "title": "Bloody Paradise",
           "artist": "ENHYPEN",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 131,
           "artwork": "https://c.saavncdn.com/909/THE-SIN-BLISS-JAY-Ver-English-2026-20260824103323-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:0r2JVOjI7H1jhXzXBOorKu",
           "spotifyId": "0r2JVOjI7H1jhXzXBOorKu",
           "chartType": "weekly"
@@ -13510,10 +13510,10 @@
           "id": "sp_kpop_15",
           "title": "Dime Girl (Feat. NOWIMYOUNG)",
           "artist": "YENA, NOWIMYOUNG",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 148,
           "artwork": "https://c.saavncdn.com/323/Dime-Girl-Feat-NOWIMYOUNG-Unknown-2026-20261002175642-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:71QaFkKKm3tbsWdwwuX9pI",
           "spotifyId": "71QaFkKKm3tbsWdwwuX9pI",
           "chartType": "weekly"
@@ -13522,10 +13522,10 @@
           "id": "sp_kpop_16",
           "title": "BAD",
           "artist": "ATEEZ",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 156,
           "artwork": "https://c.saavncdn.com/944/GOLDEN-HOUR-Part-5-Korean-2026-20260723115543-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:55UDXtbNJBAdTdUdbRu8T3",
           "spotifyId": "55UDXtbNJBAdTdUdbRu8T3",
           "chartType": "weekly"
@@ -13534,10 +13534,10 @@
           "id": "sp_kpop_17",
           "title": "Star Trace",
           "artist": "PLAVE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 179,
           "artwork": "https://c.saavncdn.com/999/HYPERDRIVE-Korean-2026-20261001104058-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1uH8RqO7kx4je1VS91Oe02",
           "spotifyId": "1uH8RqO7kx4je1VS91Oe02",
           "chartType": "weekly"
@@ -13546,10 +13546,10 @@
           "id": "sp_kpop_18",
           "title": "FALLEN ANGEL",
           "artist": "JENNIE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 199,
           "artwork": "https://c.saavncdn.com/273/Fallen-Angel-Digital-EP-English-2026-20260828085344-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1ZyTTzndFMzzZUtOpKaqN7",
           "spotifyId": "1ZyTTzndFMzzZUtOpKaqN7",
           "chartType": "weekly"
@@ -13558,10 +13558,10 @@
           "id": "sp_kpop_19",
           "title": "Made My Night",
           "artist": "LE SSERAFIM",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 126,
           "artwork": "https://c.saavncdn.com/089/Made-My-Night-Remixes-English-2026-20260910013320-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5MOIAV008posdOGmxiJBsi",
           "spotifyId": "5MOIAV008posdOGmxiJBsi",
           "chartType": "weekly"
@@ -13570,10 +13570,10 @@
           "id": "sp_kpop_20",
           "title": "I SPY",
           "artist": "NCT WISH",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 185,
           "artwork": "https://c.saavncdn.com/930/Are-We-There-Yet-Kids-Car-Songs-Stories-English-2011-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3kcGkOmFXtaFjVdz7ge1WL",
           "spotifyId": "3kcGkOmFXtaFjVdz7ge1WL",
           "chartType": "weekly"
@@ -13581,11 +13581,11 @@
         {
           "id": "sp_kpop_21",
           "title": "new trick",
-          "artist": "ROSÉ",
-          "album": "K-Pop ON! (온)",
+          "artist": "ROS\u00c9",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 183,
           "artwork": "https://c.saavncdn.com/142/new-trick-English-2026-20260917013815-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:20QSTolol0EyLCVoOmGgAs",
           "spotifyId": "20QSTolol0EyLCVoOmGgAs",
           "chartType": "weekly"
@@ -13594,10 +13594,10 @@
           "id": "sp_kpop_22",
           "title": "TATA",
           "artist": "Loco, MINAMI",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 164,
           "artwork": "https://c.saavncdn.com/341/Tatah-Unknown-2023-20250106034018-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1difmbWM3MPS6GpydyChS1",
           "spotifyId": "1difmbWM3MPS6GpydyChS1",
           "chartType": "weekly"
@@ -13606,10 +13606,10 @@
           "id": "sp_kpop_23",
           "title": "SUN KISS",
           "artist": "TUIDE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 181,
           "artwork": "https://c.saavncdn.com/600/TUNE-PLAY-English-2026-20260824150356-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:7Jpb9OejYYIwsBIVQwceRy",
           "spotifyId": "7Jpb9OejYYIwsBIVQwceRy",
           "chartType": "weekly"
@@ -13618,10 +13618,10 @@
           "id": "sp_kpop_24",
           "title": "LEMONADE",
           "artist": "aespa",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 187,
           "artwork": "https://c.saavncdn.com/792/LEMONADE-Zedd-Remix-English-2026-20260528003843-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:2oR7jPvWPC08Su4KYmKR3O",
           "spotifyId": "2oR7jPvWPC08Su4KYmKR3O",
           "chartType": "weekly"
@@ -13630,10 +13630,10 @@
           "id": "sp_kpop_25",
           "title": "Kick Off The Wall (Feat. iann dior)",
           "artist": "KickFlip, iann dior",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 180,
           "artwork": "https://c.saavncdn.com/589/KICK-OFF-THE-WALL-Pt-1-Korean-2026-20261006143148-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:22roUAQiFGI1Gug73QMHzl",
           "spotifyId": "22roUAQiFGI1Gug73QMHzl",
           "chartType": "weekly"
@@ -13642,10 +13642,10 @@
           "id": "sp_kpop_26",
           "title": "This & That",
           "artist": "Stray Kids",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 185,
           "artwork": "https://c.saavncdn.com/425/THIS-THAT-English-2026-20260807093511-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5fpxAkg76WAje8y1RPNEQ3",
           "spotifyId": "5fpxAkg76WAje8y1RPNEQ3",
           "chartType": "weekly"
@@ -13654,10 +13654,10 @@
           "id": "sp_kpop_27",
           "title": "ICONIC HEART - Korean Version",
           "artist": "Hearts2Hearts",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 189,
           "artwork": "https://c.saavncdn.com/423/ICONIC-HEART-Korean-2026-20260809213515-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:2BLHTFy1rAtYwmm0uEFAuj",
           "spotifyId": "2BLHTFy1rAtYwmm0uEFAuj",
           "chartType": "weekly"
@@ -13666,10 +13666,10 @@
           "id": "sp_kpop_28",
           "title": "ANIMAL",
           "artist": "BOYNEXTDOOR",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 147,
           "artwork": "https://c.saavncdn.com/643/HOME-DELUXE-Korean-2026-20260928170737-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3U7iIHygNSOcjcL98KwHQg",
           "spotifyId": "3U7iIHygNSOcjcL98KwHQg",
           "chartType": "weekly"
@@ -13678,10 +13678,10 @@
           "id": "sp_kpop_29",
           "title": "Hit 'Em",
           "artist": "MEOVV",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 168,
           "artwork": "https://c.saavncdn.com/295/BITE-NOW-English-2026-20260528020434-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:0oFpuvfX2uwcuIGTMJr2kt",
           "spotifyId": "0oFpuvfX2uwcuIGTMJr2kt",
           "chartType": "weekly"
@@ -13690,10 +13690,10 @@
           "id": "sp_kpop_30",
           "title": "Good Goodbye",
           "artist": "HWASA",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 223,
           "artwork": "https://c.saavncdn.com/473/Good-Goodbye-Unknown-2025-20251015181653-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3cLXrotzCjYCkN73PewALM",
           "spotifyId": "3cLXrotzCjYCkN73PewALM",
           "chartType": "weekly"
@@ -13702,10 +13702,10 @@
           "id": "sp_kpop_31",
           "title": "Obsessed with Youth",
           "artist": "Xdinary Heroes",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 196,
           "artwork": "https://c.saavncdn.com/381/IMPULSE-Korean-2026-20261001235924-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:4H0NRY1CSAKgV7przexSxY",
           "spotifyId": "4H0NRY1CSAKgV7przexSxY",
           "chartType": "weekly"
@@ -13714,10 +13714,10 @@
           "id": "sp_kpop_32",
           "title": "It's Me",
           "artist": "ILLIT",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 138,
           "artwork": "https://c.saavncdn.com/195/MAMIHLAPINATAPAI-Korean-2026-20260430143132-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1D5L58KLBbceOynTP4DQnY",
           "spotifyId": "1D5L58KLBbceOynTP4DQnY",
           "chartType": "weekly"
@@ -13726,10 +13726,10 @@
           "id": "sp_kpop_33",
           "title": "Catch Catch",
           "artist": "YENA",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 180,
           "artwork": "https://c.saavncdn.com/749/LOVE-CATCHER-Korean-2026-20260305083210-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:2O9bMJticxbQ8FH3NiQ7Xh",
           "spotifyId": "2O9bMJticxbQ8FH3NiQ7Xh",
           "chartType": "weekly"
@@ -13738,10 +13738,10 @@
           "id": "sp_kpop_34",
           "title": "REDRED",
           "artist": "CORTIS",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 163,
           "artwork": "https://c.saavncdn.com/810/GREENGREEN-Korean-2026-20260504143155-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:2fCwv2ppU5nTRTckomIGsd",
           "spotifyId": "2fCwv2ppU5nTRTckomIGsd",
           "chartType": "weekly"
@@ -13750,10 +13750,10 @@
           "id": "sp_kpop_35",
           "title": "CLICK",
           "artist": "JISOO",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 159,
           "artwork": "https://c.saavncdn.com/855/CLICK-Korean-2026-20260904223242-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1zyNO73bPNPC6KBi3raNmZ",
           "spotifyId": "1zyNO73bPNPC6KBi3raNmZ",
           "chartType": "weekly"
@@ -13786,7 +13786,7 @@
           "source": "Kpop Weekly Streaming Charts"
         },
         {
-          "title": "Telepathy [Originally Performed By BTS] (잠시 K-Pop Be Version)",
+          "title": "Telepathy [Originally Performed By BTS] (\uc7a0\uc2dc K-Pop Be Version)",
           "artist": "Dimitre Helb",
           "album": "Wow Music, Vol. 3",
           "duration": 200,
@@ -13805,7 +13805,7 @@
         },
         {
           "title": "BTS Future Bass K Pop Beat",
-          "artist": "BassBoost, Bass Boosted 4K, Музыка В Машину, Музыка в тачку",
+          "artist": "BassBoost, Bass Boosted 4K, \u041c\u0443\u0437\u044b\u043a\u0430 \u0412 \u041c\u0430\u0448\u0438\u043d\u0443, \u041c\u0443\u0437\u044b\u043a\u0430 \u0432 \u0442\u0430\u0447\u043a\u0443",
           "album": "Music for driver",
           "duration": 273,
           "artwork": "https://c.saavncdn.com/020/Music-for-driver-Instrumental-2022-20221109101827-500x500.webp",
@@ -13840,7 +13840,7 @@
           "source": "Kpop Weekly Streaming Charts"
         },
         {
-          "title": "엔.오 N.O (Originally Performed by BTS 방탄소년단) [Karaoke Version]",
+          "title": "\uc5d4.\uc624 N.O (Originally Performed by BTS \ubc29\ud0c4\uc18c\ub144\ub2e8) [Karaoke Version]",
           "artist": "Karaoke K-Pop Bar",
           "album": "Super K-Pop Karaoke",
           "duration": 239,
@@ -13854,10 +13854,10 @@
           "id": "sp_kpop_1",
           "title": "Looks Can Kill",
           "artist": "IVE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 196,
           "artwork": "https://c.saavncdn.com/376/Looks-Can-Kill-Korean-2026-20261026143544-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:39sjfpQLGBJnvwTox6LLkn",
           "spotifyId": "39sjfpQLGBJnvwTox6LLkn",
           "chartType": "monthly"
@@ -13866,10 +13866,10 @@
           "id": "sp_kpop_2",
           "title": "Tarantino",
           "artist": "LISA",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 171,
           "artwork": "https://c.saavncdn.com/672/PRESS-PLAY-English-2026-20261021222507-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3bgnrHHwyYRtz3ykzAVImy",
           "spotifyId": "3bgnrHHwyYRtz3ykzAVImy",
           "chartType": "monthly"
@@ -13878,22 +13878,22 @@
           "id": "sp_kpop_3",
           "title": "Drip",
           "artist": "ATEEZ",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 182,
           "artwork": "https://c.saavncdn.com/814/Drip-Korean-2026-20261006155938-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5JaMKAodzzLdFM2ARRTXb9",
           "spotifyId": "5JaMKAodzzLdFM2ARRTXb9",
           "chartType": "monthly"
         },
         {
           "id": "sp_kpop_4",
-          "title": "긴 소원 (Birthday Wish)",
+          "title": "\uae34 \uc18c\uc6d0 (Birthday Wish)",
           "artist": "NMIXX",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 200,
           "artwork": "https://c.saavncdn.com/751/Wish-Haryanvi-2020-20201125145926-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:6F0vhKF4fy9WQi39JPQnCv",
           "spotifyId": "6F0vhKF4fy9WQi39JPQnCv",
           "chartType": "monthly"
@@ -13902,10 +13902,10 @@
           "id": "sp_kpop_5",
           "title": "NEON",
           "artist": "A2O LITE, A2O",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 208,
           "artwork": "https://c.saavncdn.com/403/NEON-Korean-2026-20261008133337-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5PvLNQRNRj61y3CU4SFIY4",
           "spotifyId": "5PvLNQRNRj61y3CU4SFIY4",
           "chartType": "monthly"
@@ -13914,10 +13914,10 @@
           "id": "sp_kpop_6",
           "title": "Insomnia",
           "artist": "RIIZE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 195,
           "artwork": "https://c.saavncdn.com/874/Insomnia-English-2026-20261020221447-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5jC3lBWBcVdby76sqWwqAE",
           "spotifyId": "5jC3lBWBcVdby76sqWwqAE",
           "chartType": "monthly"
@@ -13926,10 +13926,10 @@
           "id": "sp_kpop_7",
           "title": "DESERVE",
           "artist": "BABYMONSTER",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 190,
           "artwork": "https://c.saavncdn.com/528/DESERVE-Korean-2026-20261023045949-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:7It5Iy4mnJWMhESt7qfipt",
           "spotifyId": "7It5Iy4mnJWMhESt7qfipt",
           "chartType": "monthly"
@@ -13938,10 +13938,10 @@
           "id": "sp_kpop_8",
           "title": "seesaw (Feat. IU)",
           "artist": "Crush, IU",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 181,
           "artwork": "https://c.saavncdn.com/608/seesaw-Feat-IU-Unknown-2026-20261014190139-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3lTdjfpGVeYLeHfrczXw1a",
           "spotifyId": "3lTdjfpGVeYLeHfrczXw1a",
           "chartType": "monthly"
@@ -13950,10 +13950,10 @@
           "id": "sp_kpop_9",
           "title": "CRASH",
           "artist": "ALLDAY PROJECT",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 173,
           "artwork": "https://c.saavncdn.com/953/CRASH-English-2026-20260924104919-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1pU7ywmV4nJsgJcnuPMLyw",
           "spotifyId": "1pU7ywmV4nJsgJcnuPMLyw",
           "chartType": "monthly"
@@ -13962,10 +13962,10 @@
           "id": "sp_kpop_10",
           "title": "Illusion",
           "artist": "ONEW",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 157,
           "artwork": "https://c.saavncdn.com/769/Illusion-Unknown-2026-20261015125253-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:6BWxQgYLrm70Vo6XDsMONU",
           "spotifyId": "6BWxQgYLrm70Vo6XDsMONU",
           "chartType": "monthly"
@@ -13974,10 +13974,10 @@
           "id": "sp_kpop_11",
           "title": "GO HARD",
           "artist": "MEOVV",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 188,
           "artwork": "https://c.saavncdn.com/530/GO-HARD-English-2026-20261009130301-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3P2MygdWs8lorZnwV3KrsJ",
           "spotifyId": "3P2MygdWs8lorZnwV3KrsJ",
           "chartType": "monthly"
@@ -13986,10 +13986,10 @@
           "id": "sp_kpop_12",
           "title": "Come into my world!",
           "artist": "WOODZ",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 204,
           "artwork": "https://c.saavncdn.com/469/Come-into-my-world-Unknown-2026-20261020181207-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5zacvTOytsVSZneiZT5J7u",
           "spotifyId": "5zacvTOytsVSZneiZT5J7u",
           "chartType": "monthly"
@@ -13998,10 +13998,10 @@
           "id": "sp_kpop_13",
           "title": "SaWaDiKa",
           "artist": "LISA",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 189,
           "artwork": "https://c.saavncdn.com/572/SaWaDiKa-English-2026-20260904062942-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1VWiDyYTrqQhhmnWANWkFa",
           "spotifyId": "1VWiDyYTrqQhhmnWANWkFa",
           "chartType": "monthly"
@@ -14010,10 +14010,10 @@
           "id": "sp_kpop_14",
           "title": "Bloody Paradise",
           "artist": "ENHYPEN",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 131,
           "artwork": "https://c.saavncdn.com/909/THE-SIN-BLISS-JAY-Ver-English-2026-20260824103323-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:0r2JVOjI7H1jhXzXBOorKu",
           "spotifyId": "0r2JVOjI7H1jhXzXBOorKu",
           "chartType": "monthly"
@@ -14022,10 +14022,10 @@
           "id": "sp_kpop_15",
           "title": "Dime Girl (Feat. NOWIMYOUNG)",
           "artist": "YENA, NOWIMYOUNG",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 148,
           "artwork": "https://c.saavncdn.com/323/Dime-Girl-Feat-NOWIMYOUNG-Unknown-2026-20261002175642-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:71QaFkKKm3tbsWdwwuX9pI",
           "spotifyId": "71QaFkKKm3tbsWdwwuX9pI",
           "chartType": "monthly"
@@ -14034,10 +14034,10 @@
           "id": "sp_kpop_16",
           "title": "BAD",
           "artist": "ATEEZ",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 156,
           "artwork": "https://c.saavncdn.com/944/GOLDEN-HOUR-Part-5-Korean-2026-20260723115543-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:55UDXtbNJBAdTdUdbRu8T3",
           "spotifyId": "55UDXtbNJBAdTdUdbRu8T3",
           "chartType": "monthly"
@@ -14046,10 +14046,10 @@
           "id": "sp_kpop_17",
           "title": "Star Trace",
           "artist": "PLAVE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 179,
           "artwork": "https://c.saavncdn.com/999/HYPERDRIVE-Korean-2026-20261001104058-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1uH8RqO7kx4je1VS91Oe02",
           "spotifyId": "1uH8RqO7kx4je1VS91Oe02",
           "chartType": "monthly"
@@ -14058,10 +14058,10 @@
           "id": "sp_kpop_18",
           "title": "FALLEN ANGEL",
           "artist": "JENNIE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 199,
           "artwork": "https://c.saavncdn.com/273/Fallen-Angel-Digital-EP-English-2026-20260828085344-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1ZyTTzndFMzzZUtOpKaqN7",
           "spotifyId": "1ZyTTzndFMzzZUtOpKaqN7",
           "chartType": "monthly"
@@ -14070,10 +14070,10 @@
           "id": "sp_kpop_19",
           "title": "Made My Night",
           "artist": "LE SSERAFIM",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 126,
           "artwork": "https://c.saavncdn.com/089/Made-My-Night-Remixes-English-2026-20260910013320-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5MOIAV008posdOGmxiJBsi",
           "spotifyId": "5MOIAV008posdOGmxiJBsi",
           "chartType": "monthly"
@@ -14082,10 +14082,10 @@
           "id": "sp_kpop_20",
           "title": "I SPY",
           "artist": "NCT WISH",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 185,
           "artwork": "https://c.saavncdn.com/930/Are-We-There-Yet-Kids-Car-Songs-Stories-English-2011-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3kcGkOmFXtaFjVdz7ge1WL",
           "spotifyId": "3kcGkOmFXtaFjVdz7ge1WL",
           "chartType": "monthly"
@@ -14093,11 +14093,11 @@
         {
           "id": "sp_kpop_21",
           "title": "new trick",
-          "artist": "ROSÉ",
-          "album": "K-Pop ON! (온)",
+          "artist": "ROS\u00c9",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 183,
           "artwork": "https://c.saavncdn.com/142/new-trick-English-2026-20260917013815-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:20QSTolol0EyLCVoOmGgAs",
           "spotifyId": "20QSTolol0EyLCVoOmGgAs",
           "chartType": "monthly"
@@ -14106,10 +14106,10 @@
           "id": "sp_kpop_22",
           "title": "TATA",
           "artist": "Loco, MINAMI",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 164,
           "artwork": "https://c.saavncdn.com/341/Tatah-Unknown-2023-20250106034018-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1difmbWM3MPS6GpydyChS1",
           "spotifyId": "1difmbWM3MPS6GpydyChS1",
           "chartType": "monthly"
@@ -14118,10 +14118,10 @@
           "id": "sp_kpop_23",
           "title": "SUN KISS",
           "artist": "TUIDE",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 181,
           "artwork": "https://c.saavncdn.com/600/TUNE-PLAY-English-2026-20260824150356-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:7Jpb9OejYYIwsBIVQwceRy",
           "spotifyId": "7Jpb9OejYYIwsBIVQwceRy",
           "chartType": "monthly"
@@ -14130,10 +14130,10 @@
           "id": "sp_kpop_24",
           "title": "LEMONADE",
           "artist": "aespa",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 187,
           "artwork": "https://c.saavncdn.com/792/LEMONADE-Zedd-Remix-English-2026-20260528003843-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:2oR7jPvWPC08Su4KYmKR3O",
           "spotifyId": "2oR7jPvWPC08Su4KYmKR3O",
           "chartType": "monthly"
@@ -14142,10 +14142,10 @@
           "id": "sp_kpop_25",
           "title": "Kick Off The Wall (Feat. iann dior)",
           "artist": "KickFlip, iann dior",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 180,
           "artwork": "https://c.saavncdn.com/589/KICK-OFF-THE-WALL-Pt-1-Korean-2026-20261006143148-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:22roUAQiFGI1Gug73QMHzl",
           "spotifyId": "22roUAQiFGI1Gug73QMHzl",
           "chartType": "monthly"
@@ -14154,10 +14154,10 @@
           "id": "sp_kpop_26",
           "title": "This & That",
           "artist": "Stray Kids",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 185,
           "artwork": "https://c.saavncdn.com/425/THIS-THAT-English-2026-20260807093511-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:5fpxAkg76WAje8y1RPNEQ3",
           "spotifyId": "5fpxAkg76WAje8y1RPNEQ3",
           "chartType": "monthly"
@@ -14166,10 +14166,10 @@
           "id": "sp_kpop_27",
           "title": "ICONIC HEART - Korean Version",
           "artist": "Hearts2Hearts",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 189,
           "artwork": "https://c.saavncdn.com/423/ICONIC-HEART-Korean-2026-20260809213515-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:2BLHTFy1rAtYwmm0uEFAuj",
           "spotifyId": "2BLHTFy1rAtYwmm0uEFAuj",
           "chartType": "monthly"
@@ -14178,10 +14178,10 @@
           "id": "sp_kpop_28",
           "title": "ANIMAL",
           "artist": "BOYNEXTDOOR",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 147,
           "artwork": "https://c.saavncdn.com/643/HOME-DELUXE-Korean-2026-20260928170737-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3U7iIHygNSOcjcL98KwHQg",
           "spotifyId": "3U7iIHygNSOcjcL98KwHQg",
           "chartType": "monthly"
@@ -14190,10 +14190,10 @@
           "id": "sp_kpop_29",
           "title": "Hit 'Em",
           "artist": "MEOVV",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 168,
           "artwork": "https://c.saavncdn.com/295/BITE-NOW-English-2026-20260528020434-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:0oFpuvfX2uwcuIGTMJr2kt",
           "spotifyId": "0oFpuvfX2uwcuIGTMJr2kt",
           "chartType": "monthly"
@@ -14202,10 +14202,10 @@
           "id": "sp_kpop_30",
           "title": "Good Goodbye",
           "artist": "HWASA",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 223,
           "artwork": "https://c.saavncdn.com/473/Good-Goodbye-Unknown-2025-20251015181653-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:3cLXrotzCjYCkN73PewALM",
           "spotifyId": "3cLXrotzCjYCkN73PewALM",
           "chartType": "monthly"
@@ -14214,10 +14214,10 @@
           "id": "sp_kpop_31",
           "title": "Obsessed with Youth",
           "artist": "Xdinary Heroes",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 196,
           "artwork": "https://c.saavncdn.com/381/IMPULSE-Korean-2026-20261001235924-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:4H0NRY1CSAKgV7przexSxY",
           "spotifyId": "4H0NRY1CSAKgV7przexSxY",
           "chartType": "monthly"
@@ -14226,10 +14226,10 @@
           "id": "sp_kpop_32",
           "title": "It's Me",
           "artist": "ILLIT",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 138,
           "artwork": "https://c.saavncdn.com/195/MAMIHLAPINATAPAI-Korean-2026-20260430143132-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1D5L58KLBbceOynTP4DQnY",
           "spotifyId": "1D5L58KLBbceOynTP4DQnY",
           "chartType": "monthly"
@@ -14238,10 +14238,10 @@
           "id": "sp_kpop_33",
           "title": "Catch Catch",
           "artist": "YENA",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 180,
           "artwork": "https://c.saavncdn.com/749/LOVE-CATCHER-Korean-2026-20260305083210-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:2O9bMJticxbQ8FH3NiQ7Xh",
           "spotifyId": "2O9bMJticxbQ8FH3NiQ7Xh",
           "chartType": "monthly"
@@ -14250,10 +14250,10 @@
           "id": "sp_kpop_34",
           "title": "REDRED",
           "artist": "CORTIS",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 163,
           "artwork": "https://c.saavncdn.com/810/GREENGREEN-Korean-2026-20260504143155-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:2fCwv2ppU5nTRTckomIGsd",
           "spotifyId": "2fCwv2ppU5nTRTckomIGsd",
           "chartType": "monthly"
@@ -14262,10 +14262,10 @@
           "id": "sp_kpop_35",
           "title": "CLICK",
           "artist": "JISOO",
-          "album": "K-Pop ON! (온)",
+          "album": "K-Pop ON! (\uc628)",
           "duration": 159,
           "artwork": "https://c.saavncdn.com/855/CLICK-Korean-2026-20260904223242-500x500.jpg",
-          "source": "Curated K-Pop ON! (온)",
+          "source": "Curated K-Pop ON! (\uc628)",
           "spotifyUri": "spotify:track:1zyNO73bPNPC6KBi3raNmZ",
           "spotifyId": "1zyNO73bPNPC6KBi3raNmZ",
           "chartType": "monthly"
@@ -14411,7 +14411,7 @@
       "daily": [
         {
           "id": "sp_japanese_1",
-          "title": "しわあわせ",
+          "title": "\u3057\u308f\u3042\u308f\u305b",
           "artist": "Vaundy",
           "album": "Top 50 - Japan",
           "duration": 274,
@@ -14423,7 +14423,7 @@
         },
         {
           "id": "sp_japanese_2",
-          "title": "結び",
+          "title": "\u7d50\u3073",
           "artist": "Ayumu Imazu",
           "album": "Top 50 - Japan",
           "duration": 207,
@@ -14435,8 +14435,8 @@
         },
         {
           "id": "sp_japanese_3",
-          "title": "Yes! 東京",
-          "artist": "EBiDAN (恵比寿学園男子部), chotokkyu, M!LK, GNJB, SUPER★DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx, Lienel",
+          "title": "Yes! \u6771\u4eac",
+          "artist": "EBiDAN (\u6075\u6bd4\u5bff\u5b66\u5712\u7537\u5b50\u90e8), chotokkyu, M!LK, GNJB, SUPER\u2605DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx, Lienel",
           "album": "Top 50 - Japan",
           "duration": 220,
           "artwork": "https://c.saavncdn.com/055/Yes-EBiDAN-Japanese-2026-20260906205020-500x500.jpg",
@@ -14447,7 +14447,7 @@
         },
         {
           "id": "sp_japanese_4",
-          "title": "ブルーアンバー",
+          "title": "\u30d6\u30eb\u30fc\u30a2\u30f3\u30d0\u30fc",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 208,
@@ -14459,7 +14459,7 @@
         },
         {
           "id": "sp_japanese_5",
-          "title": "ザッツ！超常",
+          "title": "\u30b6\u30c3\u30c4\uff01\u8d85\u5e38",
           "artist": "M!LK",
           "album": "Top 50 - Japan",
           "duration": 206,
@@ -14471,7 +14471,7 @@
         },
         {
           "id": "sp_japanese_6",
-          "title": "花束",
+          "title": "\u82b1\u675f",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 286,
@@ -14507,7 +14507,7 @@
         },
         {
           "id": "sp_japanese_9",
-          "title": "運命さがし",
+          "title": "\u904b\u547d\u3055\u304c\u3057",
           "artist": "Macaroni Empitsu",
           "album": "Top 50 - Japan",
           "duration": 206,
@@ -14519,7 +14519,7 @@
         },
         {
           "id": "sp_japanese_10",
-          "title": "高嶺の花子さん",
+          "title": "\u9ad8\u5dba\u306e\u82b1\u5b50\u3055\u3093",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 295,
@@ -14531,7 +14531,7 @@
         },
         {
           "id": "sp_japanese_11",
-          "title": "水平線",
+          "title": "\u6c34\u5e73\u7dda",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 288,
@@ -14543,7 +14543,7 @@
         },
         {
           "id": "sp_japanese_12",
-          "title": "点描の唄",
+          "title": "\u70b9\u63cf\u306e\u5504",
           "artist": "Mrs. GREEN APPLE, Sonoko Inoue",
           "album": "Top 50 - Japan",
           "duration": 307,
@@ -14567,7 +14567,7 @@
         },
         {
           "id": "sp_japanese_14",
-          "title": "ハッピーエンド",
+          "title": "\u30cf\u30c3\u30d4\u30fc\u30a8\u30f3\u30c9",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 314,
@@ -14579,7 +14579,7 @@
         },
         {
           "id": "sp_japanese_15",
-          "title": "ありふれた世界の果てに (feat. Awich, CHICO CARLITO, ONE OK ROCK & Paledusk)",
+          "title": "\u3042\u308a\u3075\u308c\u305f\u4e16\u754c\u306e\u679c\u3066\u306b (feat. Awich, CHICO CARLITO, ONE OK ROCK & Paledusk)",
           "artist": "YAO, Awich, CHICO CARLITO, ONE OK ROCK, Paledusk",
           "album": "Top 50 - Japan",
           "duration": 235,
@@ -14591,7 +14591,7 @@
         },
         {
           "id": "sp_japanese_16",
-          "title": "好きすぎて滅！",
+          "title": "\u597d\u304d\u3059\u304e\u3066\u6ec5\uff01",
           "artist": "M!LK",
           "album": "Top 50 - Japan",
           "duration": 212,
@@ -14603,7 +14603,7 @@
         },
         {
           "id": "sp_japanese_17",
-          "title": "ライラック",
+          "title": "\u30e9\u30a4\u30e9\u30c3\u30af",
           "artist": "Mrs. GREEN APPLE",
           "album": "Top 50 - Japan",
           "duration": 290,
@@ -14615,7 +14615,7 @@
         },
         {
           "id": "sp_japanese_18",
-          "title": "恋",
+          "title": "\u604b",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 253,
@@ -14651,7 +14651,7 @@
         },
         {
           "id": "sp_japanese_21",
-          "title": "共犯",
+          "title": "\u5171\u72af",
           "artist": "Mrs. GREEN APPLE",
           "album": "Top 50 - Japan",
           "duration": 232,
@@ -14675,7 +14675,7 @@
         },
         {
           "id": "sp_japanese_23",
-          "title": "夢中",
+          "title": "\u5922\u4e2d",
           "artist": "BE:FIRST",
           "album": "Top 50 - Japan",
           "duration": 190,
@@ -14687,7 +14687,7 @@
         },
         {
           "id": "sp_japanese_24",
-          "title": "ヒロイン",
+          "title": "\u30d2\u30ed\u30a4\u30f3",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 270,
@@ -14699,7 +14699,7 @@
         },
         {
           "id": "sp_japanese_25",
-          "title": "幸せ",
+          "title": "\u5e78\u305b",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 397,
@@ -14723,7 +14723,7 @@
         },
         {
           "id": "sp_japanese_27",
-          "title": "君の恋人になったら",
+          "title": "\u541b\u306e\u604b\u4eba\u306b\u306a\u3063\u305f\u3089",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 244,
@@ -14735,7 +14735,7 @@
         },
         {
           "id": "sp_japanese_28",
-          "title": "君はロックを聴かない",
+          "title": "\u541b\u306f\u30ed\u30c3\u30af\u3092\u8074\u304b\u306a\u3044",
           "artist": "Aimyon",
           "album": "Top 50 - Japan",
           "duration": 246,
@@ -14747,7 +14747,7 @@
         },
         {
           "id": "sp_japanese_29",
-          "title": "ダーリン",
+          "title": "\u30c0\u30fc\u30ea\u30f3",
           "artist": "Mrs. GREEN APPLE",
           "album": "Top 50 - Japan",
           "duration": 279,
@@ -14759,7 +14759,7 @@
         },
         {
           "id": "sp_japanese_30",
-          "title": "奏(かなで)",
+          "title": "\u594f(\u304b\u306a\u3067)",
           "artist": "Sukima Switch",
           "album": "Top 50 - Japan",
           "duration": 329,
@@ -14771,7 +14771,7 @@
         },
         {
           "id": "sp_japanese_31",
-          "title": "青と夏",
+          "title": "\u9752\u3068\u590f",
           "artist": "Mrs. GREEN APPLE",
           "album": "Top 50 - Japan",
           "duration": 270,
@@ -14783,7 +14783,7 @@
         },
         {
           "id": "sp_japanese_32",
-          "title": "オールドファッション",
+          "title": "\u30aa\u30fc\u30eb\u30c9\u30d5\u30a1\u30c3\u30b7\u30e7\u30f3",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 254,
@@ -14795,7 +14795,7 @@
         },
         {
           "id": "sp_japanese_33",
-          "title": "怪獣の花唄",
+          "title": "\u602a\u7363\u306e\u82b1\u5504",
           "artist": "Vaundy",
           "album": "Top 50 - Japan",
           "duration": 225,
@@ -14807,7 +14807,7 @@
         },
         {
           "id": "sp_japanese_34",
-          "title": "マリーゴールド",
+          "title": "\u30de\u30ea\u30fc\u30b4\u30fc\u30eb\u30c9",
           "artist": "Aimyon",
           "album": "Top 50 - Japan",
           "duration": 307,
@@ -14819,7 +14819,7 @@
         },
         {
           "id": "sp_japanese_35",
-          "title": "見知らぬ糸",
+          "title": "\u898b\u77e5\u3089\u306c\u7cf8",
           "artist": "SPITZ",
           "album": "Top 50 - Japan",
           "duration": 251,
@@ -14838,7 +14838,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "ザッツ!超常",
+          "title": "\u30b6\u30c3\u30c4!\u8d85\u5e38",
           "artist": "M!LK",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -14846,7 +14846,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "チェックメイト",
+          "title": "\u30c1\u30a7\u30c3\u30af\u30e1\u30a4\u30c8",
           "artist": "Travis Japan",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -14854,7 +14854,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "再会愛 Lie 期待して Cry",
+          "title": "\u518d\u4f1a\u611b Lie \u671f\u5f85\u3057\u3066 Cry",
           "artist": "Hey! Say! JUMP",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -14862,7 +14862,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "娑婆堕罵 -Shabadaba-",
+          "title": "\u5a11\u5a46\u5815\u7f75 -Shabadaba-",
           "artist": "RADWIMPS",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -14870,7 +14870,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "咲き誇れ",
+          "title": "\u54b2\u304d\u8a87\u308c",
           "artist": "YOASOBI",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -14886,7 +14886,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "You’re Under Arrest",
+          "title": "You\u2019re Under Arrest",
           "artist": "ILLIT",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -14894,7 +14894,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "君がいる",
+          "title": "\u541b\u304c\u3044\u308b",
           "artist": "U-KNOW",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -14902,15 +14902,15 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "Yes! 東京 (feat. SUPER★DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx & Lienel)",
-          "artist": "EBiDAN (恵比寿学園男子部), 超特急, M!LK & 原因は自分にある。",
+          "title": "Yes! \u6771\u4eac (feat. SUPER\u2605DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx & Lienel)",
+          "artist": "EBiDAN (\u6075\u6bd4\u5bff\u5b66\u5712\u7537\u5b50\u90e8), \u8d85\u7279\u6025, M!LK & \u539f\u56e0\u306f\u81ea\u5206\u306b\u3042\u308b\u3002",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/a4/db/f8/a4dbf830-ec1e-e5af-723a-2ef5e4dac674/4580789774065.png/500x500bb.png",
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "それなのに",
+          "title": "\u305d\u308c\u306a\u306e\u306b",
           "artist": "Uru",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -14926,8 +14926,8 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "雲を抜け風下へ私だけ",
-          "artist": "ヨルシカ",
+          "title": "\u96f2\u3092\u629c\u3051\u98a8\u4e0b\u3078\u79c1\u3060\u3051",
+          "artist": "\u30e8\u30eb\u30b7\u30ab",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/4b/1b/25/4b1b2572-0dc9-7c83-1e56-ce3354ead351/26UM1IM20044.rgb.jpg/500x500bb.png",
@@ -15027,7 +15027,7 @@
       "weekly": [
         {
           "id": "sp_japanese_1",
-          "title": "しわあわせ",
+          "title": "\u3057\u308f\u3042\u308f\u305b",
           "artist": "Vaundy",
           "album": "Top 50 - Japan",
           "duration": 274,
@@ -15039,7 +15039,7 @@
         },
         {
           "id": "sp_japanese_2",
-          "title": "結び",
+          "title": "\u7d50\u3073",
           "artist": "Ayumu Imazu",
           "album": "Top 50 - Japan",
           "duration": 207,
@@ -15051,8 +15051,8 @@
         },
         {
           "id": "sp_japanese_3",
-          "title": "Yes! 東京",
-          "artist": "EBiDAN (恵比寿学園男子部), chotokkyu, M!LK, GNJB, SUPER★DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx, Lienel",
+          "title": "Yes! \u6771\u4eac",
+          "artist": "EBiDAN (\u6075\u6bd4\u5bff\u5b66\u5712\u7537\u5b50\u90e8), chotokkyu, M!LK, GNJB, SUPER\u2605DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx, Lienel",
           "album": "Top 50 - Japan",
           "duration": 220,
           "artwork": "https://c.saavncdn.com/055/Yes-EBiDAN-Japanese-2026-20260906205020-500x500.jpg",
@@ -15063,7 +15063,7 @@
         },
         {
           "id": "sp_japanese_4",
-          "title": "ブルーアンバー",
+          "title": "\u30d6\u30eb\u30fc\u30a2\u30f3\u30d0\u30fc",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 208,
@@ -15075,7 +15075,7 @@
         },
         {
           "id": "sp_japanese_5",
-          "title": "ザッツ！超常",
+          "title": "\u30b6\u30c3\u30c4\uff01\u8d85\u5e38",
           "artist": "M!LK",
           "album": "Top 50 - Japan",
           "duration": 206,
@@ -15087,7 +15087,7 @@
         },
         {
           "id": "sp_japanese_6",
-          "title": "花束",
+          "title": "\u82b1\u675f",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 286,
@@ -15123,7 +15123,7 @@
         },
         {
           "id": "sp_japanese_9",
-          "title": "運命さがし",
+          "title": "\u904b\u547d\u3055\u304c\u3057",
           "artist": "Macaroni Empitsu",
           "album": "Top 50 - Japan",
           "duration": 206,
@@ -15135,7 +15135,7 @@
         },
         {
           "id": "sp_japanese_10",
-          "title": "高嶺の花子さん",
+          "title": "\u9ad8\u5dba\u306e\u82b1\u5b50\u3055\u3093",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 295,
@@ -15147,7 +15147,7 @@
         },
         {
           "id": "sp_japanese_11",
-          "title": "水平線",
+          "title": "\u6c34\u5e73\u7dda",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 288,
@@ -15159,7 +15159,7 @@
         },
         {
           "id": "sp_japanese_12",
-          "title": "点描の唄",
+          "title": "\u70b9\u63cf\u306e\u5504",
           "artist": "Mrs. GREEN APPLE, Sonoko Inoue",
           "album": "Top 50 - Japan",
           "duration": 307,
@@ -15183,7 +15183,7 @@
         },
         {
           "id": "sp_japanese_14",
-          "title": "ハッピーエンド",
+          "title": "\u30cf\u30c3\u30d4\u30fc\u30a8\u30f3\u30c9",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 314,
@@ -15195,7 +15195,7 @@
         },
         {
           "id": "sp_japanese_15",
-          "title": "ありふれた世界の果てに (feat. Awich, CHICO CARLITO, ONE OK ROCK & Paledusk)",
+          "title": "\u3042\u308a\u3075\u308c\u305f\u4e16\u754c\u306e\u679c\u3066\u306b (feat. Awich, CHICO CARLITO, ONE OK ROCK & Paledusk)",
           "artist": "YAO, Awich, CHICO CARLITO, ONE OK ROCK, Paledusk",
           "album": "Top 50 - Japan",
           "duration": 235,
@@ -15207,7 +15207,7 @@
         },
         {
           "id": "sp_japanese_16",
-          "title": "好きすぎて滅！",
+          "title": "\u597d\u304d\u3059\u304e\u3066\u6ec5\uff01",
           "artist": "M!LK",
           "album": "Top 50 - Japan",
           "duration": 212,
@@ -15219,7 +15219,7 @@
         },
         {
           "id": "sp_japanese_17",
-          "title": "ライラック",
+          "title": "\u30e9\u30a4\u30e9\u30c3\u30af",
           "artist": "Mrs. GREEN APPLE",
           "album": "Top 50 - Japan",
           "duration": 290,
@@ -15231,7 +15231,7 @@
         },
         {
           "id": "sp_japanese_18",
-          "title": "恋",
+          "title": "\u604b",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 253,
@@ -15267,7 +15267,7 @@
         },
         {
           "id": "sp_japanese_21",
-          "title": "共犯",
+          "title": "\u5171\u72af",
           "artist": "Mrs. GREEN APPLE",
           "album": "Top 50 - Japan",
           "duration": 232,
@@ -15291,7 +15291,7 @@
         },
         {
           "id": "sp_japanese_23",
-          "title": "夢中",
+          "title": "\u5922\u4e2d",
           "artist": "BE:FIRST",
           "album": "Top 50 - Japan",
           "duration": 190,
@@ -15303,7 +15303,7 @@
         },
         {
           "id": "sp_japanese_24",
-          "title": "ヒロイン",
+          "title": "\u30d2\u30ed\u30a4\u30f3",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 270,
@@ -15315,7 +15315,7 @@
         },
         {
           "id": "sp_japanese_25",
-          "title": "幸せ",
+          "title": "\u5e78\u305b",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 397,
@@ -15339,7 +15339,7 @@
         },
         {
           "id": "sp_japanese_27",
-          "title": "君の恋人になったら",
+          "title": "\u541b\u306e\u604b\u4eba\u306b\u306a\u3063\u305f\u3089",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 244,
@@ -15351,7 +15351,7 @@
         },
         {
           "id": "sp_japanese_28",
-          "title": "君はロックを聴かない",
+          "title": "\u541b\u306f\u30ed\u30c3\u30af\u3092\u8074\u304b\u306a\u3044",
           "artist": "Aimyon",
           "album": "Top 50 - Japan",
           "duration": 246,
@@ -15363,7 +15363,7 @@
         },
         {
           "id": "sp_japanese_29",
-          "title": "ダーリン",
+          "title": "\u30c0\u30fc\u30ea\u30f3",
           "artist": "Mrs. GREEN APPLE",
           "album": "Top 50 - Japan",
           "duration": 279,
@@ -15375,7 +15375,7 @@
         },
         {
           "id": "sp_japanese_30",
-          "title": "奏(かなで)",
+          "title": "\u594f(\u304b\u306a\u3067)",
           "artist": "Sukima Switch",
           "album": "Top 50 - Japan",
           "duration": 329,
@@ -15387,7 +15387,7 @@
         },
         {
           "id": "sp_japanese_31",
-          "title": "青と夏",
+          "title": "\u9752\u3068\u590f",
           "artist": "Mrs. GREEN APPLE",
           "album": "Top 50 - Japan",
           "duration": 270,
@@ -15399,7 +15399,7 @@
         },
         {
           "id": "sp_japanese_32",
-          "title": "オールドファッション",
+          "title": "\u30aa\u30fc\u30eb\u30c9\u30d5\u30a1\u30c3\u30b7\u30e7\u30f3",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 254,
@@ -15411,7 +15411,7 @@
         },
         {
           "id": "sp_japanese_33",
-          "title": "怪獣の花唄",
+          "title": "\u602a\u7363\u306e\u82b1\u5504",
           "artist": "Vaundy",
           "album": "Top 50 - Japan",
           "duration": 225,
@@ -15423,7 +15423,7 @@
         },
         {
           "id": "sp_japanese_34",
-          "title": "マリーゴールド",
+          "title": "\u30de\u30ea\u30fc\u30b4\u30fc\u30eb\u30c9",
           "artist": "Aimyon",
           "album": "Top 50 - Japan",
           "duration": 307,
@@ -15435,7 +15435,7 @@
         },
         {
           "id": "sp_japanese_35",
-          "title": "見知らぬ糸",
+          "title": "\u898b\u77e5\u3089\u306c\u7cf8",
           "artist": "SPITZ",
           "album": "Top 50 - Japan",
           "duration": 251,
@@ -15454,7 +15454,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "ザッツ!超常",
+          "title": "\u30b6\u30c3\u30c4!\u8d85\u5e38",
           "artist": "M!LK",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -15462,7 +15462,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "チェックメイト",
+          "title": "\u30c1\u30a7\u30c3\u30af\u30e1\u30a4\u30c8",
           "artist": "Travis Japan",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -15470,7 +15470,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "再会愛 Lie 期待して Cry",
+          "title": "\u518d\u4f1a\u611b Lie \u671f\u5f85\u3057\u3066 Cry",
           "artist": "Hey! Say! JUMP",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -15478,7 +15478,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "娑婆堕罵 -Shabadaba-",
+          "title": "\u5a11\u5a46\u5815\u7f75 -Shabadaba-",
           "artist": "RADWIMPS",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -15486,7 +15486,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "咲き誇れ",
+          "title": "\u54b2\u304d\u8a87\u308c",
           "artist": "YOASOBI",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -15502,7 +15502,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "You’re Under Arrest",
+          "title": "You\u2019re Under Arrest",
           "artist": "ILLIT",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -15510,7 +15510,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "君がいる",
+          "title": "\u541b\u304c\u3044\u308b",
           "artist": "U-KNOW",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -15518,15 +15518,15 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "Yes! 東京 (feat. SUPER★DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx & Lienel)",
-          "artist": "EBiDAN (恵比寿学園男子部), 超特急, M!LK & 原因は自分にある。",
+          "title": "Yes! \u6771\u4eac (feat. SUPER\u2605DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx & Lienel)",
+          "artist": "EBiDAN (\u6075\u6bd4\u5bff\u5b66\u5712\u7537\u5b50\u90e8), \u8d85\u7279\u6025, M!LK & \u539f\u56e0\u306f\u81ea\u5206\u306b\u3042\u308b\u3002",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/a4/db/f8/a4dbf830-ec1e-e5af-723a-2ef5e4dac674/4580789774065.png/500x500bb.png",
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "それなのに",
+          "title": "\u305d\u308c\u306a\u306e\u306b",
           "artist": "Uru",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -15542,8 +15542,8 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "雲を抜け風下へ私だけ",
-          "artist": "ヨルシカ",
+          "title": "\u96f2\u3092\u629c\u3051\u98a8\u4e0b\u3078\u79c1\u3060\u3051",
+          "artist": "\u30e8\u30eb\u30b7\u30ab",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/4b/1b/25/4b1b2572-0dc9-7c83-1e56-ce3354ead351/26UM1IM20044.rgb.jpg/500x500bb.png",
@@ -15595,7 +15595,7 @@
           "source": "Japanese Weekly Streaming Charts"
         },
         {
-          "title": "LA CANCIÓN",
+          "title": "LA CANCI\u00d3N",
           "artist": "J Balvin, Bad Bunny",
           "album": "Pop Urbano Lentico",
           "duration": 242,
@@ -15622,7 +15622,7 @@
           "source": "Japanese Weekly Streaming Charts"
         },
         {
-          "title": "Qué Más Pues?",
+          "title": "Qu\u00e9 M\u00e1s Pues?",
           "artist": "J Balvin, Maria Becerra",
           "album": "Throwback Pop Urbano",
           "duration": 217,
@@ -15661,7 +15661,7 @@
       "monthly": [
         {
           "id": "sp_japanese_1",
-          "title": "しわあわせ",
+          "title": "\u3057\u308f\u3042\u308f\u305b",
           "artist": "Vaundy",
           "album": "Top 50 - Japan",
           "duration": 274,
@@ -15673,7 +15673,7 @@
         },
         {
           "id": "sp_japanese_2",
-          "title": "結び",
+          "title": "\u7d50\u3073",
           "artist": "Ayumu Imazu",
           "album": "Top 50 - Japan",
           "duration": 207,
@@ -15685,8 +15685,8 @@
         },
         {
           "id": "sp_japanese_3",
-          "title": "Yes! 東京",
-          "artist": "EBiDAN (恵比寿学園男子部), chotokkyu, M!LK, GNJB, SUPER★DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx, Lienel",
+          "title": "Yes! \u6771\u4eac",
+          "artist": "EBiDAN (\u6075\u6bd4\u5bff\u5b66\u5712\u7537\u5b50\u90e8), chotokkyu, M!LK, GNJB, SUPER\u2605DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx, Lienel",
           "album": "Top 50 - Japan",
           "duration": 220,
           "artwork": "https://c.saavncdn.com/055/Yes-EBiDAN-Japanese-2026-20260906205020-500x500.jpg",
@@ -15697,7 +15697,7 @@
         },
         {
           "id": "sp_japanese_4",
-          "title": "ブルーアンバー",
+          "title": "\u30d6\u30eb\u30fc\u30a2\u30f3\u30d0\u30fc",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 208,
@@ -15709,7 +15709,7 @@
         },
         {
           "id": "sp_japanese_5",
-          "title": "ザッツ！超常",
+          "title": "\u30b6\u30c3\u30c4\uff01\u8d85\u5e38",
           "artist": "M!LK",
           "album": "Top 50 - Japan",
           "duration": 206,
@@ -15721,7 +15721,7 @@
         },
         {
           "id": "sp_japanese_6",
-          "title": "花束",
+          "title": "\u82b1\u675f",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 286,
@@ -15757,7 +15757,7 @@
         },
         {
           "id": "sp_japanese_9",
-          "title": "運命さがし",
+          "title": "\u904b\u547d\u3055\u304c\u3057",
           "artist": "Macaroni Empitsu",
           "album": "Top 50 - Japan",
           "duration": 206,
@@ -15769,7 +15769,7 @@
         },
         {
           "id": "sp_japanese_10",
-          "title": "高嶺の花子さん",
+          "title": "\u9ad8\u5dba\u306e\u82b1\u5b50\u3055\u3093",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 295,
@@ -15781,7 +15781,7 @@
         },
         {
           "id": "sp_japanese_11",
-          "title": "水平線",
+          "title": "\u6c34\u5e73\u7dda",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 288,
@@ -15793,7 +15793,7 @@
         },
         {
           "id": "sp_japanese_12",
-          "title": "点描の唄",
+          "title": "\u70b9\u63cf\u306e\u5504",
           "artist": "Mrs. GREEN APPLE, Sonoko Inoue",
           "album": "Top 50 - Japan",
           "duration": 307,
@@ -15817,7 +15817,7 @@
         },
         {
           "id": "sp_japanese_14",
-          "title": "ハッピーエンド",
+          "title": "\u30cf\u30c3\u30d4\u30fc\u30a8\u30f3\u30c9",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 314,
@@ -15829,7 +15829,7 @@
         },
         {
           "id": "sp_japanese_15",
-          "title": "ありふれた世界の果てに (feat. Awich, CHICO CARLITO, ONE OK ROCK & Paledusk)",
+          "title": "\u3042\u308a\u3075\u308c\u305f\u4e16\u754c\u306e\u679c\u3066\u306b (feat. Awich, CHICO CARLITO, ONE OK ROCK & Paledusk)",
           "artist": "YAO, Awich, CHICO CARLITO, ONE OK ROCK, Paledusk",
           "album": "Top 50 - Japan",
           "duration": 235,
@@ -15841,7 +15841,7 @@
         },
         {
           "id": "sp_japanese_16",
-          "title": "好きすぎて滅！",
+          "title": "\u597d\u304d\u3059\u304e\u3066\u6ec5\uff01",
           "artist": "M!LK",
           "album": "Top 50 - Japan",
           "duration": 212,
@@ -15853,7 +15853,7 @@
         },
         {
           "id": "sp_japanese_17",
-          "title": "ライラック",
+          "title": "\u30e9\u30a4\u30e9\u30c3\u30af",
           "artist": "Mrs. GREEN APPLE",
           "album": "Top 50 - Japan",
           "duration": 290,
@@ -15865,7 +15865,7 @@
         },
         {
           "id": "sp_japanese_18",
-          "title": "恋",
+          "title": "\u604b",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 253,
@@ -15901,7 +15901,7 @@
         },
         {
           "id": "sp_japanese_21",
-          "title": "共犯",
+          "title": "\u5171\u72af",
           "artist": "Mrs. GREEN APPLE",
           "album": "Top 50 - Japan",
           "duration": 232,
@@ -15925,7 +15925,7 @@
         },
         {
           "id": "sp_japanese_23",
-          "title": "夢中",
+          "title": "\u5922\u4e2d",
           "artist": "BE:FIRST",
           "album": "Top 50 - Japan",
           "duration": 190,
@@ -15937,7 +15937,7 @@
         },
         {
           "id": "sp_japanese_24",
-          "title": "ヒロイン",
+          "title": "\u30d2\u30ed\u30a4\u30f3",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 270,
@@ -15949,7 +15949,7 @@
         },
         {
           "id": "sp_japanese_25",
-          "title": "幸せ",
+          "title": "\u5e78\u305b",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 397,
@@ -15973,7 +15973,7 @@
         },
         {
           "id": "sp_japanese_27",
-          "title": "君の恋人になったら",
+          "title": "\u541b\u306e\u604b\u4eba\u306b\u306a\u3063\u305f\u3089",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 244,
@@ -15985,7 +15985,7 @@
         },
         {
           "id": "sp_japanese_28",
-          "title": "君はロックを聴かない",
+          "title": "\u541b\u306f\u30ed\u30c3\u30af\u3092\u8074\u304b\u306a\u3044",
           "artist": "Aimyon",
           "album": "Top 50 - Japan",
           "duration": 246,
@@ -15997,7 +15997,7 @@
         },
         {
           "id": "sp_japanese_29",
-          "title": "ダーリン",
+          "title": "\u30c0\u30fc\u30ea\u30f3",
           "artist": "Mrs. GREEN APPLE",
           "album": "Top 50 - Japan",
           "duration": 279,
@@ -16009,7 +16009,7 @@
         },
         {
           "id": "sp_japanese_30",
-          "title": "奏(かなで)",
+          "title": "\u594f(\u304b\u306a\u3067)",
           "artist": "Sukima Switch",
           "album": "Top 50 - Japan",
           "duration": 329,
@@ -16021,7 +16021,7 @@
         },
         {
           "id": "sp_japanese_31",
-          "title": "青と夏",
+          "title": "\u9752\u3068\u590f",
           "artist": "Mrs. GREEN APPLE",
           "album": "Top 50 - Japan",
           "duration": 270,
@@ -16033,7 +16033,7 @@
         },
         {
           "id": "sp_japanese_32",
-          "title": "オールドファッション",
+          "title": "\u30aa\u30fc\u30eb\u30c9\u30d5\u30a1\u30c3\u30b7\u30e7\u30f3",
           "artist": "back number",
           "album": "Top 50 - Japan",
           "duration": 254,
@@ -16045,7 +16045,7 @@
         },
         {
           "id": "sp_japanese_33",
-          "title": "怪獣の花唄",
+          "title": "\u602a\u7363\u306e\u82b1\u5504",
           "artist": "Vaundy",
           "album": "Top 50 - Japan",
           "duration": 225,
@@ -16057,7 +16057,7 @@
         },
         {
           "id": "sp_japanese_34",
-          "title": "マリーゴールド",
+          "title": "\u30de\u30ea\u30fc\u30b4\u30fc\u30eb\u30c9",
           "artist": "Aimyon",
           "album": "Top 50 - Japan",
           "duration": 307,
@@ -16069,7 +16069,7 @@
         },
         {
           "id": "sp_japanese_35",
-          "title": "見知らぬ糸",
+          "title": "\u898b\u77e5\u3089\u306c\u7cf8",
           "artist": "SPITZ",
           "album": "Top 50 - Japan",
           "duration": 251,
@@ -16088,7 +16088,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "ザッツ!超常",
+          "title": "\u30b6\u30c3\u30c4!\u8d85\u5e38",
           "artist": "M!LK",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -16096,7 +16096,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "チェックメイト",
+          "title": "\u30c1\u30a7\u30c3\u30af\u30e1\u30a4\u30c8",
           "artist": "Travis Japan",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -16104,7 +16104,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "再会愛 Lie 期待して Cry",
+          "title": "\u518d\u4f1a\u611b Lie \u671f\u5f85\u3057\u3066 Cry",
           "artist": "Hey! Say! JUMP",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -16112,7 +16112,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "娑婆堕罵 -Shabadaba-",
+          "title": "\u5a11\u5a46\u5815\u7f75 -Shabadaba-",
           "artist": "RADWIMPS",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -16120,7 +16120,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "咲き誇れ",
+          "title": "\u54b2\u304d\u8a87\u308c",
           "artist": "YOASOBI",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -16136,7 +16136,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "You’re Under Arrest",
+          "title": "You\u2019re Under Arrest",
           "artist": "ILLIT",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -16144,7 +16144,7 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "君がいる",
+          "title": "\u541b\u304c\u3044\u308b",
           "artist": "U-KNOW",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -16152,15 +16152,15 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "Yes! 東京 (feat. SUPER★DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx & Lienel)",
-          "artist": "EBiDAN (恵比寿学園男子部), 超特急, M!LK & 原因は自分にある。",
+          "title": "Yes! \u6771\u4eac (feat. SUPER\u2605DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx & Lienel)",
+          "artist": "EBiDAN (\u6075\u6bd4\u5bff\u5b66\u5712\u7537\u5b50\u90e8), \u8d85\u7279\u6025, M!LK & \u539f\u56e0\u306f\u81ea\u5206\u306b\u3042\u308b\u3002",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/a4/db/f8/a4dbf830-ec1e-e5af-723a-2ef5e4dac674/4580789774065.png/500x500bb.png",
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "それなのに",
+          "title": "\u305d\u308c\u306a\u306e\u306b",
           "artist": "Uru",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
@@ -16176,8 +16176,8 @@
           "source": "Apple Music Top Songs (JP)"
         },
         {
-          "title": "雲を抜け風下へ私だけ",
-          "artist": "ヨルシカ",
+          "title": "\u96f2\u3092\u629c\u3051\u98a8\u4e0b\u3078\u79c1\u3060\u3051",
+          "artist": "\u30e8\u30eb\u30b7\u30ab",
           "album": "Apple Music Top Songs (JP)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/4b/1b/25/4b1b2572-0dc9-7c83-1e56-ce3354ead351/26UM1IM20044.rgb.jpg/500x500bb.png",
@@ -16185,7 +16185,7 @@
         },
         {
           "title": "GREATEST",
-          "artist": "音乃瀬奏",
+          "artist": "\u97f3\u4e43\u702c\u594f",
           "album": "GREATEST",
           "duration": 220,
           "artwork": "https://c.saavncdn.com/906/GREATEST-Japanese-2025-20250420230039-500x500.webp",
@@ -16231,7 +16231,7 @@
         {
           "title": "Greatest Sentiments",
           "artist": "Slow Descent",
-          "album": "オーガニックカフェで流れるジャズBgm - Hot and Steamy Songs",
+          "album": "\u30aa\u30fc\u30ac\u30cb\u30c3\u30af\u30ab\u30d5\u30a7\u3067\u6d41\u308c\u308b\u30b8\u30e3\u30baBgm - Hot and Steamy Songs",
           "duration": 85,
           "artwork": "https://c.saavncdn.com/556/Bgm-Hot-and-Steamy-Songs-Japanese-2022-20220420230341-500x500.webp",
           "streamUrl": "https://aac.saavncdn.com/556/ea62778b2459efc40ec5ff60e7104495_320.mp4",
@@ -16240,7 +16240,7 @@
         {
           "title": "Greatest Blessings for Human Life",
           "artist": "Sound Of Nature Library",
-          "album": "魅力的な自然の音",
+          "album": "\u9b45\u529b\u7684\u306a\u81ea\u7136\u306e\u97f3",
           "duration": 191,
           "artwork": "https://c.saavncdn.com/980/MER_4067248392980-Japanese-2022-20221103235647-500x500.webp",
           "streamUrl": "https://aac.saavncdn.com/980/e0c74dc712da81db365f1f9fbd13d5f0_320.mp4",
@@ -16267,7 +16267,7 @@
         {
           "title": "The Greatest Lie, The Brightest Smile",
           "artist": "Another Story",
-          "album": "一番の嘘、一番の笑顔",
+          "album": "\u4e00\u756a\u306e\u5618\u3001\u4e00\u756a\u306e\u7b11\u9854",
           "duration": 163,
           "artwork": "https://c.saavncdn.com/429/MER_640472778429-Japanese-2026-20260330124813-500x500.webp",
           "streamUrl": "https://aac.saavncdn.com/429/bcf4c7f046c2bfee2a41f22c1ad1d960_320.mp4",
@@ -16283,9 +16283,9 @@
           "source": "Japanese Monthly Streaming Charts"
         },
         {
-          "title": "無意識GREATEST",
+          "title": "\u7121\u610f\u8b58GREATEST",
           "artist": "Okamoto's",
-          "album": "今まで感じNO FEELING",
+          "album": "\u4eca\u307e\u3067\u611f\u3058NO FEELING",
           "duration": 105,
           "artwork": "https://c.saavncdn.com/354/NO-FEELING-Japanese-2026-20260729145338-500x500.webp",
           "streamUrl": "https://aac.saavncdn.com/354/b53fe59e83542114597174bcff282706_320.mp4",
@@ -16302,8 +16302,8 @@
         },
         {
           "title": "GREATEST DREAM AGAIN",
-          "artist": "林はゆる, 初音ミク, 可不",
-          "album": "マジカルガーリー",
+          "artist": "\u6797\u306f\u3086\u308b, \u521d\u97f3\u30df\u30af, \u53ef\u4e0d",
+          "album": "\u30de\u30b8\u30ab\u30eb\u30ac\u30fc\u30ea\u30fc",
           "duration": 157,
           "artwork": "https://c.saavncdn.com/913/MER_4582649584913-Japanese-2025-20250310003255-500x500.webp",
           "streamUrl": "https://aac.saavncdn.com/913/7e183d098f415c1d7ac768705cb442a6_320.mp4",
@@ -16315,7 +16315,7 @@
       "daily": [
         {
           "id": "sp_french_1",
-          "title": "Fille à Papa",
+          "title": "Fille \u00e0 Papa",
           "artist": "Vacra, La Rvfleuze",
           "album": "Top 50 - France",
           "duration": 170,
@@ -16327,7 +16327,7 @@
         },
         {
           "id": "sp_french_2",
-          "title": "Mélo Décalé",
+          "title": "M\u00e9lo D\u00e9cal\u00e9",
           "artist": "Tiakola",
           "album": "Top 50 - France",
           "duration": 156,
@@ -16423,7 +16423,7 @@
         },
         {
           "id": "sp_french_10",
-          "title": "Pilé",
+          "title": "Pil\u00e9",
           "artist": "Mauvais djo",
           "album": "Top 50 - France",
           "duration": 156,
@@ -16495,7 +16495,7 @@
         },
         {
           "id": "sp_french_16",
-          "title": "La pétasse",
+          "title": "La p\u00e9tasse",
           "artist": "Aya Nakamura",
           "album": "Top 50 - France",
           "duration": 151,
@@ -16507,7 +16507,7 @@
         },
         {
           "id": "sp_french_17",
-          "title": "Séminaire",
+          "title": "S\u00e9minaire",
           "artist": "Bello&Dallas",
           "album": "Top 50 - France",
           "duration": 153,
@@ -16591,7 +16591,7 @@
         },
         {
           "id": "sp_french_24",
-          "title": "Nouméa",
+          "title": "Noum\u00e9a",
           "artist": "Jok'air, Linema",
           "album": "Top 50 - France",
           "duration": 229,
@@ -16627,7 +16627,7 @@
         },
         {
           "id": "sp_french_27",
-          "title": "Cote à la hausse",
+          "title": "Cote \u00e0 la hausse",
           "artist": "Bouss",
           "album": "Top 50 - France",
           "duration": 176,
@@ -16651,8 +16651,8 @@
         },
         {
           "id": "sp_french_29",
-          "title": "Été avec toi",
-          "artist": "Adèle Castillon",
+          "title": "\u00c9t\u00e9 avec toi",
+          "artist": "Ad\u00e8le Castillon",
           "album": "Top 50 - France",
           "duration": 187,
           "artwork": "https://c.saavncdn.com/301/t-avec-toi-French-2026-20260528230241-500x500.jpg",
@@ -16663,7 +16663,7 @@
         },
         {
           "id": "sp_french_30",
-          "title": "RENÉ CAOVILLA",
+          "title": "REN\u00c9 CAOVILLA",
           "artist": "Gambi",
           "album": "Top 50 - France",
           "duration": 138,
@@ -16699,7 +16699,7 @@
         },
         {
           "id": "sp_french_33",
-          "title": "Dégun",
+          "title": "D\u00e9gun",
           "artist": "Lagui",
           "album": "Top 50 - France",
           "duration": 178,
@@ -16735,15 +16735,15 @@
         },
         {
           "title": "Combien pour la nuit (feat. DJ Snake)",
-          "artist": "Mylène Farmer",
+          "artist": "Myl\u00e8ne Farmer",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/09/8e/c8/098ec8e1-279c-786e-9ee4-28db2a039d1c/196874746028.jpg/500x500bb.png",
           "source": "Apple Music Top Songs (FR)"
         },
         {
-          "title": "C'est à qui le tour",
-          "artist": "Mylène Farmer",
+          "title": "C'est \u00e0 qui le tour",
+          "artist": "Myl\u00e8ne Farmer",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/09/8e/c8/098ec8e1-279c-786e-9ee4-28db2a039d1c/196874746028.jpg/500x500bb.png",
@@ -16751,7 +16751,7 @@
         },
         {
           "title": "Confession",
-          "artist": "Mylène Farmer",
+          "artist": "Myl\u00e8ne Farmer",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/09/8e/c8/098ec8e1-279c-786e-9ee4-28db2a039d1c/196874746028.jpg/500x500bb.png",
@@ -16759,7 +16759,7 @@
         },
         {
           "title": "Des lols et des quoi",
-          "artist": "Mylène Farmer",
+          "artist": "Myl\u00e8ne Farmer",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/09/8e/c8/098ec8e1-279c-786e-9ee4-28db2a039d1c/196874746028.jpg/500x500bb.png",
@@ -16767,7 +16767,7 @@
         },
         {
           "title": "Combien pour la nuit",
-          "artist": "Mylène Farmer & DJ Snake",
+          "artist": "Myl\u00e8ne Farmer & DJ Snake",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/83/b7/2e/83b72e73-44d5-9cd3-b58a-78584aab2667/196874897119.jpg/500x500bb.png",
@@ -16783,14 +16783,14 @@
         },
         {
           "title": "Movin' To The Sun",
-          "artist": "HUGEL, Imael Angel & Ultra Naté",
+          "artist": "HUGEL, Imael Angel & Ultra Nat\u00e9",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/96/61/7a/96617ab5-51da-7cfc-97e5-c5a6a893c210/1087654.jpg/500x500bb.png",
           "source": "Apple Music Top Songs (FR)"
         },
         {
-          "title": "Soon (feat. Gaëtan Roussel)",
+          "title": "Soon (feat. Ga\u00ebtan Roussel)",
           "artist": "Mosimann",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
@@ -16814,7 +16814,7 @@
           "source": "Apple Music Top Songs (FR)"
         },
         {
-          "title": "TU N’ES PLUS LÀ",
+          "title": "TU N\u2019ES PLUS L\u00c0",
           "artist": "Doz",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
@@ -16822,7 +16822,7 @@
           "source": "Apple Music Top Songs (FR)"
         },
         {
-          "title": "Y Qué Fue?",
+          "title": "Y Qu\u00e9 Fue?",
           "artist": "Don Miguelo",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
@@ -16867,7 +16867,7 @@
       "weekly": [
         {
           "id": "sp_french_1",
-          "title": "Fille à Papa",
+          "title": "Fille \u00e0 Papa",
           "artist": "Vacra, La Rvfleuze",
           "album": "Top 50 - France",
           "duration": 170,
@@ -16879,7 +16879,7 @@
         },
         {
           "id": "sp_french_2",
-          "title": "Mélo Décalé",
+          "title": "M\u00e9lo D\u00e9cal\u00e9",
           "artist": "Tiakola",
           "album": "Top 50 - France",
           "duration": 156,
@@ -16975,7 +16975,7 @@
         },
         {
           "id": "sp_french_10",
-          "title": "Pilé",
+          "title": "Pil\u00e9",
           "artist": "Mauvais djo",
           "album": "Top 50 - France",
           "duration": 156,
@@ -17047,7 +17047,7 @@
         },
         {
           "id": "sp_french_16",
-          "title": "La pétasse",
+          "title": "La p\u00e9tasse",
           "artist": "Aya Nakamura",
           "album": "Top 50 - France",
           "duration": 151,
@@ -17059,7 +17059,7 @@
         },
         {
           "id": "sp_french_17",
-          "title": "Séminaire",
+          "title": "S\u00e9minaire",
           "artist": "Bello&Dallas",
           "album": "Top 50 - France",
           "duration": 153,
@@ -17143,7 +17143,7 @@
         },
         {
           "id": "sp_french_24",
-          "title": "Nouméa",
+          "title": "Noum\u00e9a",
           "artist": "Jok'air, Linema",
           "album": "Top 50 - France",
           "duration": 229,
@@ -17179,7 +17179,7 @@
         },
         {
           "id": "sp_french_27",
-          "title": "Cote à la hausse",
+          "title": "Cote \u00e0 la hausse",
           "artist": "Bouss",
           "album": "Top 50 - France",
           "duration": 176,
@@ -17203,8 +17203,8 @@
         },
         {
           "id": "sp_french_29",
-          "title": "Été avec toi",
-          "artist": "Adèle Castillon",
+          "title": "\u00c9t\u00e9 avec toi",
+          "artist": "Ad\u00e8le Castillon",
           "album": "Top 50 - France",
           "duration": 187,
           "artwork": "https://c.saavncdn.com/301/t-avec-toi-French-2026-20260528230241-500x500.jpg",
@@ -17215,7 +17215,7 @@
         },
         {
           "id": "sp_french_30",
-          "title": "RENÉ CAOVILLA",
+          "title": "REN\u00c9 CAOVILLA",
           "artist": "Gambi",
           "album": "Top 50 - France",
           "duration": 138,
@@ -17251,7 +17251,7 @@
         },
         {
           "id": "sp_french_33",
-          "title": "Dégun",
+          "title": "D\u00e9gun",
           "artist": "Lagui",
           "album": "Top 50 - France",
           "duration": 178,
@@ -17287,15 +17287,15 @@
         },
         {
           "title": "Combien pour la nuit (feat. DJ Snake)",
-          "artist": "Mylène Farmer",
+          "artist": "Myl\u00e8ne Farmer",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/09/8e/c8/098ec8e1-279c-786e-9ee4-28db2a039d1c/196874746028.jpg/500x500bb.png",
           "source": "Apple Music Top Songs (FR)"
         },
         {
-          "title": "C'est à qui le tour",
-          "artist": "Mylène Farmer",
+          "title": "C'est \u00e0 qui le tour",
+          "artist": "Myl\u00e8ne Farmer",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/09/8e/c8/098ec8e1-279c-786e-9ee4-28db2a039d1c/196874746028.jpg/500x500bb.png",
@@ -17303,7 +17303,7 @@
         },
         {
           "title": "Confession",
-          "artist": "Mylène Farmer",
+          "artist": "Myl\u00e8ne Farmer",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/09/8e/c8/098ec8e1-279c-786e-9ee4-28db2a039d1c/196874746028.jpg/500x500bb.png",
@@ -17311,7 +17311,7 @@
         },
         {
           "title": "Des lols et des quoi",
-          "artist": "Mylène Farmer",
+          "artist": "Myl\u00e8ne Farmer",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/09/8e/c8/098ec8e1-279c-786e-9ee4-28db2a039d1c/196874746028.jpg/500x500bb.png",
@@ -17319,7 +17319,7 @@
         },
         {
           "title": "Combien pour la nuit",
-          "artist": "Mylène Farmer & DJ Snake",
+          "artist": "Myl\u00e8ne Farmer & DJ Snake",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/83/b7/2e/83b72e73-44d5-9cd3-b58a-78584aab2667/196874897119.jpg/500x500bb.png",
@@ -17335,14 +17335,14 @@
         },
         {
           "title": "Movin' To The Sun",
-          "artist": "HUGEL, Imael Angel & Ultra Naté",
+          "artist": "HUGEL, Imael Angel & Ultra Nat\u00e9",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/96/61/7a/96617ab5-51da-7cfc-97e5-c5a6a893c210/1087654.jpg/500x500bb.png",
           "source": "Apple Music Top Songs (FR)"
         },
         {
-          "title": "Soon (feat. Gaëtan Roussel)",
+          "title": "Soon (feat. Ga\u00ebtan Roussel)",
           "artist": "Mosimann",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
@@ -17366,7 +17366,7 @@
           "source": "Apple Music Top Songs (FR)"
         },
         {
-          "title": "TU N’ES PLUS LÀ",
+          "title": "TU N\u2019ES PLUS L\u00c0",
           "artist": "Doz",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
@@ -17374,7 +17374,7 @@
           "source": "Apple Music Top Songs (FR)"
         },
         {
-          "title": "Y Qué Fue?",
+          "title": "Y Qu\u00e9 Fue?",
           "artist": "Don Miguelo",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
@@ -17410,7 +17410,7 @@
       "monthly": [
         {
           "id": "sp_french_1",
-          "title": "Fille à Papa",
+          "title": "Fille \u00e0 Papa",
           "artist": "Vacra, La Rvfleuze",
           "album": "Top 50 - France",
           "duration": 170,
@@ -17422,7 +17422,7 @@
         },
         {
           "id": "sp_french_2",
-          "title": "Mélo Décalé",
+          "title": "M\u00e9lo D\u00e9cal\u00e9",
           "artist": "Tiakola",
           "album": "Top 50 - France",
           "duration": 156,
@@ -17518,7 +17518,7 @@
         },
         {
           "id": "sp_french_10",
-          "title": "Pilé",
+          "title": "Pil\u00e9",
           "artist": "Mauvais djo",
           "album": "Top 50 - France",
           "duration": 156,
@@ -17590,7 +17590,7 @@
         },
         {
           "id": "sp_french_16",
-          "title": "La pétasse",
+          "title": "La p\u00e9tasse",
           "artist": "Aya Nakamura",
           "album": "Top 50 - France",
           "duration": 151,
@@ -17602,7 +17602,7 @@
         },
         {
           "id": "sp_french_17",
-          "title": "Séminaire",
+          "title": "S\u00e9minaire",
           "artist": "Bello&Dallas",
           "album": "Top 50 - France",
           "duration": 153,
@@ -17686,7 +17686,7 @@
         },
         {
           "id": "sp_french_24",
-          "title": "Nouméa",
+          "title": "Noum\u00e9a",
           "artist": "Jok'air, Linema",
           "album": "Top 50 - France",
           "duration": 229,
@@ -17722,7 +17722,7 @@
         },
         {
           "id": "sp_french_27",
-          "title": "Cote à la hausse",
+          "title": "Cote \u00e0 la hausse",
           "artist": "Bouss",
           "album": "Top 50 - France",
           "duration": 176,
@@ -17746,8 +17746,8 @@
         },
         {
           "id": "sp_french_29",
-          "title": "Été avec toi",
-          "artist": "Adèle Castillon",
+          "title": "\u00c9t\u00e9 avec toi",
+          "artist": "Ad\u00e8le Castillon",
           "album": "Top 50 - France",
           "duration": 187,
           "artwork": "https://c.saavncdn.com/301/t-avec-toi-French-2026-20260528230241-500x500.jpg",
@@ -17758,7 +17758,7 @@
         },
         {
           "id": "sp_french_30",
-          "title": "RENÉ CAOVILLA",
+          "title": "REN\u00c9 CAOVILLA",
           "artist": "Gambi",
           "album": "Top 50 - France",
           "duration": 138,
@@ -17794,7 +17794,7 @@
         },
         {
           "id": "sp_french_33",
-          "title": "Dégun",
+          "title": "D\u00e9gun",
           "artist": "Lagui",
           "album": "Top 50 - France",
           "duration": 178,
@@ -17830,15 +17830,15 @@
         },
         {
           "title": "Combien pour la nuit (feat. DJ Snake)",
-          "artist": "Mylène Farmer",
+          "artist": "Myl\u00e8ne Farmer",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/09/8e/c8/098ec8e1-279c-786e-9ee4-28db2a039d1c/196874746028.jpg/500x500bb.png",
           "source": "Apple Music Top Songs (FR)"
         },
         {
-          "title": "C'est à qui le tour",
-          "artist": "Mylène Farmer",
+          "title": "C'est \u00e0 qui le tour",
+          "artist": "Myl\u00e8ne Farmer",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/09/8e/c8/098ec8e1-279c-786e-9ee4-28db2a039d1c/196874746028.jpg/500x500bb.png",
@@ -17846,7 +17846,7 @@
         },
         {
           "title": "Confession",
-          "artist": "Mylène Farmer",
+          "artist": "Myl\u00e8ne Farmer",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/09/8e/c8/098ec8e1-279c-786e-9ee4-28db2a039d1c/196874746028.jpg/500x500bb.png",
@@ -17854,7 +17854,7 @@
         },
         {
           "title": "Des lols et des quoi",
-          "artist": "Mylène Farmer",
+          "artist": "Myl\u00e8ne Farmer",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/09/8e/c8/098ec8e1-279c-786e-9ee4-28db2a039d1c/196874746028.jpg/500x500bb.png",
@@ -17862,7 +17862,7 @@
         },
         {
           "title": "Combien pour la nuit",
-          "artist": "Mylène Farmer & DJ Snake",
+          "artist": "Myl\u00e8ne Farmer & DJ Snake",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/83/b7/2e/83b72e73-44d5-9cd3-b58a-78584aab2667/196874897119.jpg/500x500bb.png",
@@ -17878,14 +17878,14 @@
         },
         {
           "title": "Movin' To The Sun",
-          "artist": "HUGEL, Imael Angel & Ultra Naté",
+          "artist": "HUGEL, Imael Angel & Ultra Nat\u00e9",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
           "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/96/61/7a/96617ab5-51da-7cfc-97e5-c5a6a893c210/1087654.jpg/500x500bb.png",
           "source": "Apple Music Top Songs (FR)"
         },
         {
-          "title": "Soon (feat. Gaëtan Roussel)",
+          "title": "Soon (feat. Ga\u00ebtan Roussel)",
           "artist": "Mosimann",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
@@ -17909,7 +17909,7 @@
           "source": "Apple Music Top Songs (FR)"
         },
         {
-          "title": "TU N’ES PLUS LÀ",
+          "title": "TU N\u2019ES PLUS L\u00c0",
           "artist": "Doz",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
@@ -17917,7 +17917,7 @@
           "source": "Apple Music Top Songs (FR)"
         },
         {
-          "title": "Y Qué Fue?",
+          "title": "Y Qu\u00e9 Fue?",
           "artist": "Don Miguelo",
           "album": "Apple Music Top Songs (FR)",
           "duration": 210,
@@ -18658,7 +18658,7 @@
         "tracks": [
           {
             "id": "ya_1",
-            "title": "Idol (アイドル)",
+            "title": "Idol (\u30a2\u30a4\u30c9\u30eb)",
             "artist": "YOASOBI",
             "album": "Idol Single",
             "duration": 213,
@@ -18666,7 +18666,7 @@
           },
           {
             "id": "ya_2",
-            "title": "Yoru ni Kakeru (夜に駆ける)",
+            "title": "Yoru ni Kakeru (\u591c\u306b\u99c6\u3051\u308b)",
             "artist": "YOASOBI",
             "album": "THE BOOK",
             "duration": 261,
@@ -18674,7 +18674,7 @@
           },
           {
             "id": "ya_3",
-            "title": "Monster (怪物)",
+            "title": "Monster (\u602a\u7269)",
             "artist": "YOASOBI",
             "album": "THE BOOK 2",
             "duration": 205,
