@@ -676,9 +676,9 @@ async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
     // Score all items
     const scoredSongs = Array.from(songMap.values()).map(item => {
         item.score = calcItemScore(item, parsed);
-        if (langKey) {
+        if (effectiveLang) {
             const itemLang = (item.language || '').toLowerCase();
-            if (itemLang === langKey) item.score += 60;
+            if (itemLang === effectiveLang) item.score += 60;
             else if (itemLang && itemLang !== 'unknown' && itemLang !== 'english') item.score -= 80;
         }
         return item;
@@ -686,9 +686,9 @@ async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
 
     const scoredAlbums = Array.from(albumMap.values()).map(item => {
         item.score = calcItemScore(item, parsed);
-        if (langKey) {
+        if (effectiveLang) {
             const itemLang = (item.language || '').toLowerCase();
-            if (itemLang === langKey) item.score += 60;
+            if (itemLang === effectiveLang) item.score += 60;
             else if (itemLang && itemLang !== 'unknown' && itemLang !== 'english') item.score -= 80;
         }
         if (item.trackCount > 1) item.score += 20;
@@ -725,8 +725,8 @@ async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
     scoredAlbums.sort((a, b) => ((b.trackCount > 1 ? 1 : 0) - (a.trackCount > 1 ? 1 : 0)) || (b.score - a.score) || (b.popularity - a.popularity));
     scoredArtists.sort(sorter);
 
-    // If targetLang is Tamil and we have Tamil items, filter strictly for Tamil
-    if (langKey === 'tamil') {
+    // If targetLang is Tamil and we have Tamil items, filter strictly for Tamil (unless international/English query)
+    if (effectiveLang === 'tamil') {
         const tamilSongs = dedupedSongs.filter(s => {
             const l = (s.language || '').toLowerCase();
             return l === 'tamil' || l === 'unknown';
