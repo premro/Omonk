@@ -1587,10 +1587,11 @@ function isSameSongOrReprise(candTitle, seedTitle) {
         }
 
         // -------------------------------------------------------------
-        // Spotify-grade Autosuggest / Suggestions API (JioSaavn Autocomplete)
+        // Spotify-grade Autosuggest / Suggestions API (JioSaavn Autocomplete + Language Filter + Fallback)
         // -------------------------------------------------------------
         if (pathname.startsWith('/suggest') || pathname.startsWith('/api/suggest') || pathname.startsWith('/api/search/suggestions')) {
             const q = u.searchParams.get('q') || u.searchParams.get('query') || '';
+            const reqLang = (u.searchParams.get('lang') || u.searchParams.get('language') || '').toLowerCase().trim();
             if (!q) {
                 res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
                 res.end(JSON.stringify({ success: true, suggestions: [], tracks: [], albums: [] }));
@@ -1620,6 +1621,25 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 return img.replace('50x50', '500x500').replace('150x150', '500x500');
             };
 
+            const isMismatchLang = (itemLang) => {
+                if (!reqLang || reqLang === 'all') return false;
+                if (!itemLang) return false;
+                const il = itemLang.toLowerCase();
+                if (reqLang === 'tamil' && ['hindi', 'gujarati', 'sanskrit', 'bhojpuri', 'marathi', 'punjabi', 'bengali'].includes(il)) {
+                    return true;
+                }
+                if (reqLang === 'telugu' && ['hindi', 'gujarati', 'sanskrit', 'bhojpuri', 'marathi', 'punjabi', 'bengali'].includes(il)) {
+                    return true;
+                }
+                if (reqLang === 'malayalam' && ['hindi', 'gujarati', 'sanskrit', 'bhojpuri', 'marathi', 'punjabi'].includes(il)) {
+                    return true;
+                }
+                if (reqLang === 'kannada' && ['hindi', 'gujarati', 'sanskrit', 'bhojpuri', 'marathi', 'punjabi'].includes(il)) {
+                    return true;
+                }
+                return false;
+            };
+
             const saavnUrl = `https://www.jiosaavn.com/api.php?__call=autocomplete.get&_format=json&_marker=0&cc=in&includeMetaTags=1&query=${encodeURIComponent(q)}`;
             https.get(saavnUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 2500 }, (saavnRes) => {
                 let data = '';
@@ -1633,6 +1653,8 @@ function isSameSongOrReprise(candTitle, seedTitle) {
 
                         if (d.topquery && Array.isArray(d.topquery.data)) {
                             for (const item of d.topquery.data) {
+                                const itemLang = ((item.more_info && item.more_info.language) || item.language || '').toLowerCase();
+                                if (isMismatchLang(itemLang)) continue;
                                 const t = cleanHtml(item.title);
                                 if (t && !suggestions.includes(t)) suggestions.push(t);
                             }
@@ -1640,6 +1662,8 @@ function isSameSongOrReprise(candTitle, seedTitle) {
 
                         if (d.songs && Array.isArray(d.songs.data)) {
                             for (const item of d.songs.data) {
+                                const itemLang = ((item.more_info && item.more_info.language) || item.language || '').toLowerCase();
+                                if (isMismatchLang(itemLang)) continue;
                                 const t = cleanHtml(item.title);
                                 if (t && !suggestions.includes(t)) suggestions.push(t);
                                 tracks.push({
@@ -1657,6 +1681,8 @@ function isSameSongOrReprise(candTitle, seedTitle) {
 
                         if (d.albums && Array.isArray(d.albums.data)) {
                             for (const item of d.albums.data) {
+                                const itemLang = ((item.more_info && item.more_info.language) || item.language || '').toLowerCase();
+                                if (isMismatchLang(itemLang)) continue;
                                 const t = cleanHtml(item.title);
                                 if (t && !suggestions.includes(t)) suggestions.push(t);
                                 albums.push({
@@ -1666,6 +1692,49 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                                     artwork: getHighResArt(item.image)
                                 });
                             }
+                        }
+
+                        if (tracks.length === 0 && reqLang) {
+                            searchEngine.searchAll(q, 6, reqLang).then(sResults => {
+                                const sSongs = (sResults && sResults.songs) || [];
+                                const sAlbums = (sResults && sResults.albums) || [];
+                                const fallbackTracks = tracks.length > 0 ? tracks : sSongs.slice(0, 5).map(s => ({
+                                    id: s.id,
+                                    title: s.title,
+                                    artist: s.artist,
+                                    album: s.album,
+                                    artwork: s.artwork,
+                                    duration: formatDuration(s.duration),
+                                    source: 'JioSaavn',
+                                    audioQuality: 'FLAC 24-bit/96kHz'
+                                }));
+                                const fallbackSuggestions = [...suggestions];
+                                sSongs.forEach(s => {
+                                    if (s.title && !fallbackSuggestions.includes(s.title)) fallbackSuggestions.push(s.title);
+                                });
+                                if (fallbackSuggestions.length === 0) {
+                                    const cleanQ = q.replace(/songs?|hits?|tamil/gi, '').trim() || q;
+                                    fallbackSuggestions.push(`${cleanQ} songs`, `${cleanQ} hits`, `${cleanQ} melody`);
+                                }
+                                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                                res.end(JSON.stringify({
+                                    success: true,
+                                    query: q,
+                                    suggestions: fallbackSuggestions.slice(0, 8),
+                                    tracks: fallbackTracks.slice(0, 5),
+                                    albums: (albums.length > 0 ? albums : sAlbums).slice(0, 3)
+                                }));
+                            }).catch(() => {
+                                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                                res.end(JSON.stringify({
+                                    success: true,
+                                    query: q,
+                                    suggestions: suggestions.slice(0, 8),
+                                    tracks: tracks.slice(0, 5),
+                                    albums: albums.slice(0, 3)
+                                }));
+                            });
+                            return;
                         }
 
                         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });

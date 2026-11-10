@@ -158,6 +158,20 @@ function generateVariants(cleanText) {
 
     if (words.length > 2) {
         variants.push(words.slice(0, 2).join(' '));
+        variants.push(words.slice(1).join(' '));
+    } else if (words.length === 2) {
+        variants.push(words[0]);
+        variants.push(words[1]);
+    }
+
+    if (words.length > 1 && /^om\b/i.test(cleanText)) {
+        const withoutOm = cleanText.replace(/^om\s+/i, '').trim();
+        if (withoutOm && !variants.includes(withoutOm)) {
+            variants.push(withoutOm);
+        }
+        if (!variants.includes('om chapter 1')) {
+            variants.push('om chapter 1');
+        }
     }
 
     // Tamil stem mapping (e.g. raavan <-> raavanan)
@@ -373,15 +387,25 @@ function calcItemScore(item, parsed) {
         score += 35;
     }
 
-    if (itemAlbum && (itemAlbum === qNorm || qNorm.includes(itemAlbum))) {
-        score += 30;
+    if (itemAlbum) {
+        if (itemAlbum === qNorm || qNorm.includes(itemAlbum)) {
+            score += 30;
+        } else {
+            const qWords = qNorm.split(' ').filter(Boolean);
+            for (const w of qWords) {
+                if (w.length >= 2 && itemAlbum.includes(w)) {
+                    score += 20;
+                    break;
+                }
+            }
+        }
     }
 
     if (parsed.variants && parsed.variants.length > 1) {
         for (let i = 1; i < parsed.variants.length; i++) {
             const vNorm = normalize(parsed.variants[i]);
-            if (titleNorm.includes(vNorm)) {
-                score += 20;
+            if (vNorm && (titleNorm.includes(vNorm) || itemAlbum.includes(vNorm))) {
+                score += 25;
                 break;
             }
         }
@@ -391,7 +415,7 @@ function calcItemScore(item, parsed) {
         if (itemLang === parsed.language || itemLang.includes(parsed.language)) {
             score += 50;
         } else if (itemLang && itemLang !== 'unknown' && itemLang !== 'english') {
-            score -= 60;
+            score -= 100;
         }
     }
 
@@ -476,7 +500,17 @@ async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
     ];
 
     if (langKey) {
+        fetchPromises.push(fetchHttps(`/api/search/songs?query=${encodeURIComponent(parsed.cleanText + ' ' + langKey)}&limit=${limit}`));
         fetchPromises.push(fetchHttps(`/api/search/playlists?query=${encodeURIComponent(parsed.cleanText + ' ' + langKey)}&limit=15`));
+    }
+
+    if (parsed.variants && parsed.variants.length > 1) {
+        for (let i = 1; i < Math.min(parsed.variants.length, 6); i++) {
+            const v = parsed.variants[i];
+            if (v && v !== parsed.cleanText) {
+                fetchPromises.push(fetchHttps(`/api/search/songs?query=${encodeURIComponent(v + (langKey ? ' ' + langKey : ''))}&limit=10`));
+            }
+        }
     }
 
     if (langKey) {
@@ -487,7 +521,7 @@ async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
     if (parsed.raw !== parsed.cleanText) {
         fetchPromises.push(fetchHttps(`/api/search/songs?query=${encodeURIComponent(parsed.raw)}&limit=${limit}`));
     }
-    for (let i = 1; i < Math.min(variants.length, 3); i++) {
+    for (let i = 1; i < Math.min(variants.length, 6); i++) {
         fetchPromises.push(fetchHttps(`/api/search?query=${encodeURIComponent(variants[i])}`));
         fetchPromises.push(fetchHttps(`/api/search/songs?query=${encodeURIComponent(variants[i])}&limit=${limit}`));
     }

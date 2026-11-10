@@ -3849,7 +3849,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         typeaheadDebounce = setTimeout(async () => {
             try {
-                const res = await fetch(`${API_PREFIX}/api/suggest?q=${encodeURIComponent(query)}`, { signal: currentSignal });
+                const activePrefLang = ((window.selectedLanguages && window.selectedLanguages[0]) || localStorage.getItem('preferred_language') || 'tamil').toLowerCase();
+                const res = await fetch(`${API_PREFIX}/api/suggest?q=${encodeURIComponent(query)}&lang=${encodeURIComponent(activePrefLang)}`, { signal: currentSignal });
                 if (!res.ok) return;
                 const sData = await res.json();
                 if (globalSearchInput.value.trim().toLowerCase() !== query.toLowerCase()) return;
