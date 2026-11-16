@@ -147,19 +147,57 @@ def search_tracks(query, limit=20):
                 
     return combined[:limit]
 
+def _normalize_search_title(title):
+    if not title:
+        return ""
+    t = clean_text(title)
+    t = re.sub(r'\(From\s+["\']?.*?["\']?\)', '', t, flags=re.I)
+    t = re.sub(r'[\(\[].*?[\)\]]', '', t)
+    t = re.sub(r'\b(Remastered|Re-Mastered|Original Motion Picture Soundtrack|Full Video|Lyrical|Lyrics|Audio|Video Song|Version)\b', '', t, flags=re.I)
+    t = re.sub(r'\s*[-–—]\s*(Remastered|Single|EP|Soundtrack).*$', '', t, flags=re.I)
+    return re.sub(r'\s+', ' ', t).strip()
+
 def resolve_track_audio(title, artist=""):
-    """Finds best audio stream for given track title and artist."""
-    q = f"{title} {artist}".strip()
-    tracks = search_tracks(q, limit=5)
-    if tracks:
+    """Multi-stage fuzzy resolver for Spotify, iTunes, and JioSaavn tracks."""
+    clean_t = _normalize_search_title(title) or clean_text(title)
+    primary_art = clean_text(artist).split(',')[0].split('&')[0].strip() if artist else ""
+
+    queries = []
+    if clean_t and primary_art:
+        queries.append(f"{clean_t} {primary_art}")
+    if title and artist and f"{title} {artist}".strip() not in queries:
+        queries.append(f"{clean_text(title)} {primary_art}".strip())
+    if clean_t and clean_t not in queries:
+        queries.append(clean_t)
+
+    best_candidate = None
+    best_score = -1
+
+    for q in queries:
+        tracks = search_tracks(q, limit=8)
         for t in tracks:
-            if t.get('streamUrl'):
-                return t
-    # Fallback to just title
-    tracks = search_tracks(title, limit=3)
-    if tracks:
-        return tracks[0]
-    return None
+            if not t.get('streamUrl'):
+                continue
+            score = 0
+            cand_t = _normalize_search_title(t.get('title', '')).lower()
+            target_t = clean_t.lower()
+            if cand_t == target_t:
+                score += 60
+            elif target_t and (target_t in cand_t or cand_t in target_t):
+                score += 40
+
+            cand_art = (t.get('artist') or '').lower()
+            if primary_art and primary_art.lower() in cand_art:
+                score += 35
+
+            if score > best_score:
+                best_score = score
+                best_candidate = t
+
+        if best_score >= 75 and best_candidate:
+            return best_candidate
+
+    return best_candidate
 
 def extract_spotify_track(url_or_id):
     """Extracts track details from Spotify link or ID."""
@@ -743,6 +781,65 @@ def search_albums(query, limit=5):
     except Exception as e:
         print(f"[Search Album Error]: {e}", file=sys.stderr)
         return []
+
+
+def get_album_details(album_id):
+    """Fetches full album metadata and decrypted 320k tracks for a given album ID."""
+    if not album_id:
+        return None
+    d_url = f"https://www.jiosaavn.com/api.php?__call=content.getAlbumDetails&_format=json&albumid={album_id}&api_version=4&ctx=web6dot0"
+    d_req = urllib.request.Request(d_url, headers=HEADERS)
+    try:
+        with urllib.request.urlopen(d_req, timeout=8) as d_resp:
+            d_data = json.loads(d_resp.read().decode('utf-8'))
+            raw_list = d_data.get('list', [])
+            if not raw_list:
+                return None
+            tracks = []
+            for r in raw_list:
+                more = r.get('more_info', {})
+                enc_url = more.get('encrypted_media_url')
+                stream_url = decrypt_saavn_url(enc_url) if enc_url else ""
+                img = (r.get('image') or d_data.get('image', '')).replace("150x150", "500x500")
+                
+                art_map = more.get('artistMap', {})
+                pri_artists = [a.get('name') for a in art_map.get('primary_artists', []) if a.get('name')]
+                artist_str = ", ".join(pri_artists) if pri_artists else (more.get('music') or "Various Artists")
+
+                tracks.append({
+                    "id": str(r.get('id')),
+                    "title": clean_text(r.get('title')),
+                    "artist": clean_text(artist_str),
+                    "album": clean_text(more.get('album') or d_data.get('title')),
+                    "year": r.get('year', d_data.get('year', '')),
+                    "duration": int(more.get('duration') or 210),
+                    "language": r.get('language', d_data.get('language', 'tamil')).lower(),
+                    "artwork": img,
+                    "image": img,
+                    "streamUrl": stream_url,
+                    "quality": "FLAC / 320kbps Lossless Hi-Fi",
+                    "bitrate": "320kbps / 24-bit 48kHz",
+                    "source": "Omonk Lossless Album Engine",
+                    "hasLyrics": True
+                })
+
+            alb_artist = clean_text(d_data.get('primary_artists') or d_data.get('music') or "")
+            if not alb_artist and tracks:
+                alb_artist = tracks[0]['artist']
+
+            return {
+                "id": str(d_data.get('id', album_id)),
+                "title": clean_text(d_data.get('title')),
+                "artist": alb_artist,
+                "year": d_data.get('year', ''),
+                "artwork": (d_data.get('image') or '').replace("150x150", "500x500"),
+                "language": d_data.get('language', 'tamil').lower(),
+                "trackCount": len(tracks),
+                "tracks": tracks
+            }
+    except Exception as e:
+        print(f"[Get Album Details Error]: {e}", file=sys.stderr)
+        return None
 
 
 def fetch_lyrics(title, artist="", duration=0, language=""):

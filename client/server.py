@@ -28,6 +28,23 @@ DIR_PATH = os.path.dirname(os.path.abspath(__file__))
 
 class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
+    allow_reuse_address = True
+
+def is_same_or_reprise(cand, seed):
+    if not cand or not seed:
+        return False
+    import re
+    c_clean = re.sub(r'[^a-z0-9]', '', str(cand).lower())
+    s_clean = re.sub(r'[^a-z0-9]', '', str(seed).lower())
+    if not c_clean or not s_clean:
+        return False
+    if c_clean == s_clean or s_clean in c_clean or c_clean in s_clean:
+        return True
+    c_strip = re.sub(r'[^a-z0-9]', '', re.sub(r'\s*[\(\[].*?[\)\]]', '', str(cand).lower()))
+    s_strip = re.sub(r'[^a-z0-9]', '', re.sub(r'\s*[\(\[].*?[\)\]]', '', str(seed).lower()))
+    if c_strip and s_strip and (c_strip == s_strip or s_strip in c_strip or c_strip in s_strip):
+        return True
+    return False
 
 class LosslessRequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -196,6 +213,16 @@ class LosslessRequestHandler(http.server.SimpleHTTPRequestHandler):
                 return self.send_json({"success": True, "track": track})
             return self.send_json({"success": False, "error": "Track stream not found"}, status=404)
 
+        # 4B. API Album Details (Full movie soundtracks & albums)
+        if path == '/api/album':
+            album_id = qs.get('id', [''])[0]
+            if not album_id:
+                return self.send_json({"success": False, "error": "Missing album id"}, status=400)
+            album_data = spotiflac.get_album_details(album_id)
+            if album_data:
+                return self.send_json({"success": True, "album": album_data})
+            return self.send_json({"success": False, "error": "Album not found"}, status=404)
+
         # 5. API Lyrics (LRCLIB synced & plain)
         if path == '/api/lyrics':
             title = qs.get('title', [''])[0]
@@ -216,7 +243,7 @@ class LosslessRequestHandler(http.server.SimpleHTTPRequestHandler):
                 radio_tracks = spotiflac.search_tracks(query, limit=20)
                 filtered = [
                     t for t in radio_tracks
-                    if str(t.get('id', '')) != str(track_id) and t.get('title', '').lower() != title.lower()
+                    if str(t.get('id', '')) != str(track_id) and not is_same_or_reprise(t.get('title', ''), title)
                 ]
                 return self.send_json({"success": True, "count": len(filtered), "tracks": filtered})
             except Exception as e:
@@ -253,6 +280,9 @@ class LosslessRequestHandler(http.server.SimpleHTTPRequestHandler):
                 content_range = resp.headers.get('Content-Range')
                 accept_ranges = resp.headers.get('Accept-Ranges') or 'bytes'
 
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Headers', '*')
+                self.send_header('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length')
                 self.send_header('Content-Type', content_type)
                 self.send_header('Accept-Ranges', accept_ranges)
                 if content_length:
@@ -278,6 +308,8 @@ class LosslessRequestHandler(http.server.SimpleHTTPRequestHandler):
             raw_url = qs.get('url', [''])[0]
             title = qs.get('title', ['Track'])[0]
             artist = qs.get('artist', ['Unknown'])[0]
+            if raw_url and '.saavncdn.com' in raw_url:
+                raw_url = re.sub(r'_(12|48|96|160)\.mp4', '_320.mp4', raw_url)
             
             if not raw_url:
                 # Try to resolve url from title & artist
@@ -294,6 +326,7 @@ class LosslessRequestHandler(http.server.SimpleHTTPRequestHandler):
                 resp = urllib.request.urlopen(req, timeout=15)
                 
                 self.send_response(200)
+                self.send_header('Access-Control-Allow-Origin', '*')
                 self.send_header('Content-Type', 'application/octet-stream')
                 self.send_header('Content-Disposition', f'attachment; filename="{safe_name}"')
                 if resp.headers.get('Content-Length'):
@@ -394,7 +427,7 @@ def background_daily_sync():
         except Exception as e:
             print(f"[AutoSync Daemon] Sync exception: {e}")
         # Sleep for 12 hours between checks
-        time.sleep(12 * 3600)
+        time.sleep(1800)
 
 def run():
     # Start automated background synchronization daemon

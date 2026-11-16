@@ -22,9 +22,9 @@ BASE_DIR = os.path.dirname(__file__)
 CACHE_FILE = os.path.join(BASE_DIR, "weekly_cache.json")
 
 TTL_MAP = {
-    "daily": 24 * 3600,       # 1 Day
-    "weekly": 7 * 24 * 3600,   # 7 Days
-    "monthly": 30 * 24 * 3600  # 30 Days
+    "daily": 30 * 60,      # 30 Minutes (keeps Daily & New Releases fresh)
+    "weekly": 60 * 60,     # 1 Hour
+    "monthly": 3 * 3600    # 3 Hours
 }
 
 HEADERS = {
@@ -51,20 +51,6 @@ def save_cache(data):
     try:
         with open(CACHE_FILE, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-        # Also mirror active charts to chartsData.json
-        cd_file = os.path.join(BASE_DIR, "chartsData.json")
-        if os.path.exists(cd_file):
-            with open(cd_file, 'r', encoding='utf-8') as f:
-                cd = json.load(f)
-            cd.setdefault('charts', {})
-            for lang, tfs in data.items():
-                if isinstance(tfs, dict):
-                    cd['charts'].setdefault(lang, {})
-                    for tf in ('daily', 'weekly', 'monthly'):
-                        if isinstance(tfs.get(tf), dict) and tfs[tf].get('tracks'):
-                            cd['charts'][lang][tf] = tfs[tf]['tracks']
-            with open(cd_file, 'w', encoding='utf-8') as f:
-                json.dump(cd, f, indent=2, ensure_ascii=False)
     except Exception as e:
         print(f"[weekly_sync] Failed to save cache: {e}")
 
@@ -98,29 +84,19 @@ def fetch_itunes_top(country="in", limit=25):
 
 def fetch_saavn_chart_tracks(query, limit=15, source_label="JioSaavn Live Charts"):
     try:
-        encoded_q = urllib.parse.quote(query)
-        url = f"https://www.jiosaavn.com/api.php?__call=search.getResults&_format=json&n={limit}&p=1&q={encoded_q}"
-        req = urllib.request.Request(url, headers=HEADERS)
+        import spotiflac
+        raw_tracks = spotiflac._query_saavn(query, limit=limit)
         tracks = []
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-            results = data.get('results', [])
-            for r in results:
-                title = r.get('song') or r.get('title') or ''
-                artist = r.get('primary_artists') or r.get('singers') or r.get('artist') or ''
-                album = r.get('album') or f"{query} Hit"
-                art = r.get('image', '').replace('150x150', '500x500')
-                media_url = r.get('media_preview_url', '')
-                if title:
-                    tracks.append({
-                        "title": title.replace('&quot;', '"').replace('&amp;', '&').replace('&#039;', "'"),
-                        "artist": artist.replace('&quot;', '"').replace('&amp;', '&').replace('&#039;', "'"),
-                        "album": album.replace('&quot;', '"').replace('&amp;', '&').replace('&#039;', "'"),
-                        "duration": int(r.get('duration') or 210),
-                        "artwork": art,
-                        "streamUrl": media_url,
-                        "source": source_label
-                    })
+        for r in raw_tracks:
+            tracks.append({
+                "title": r.get('title', ''),
+                "artist": r.get('artist', ''),
+                "album": r.get('album', '') or f"{query} Hit",
+                "duration": int(r.get('duration') or 210),
+                "artwork": r.get('artwork') or r.get('image') or '',
+                "streamUrl": r.get('streamUrl', ''),
+                "source": source_label
+            })
         return tracks
     except Exception as ex:
         print(f"[weekly_sync] Saavn fetch failed ({query}): {ex}")

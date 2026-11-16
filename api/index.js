@@ -937,17 +937,24 @@ module.exports = async (req, res) => {
             return;
         }
 
+function normalizeCanonicalTitle(title) {
+    if (!title) return '';
+    return title
+        .toLowerCase()
+        .replace(/\(from\s+["']?.*?["']?\)/gi, '')
+        .replace(/[\(\[].*?[\)\]]/g, '')
+        .replace(/(remastered|re-mastered|original motion picture soundtrack|full video|lyrical|lyrics|audio|video song|version|reprise|male|female|duet)/gi, '')
+        .replace(/[^a-z0-9஀-௿ऀ-ॿఀ-౿ഀ-ൿ]/g, '')
+        .trim();
+}
+
 function isSameSongOrReprise(candTitle, seedTitle) {
     if (!candTitle || !seedTitle) return false;
-    const cleanCand = candTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const cleanSeed = seedTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (!cleanCand || !cleanSeed) return false;
-    if (cleanCand === cleanSeed) return true;
-    if (cleanCand.includes(cleanSeed) || cleanSeed.includes(cleanCand)) return true;
-    const stripParen = (s) => s.replace(/\s*[\(\[].*?[\)\]]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const sc = stripParen(candTitle);
-    const ss = stripParen(seedTitle);
-    if (sc && ss && (sc === ss || sc.includes(ss) || ss.includes(sc))) return true;
+    const sc = normalizeCanonicalTitle(candTitle);
+    const ss = normalizeCanonicalTitle(seedTitle);
+    if (!sc || !ss) return false;
+    if (sc === ss) return true;
+    if (sc.length >= 6 && ss.length >= 6 && (sc.includes(ss) || ss.includes(sc))) return true;
     return false;
 }
 
@@ -1181,12 +1188,12 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     return;
                 }
 
-                // 1. Strict or substring match on cleanTitle
-                const normTarget = cleanTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
+                // 1. Multi-stage Canonical and Fuzzy Title Match
+                const normTarget = normalizeCanonicalTitle(cleanTitle) || cleanTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
                 let matched = null;
                 for (const s of songs) {
-                    const normSong = (s.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                    if (normTarget && (normSong.includes(normTarget) || normTarget.includes(normSong))) {
+                    const normSong = normalizeCanonicalTitle(s.title) || (s.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                    if (normTarget && (normSong === normTarget || normSong.includes(normTarget) || normTarget.includes(normSong))) {
                         matched = s;
                         break;
                     }
