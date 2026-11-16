@@ -1,8 +1,8 @@
 /**
- * Omonk Audio Player Engine - v8.2.0
+ * Omonk Audio Player Engine - v8.0.0
  * Apple Music Hi-Res Lossless DSP Studio Master Pipeline
- * Dual-Audio Zero-Gap Preloader, Silent Keep-Alive Session Guard,
- * 10-Band Hardware Equalizer, and Fail-Safe iOS/Android Lockscreen Integration.
+ * Single resilient audio element, 10-Band Hardware Equalizer, Dynamics Compressor,
+ * Visualizer, and Fail-Safe iOS MediaSession Lockscreen integration.
  */
 function normalizeCanonicalTitle(title) {
     if (!title) return '';
@@ -25,23 +25,16 @@ function isSameSongOrReprise(candTitle, seedTitle) {
     return false;
 }
 
-// Inline 1-second silent WAV (Base64) to keep mobile OS media session alive during locked pauses
 const SILENT_KEEPALIVE_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
 
 class AudioPlayerEngine {
     constructor() {
-        // Primary & Preload HTML5 Audio Elements for zero-gap locked transitions
+        // Single robust audio element - eliminates double playback entirely
         this.audio = new Audio();
         this.audio.preload = "auto";
         this.audio.setAttribute('playsinline', 'true');
         this.audio.setAttribute('webkit-playsinline', 'true');
 
-        this.preloadAudio = new Audio();
-        this.preloadAudio.preload = "auto";
-        this.preloadAudio.setAttribute('playsinline', 'true');
-        this.preloadAudio.setAttribute('webkit-playsinline', 'true');
-
-        // Silent keep-alive audio element (prevents 2-minute lock-screen suspension)
         this.keepAliveAudio = new Audio(SILENT_KEEPALIVE_WAV);
         this.keepAliveAudio.loop = true;
         this.keepAliveAudio.volume = 0.01;
@@ -52,6 +45,7 @@ class AudioPlayerEngine {
         this.isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         this.isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+        // iOS Safari AudioSession category setup (iOS 15+)
         if ('audioSession' in navigator) {
             try {
                 navigator.audioSession.type = 'playback';
@@ -63,14 +57,12 @@ class AudioPlayerEngine {
         this.isSequentialContext = false;
         this._isSkipping = false;
         this._skipTimeout = null;
-        this._isSeedingQueue = false;
-        this._preloadedTrackId = null;
         this.history = [];
         this.currentIndex = -1;
         this.isPlaying = false;
         this.isShuffled = false;
-        this.repeatMode = 'none';
-        this.volume = 1.0;
+        this.repeatMode = 'none'; // 'none' | 'all' | 'one'
+        this.volume = 1.0; // 100% full dynamic headroom for Apple Music master quality
 
         this.audioCtx = null;
         this.sourceNode = null;
@@ -90,6 +82,7 @@ class AudioPlayerEngine {
 
         this.eqFrequencies = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 
+        // Multi-tab / PWA instance coordinator
         this.instanceId = 'omonk_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
         this.setupInstanceCoordination();
 
@@ -110,7 +103,6 @@ class AudioPlayerEngine {
     startKeepAlive() {
         if (this._keepAliveTimer) clearTimeout(this._keepAliveTimer);
         this.keepAliveAudio.play().catch(() => {});
-        // Auto-stop after 20 minutes of inactivity to preserve battery
         this._keepAliveTimer = setTimeout(() => {
             this.stopKeepAlive();
         }, 20 * 60 * 1000);
@@ -133,8 +125,8 @@ class AudioPlayerEngine {
                 this.instanceChannel.onmessage = (e) => {
                     if (e.data && e.data.type === 'PLAYBACK_STARTED' && e.data.instanceId !== this.instanceId) {
                         if (this.isPlaying) {
+                            console.log('[Coordination] Another tab/PWA started playback. Pausing this instance.');
                             this.audio.pause();
-                            this.stopKeepAlive();
                             this.isPlaying = false;
                             if (this.onPlayStateChange) this.onPlayStateChange(false);
                             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
@@ -150,8 +142,8 @@ class AudioPlayerEngine {
                     const data = JSON.parse(e.newValue);
                     if (data && data.instanceId !== this.instanceId && (Date.now() - data.timestamp < 3000)) {
                         if (this.isPlaying) {
+                            console.log('[Storage Event] Active playback transferred to another window. Pausing.');
                             this.audio.pause();
-                            this.stopKeepAlive();
                             this.isPlaying = false;
                             if (this.onPlayStateChange) this.onPlayStateChange(false);
                             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
@@ -178,8 +170,17 @@ class AudioPlayerEngine {
         } catch (e) {}
     }
 
+    /**
+     * Audiophile Web Audio DSP Pipeline - Apple Music Hi-Res Lossless Engine
+     */
     initWebAudio() {
-        if (this.isIOS || this.isMobile) {
+        const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream);
+        const isMobile = typeof navigator !== 'undefined' && (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+
+        // Mobile browsers (specifically iOS WebKit and Android background processes) suspend AudioContext
+        // whenever the screen locks, completely muting playback and preventing background track transitions.
+        // On mobile devices, the <audio> element plays directly to system hardware for reliable lock-screen playback.
+        if (isIOS || isMobile) {
             return;
         }
 
@@ -199,6 +200,7 @@ class AudioPlayerEngine {
                 try { navigator.audioSession.type = 'playback'; } catch (e) {}
             }
 
+            // iOS Web Audio auto-recovery
             this.audioCtx.onstatechange = () => {
                 if (this.audioCtx && this.audioCtx.state === 'suspended' && this.isPlaying) {
                     this.audioCtx.resume().catch(() => {});
@@ -207,6 +209,8 @@ class AudioPlayerEngine {
 
             this.sourceNode = this.audioCtx.createMediaElementSource(this.audio);
 
+            // 1. Dual-Stage Subsonic Anti-Vibration Filter (40 Hz 24 dB/octave Linkwitz-Riley Highpass)
+            // Completely cuts out sub-audible DC and violent subsonic cone excursion (<40 Hz) that forces earphone/speaker drivers into mechanical over-excursion and vibration rattle
             this.subsonicFilter1 = this.audioCtx.createBiquadFilter();
             this.subsonicFilter1.type = 'highpass';
             this.subsonicFilter1.frequency.setValueAtTime(this.antiVibrationEnabled ? 40 : 10, this.audioCtx.currentTime);
@@ -217,40 +221,50 @@ class AudioPlayerEngine {
             this.subsonicFilter2.frequency.setValueAtTime(this.antiVibrationEnabled ? 40 : 10, this.audioCtx.currentTime);
             this.subsonicFilter2.Q.setValueAtTime(0.707, this.audioCtx.currentTime);
 
+            // 1.1 Bass Excursion Tamer (Low-shelf 110 Hz)
+            // Protects earphone transducers and prevents sub-bass spikes from squashing the vocal headroom
             this.bassTamerFilter = this.audioCtx.createBiquadFilter();
             this.bassTamerFilter.type = 'lowshelf';
             this.bassTamerFilter.frequency.setValueAtTime(110, this.audioCtx.currentTime);
             this.bassTamerFilter.gain.setValueAtTime(this.antiVibrationEnabled ? -1.5 : 0, this.audioCtx.currentTime);
 
+            // 1.2 Anti-Mud De-Boxiness Filter (240 Hz Peaking)
+            // Carves out chesty boxiness that psychoacoustically masks the vocal range
             this.deMudFilter = this.audioCtx.createBiquadFilter();
             this.deMudFilter.type = 'peaking';
             this.deMudFilter.frequency.setValueAtTime(240, this.audioCtx.currentTime);
             this.deMudFilter.gain.setValueAtTime(this.vocalClarityEnabled ? -1.8 : 0, this.audioCtx.currentTime);
             this.deMudFilter.Q.setValueAtTime(1.2, this.audioCtx.currentTime);
 
+            // 1.3 Vocal Body & Natural Warmth (1.2 kHz Human Voice Core)
             this.vocalBodyFilter = this.audioCtx.createBiquadFilter();
             this.vocalBodyFilter.type = 'peaking';
             this.vocalBodyFilter.frequency.setValueAtTime(1200, this.audioCtx.currentTime);
             this.vocalBodyFilter.gain.setValueAtTime(this.vocalClarityEnabled ? 1.5 : 0, this.audioCtx.currentTime);
             this.vocalBodyFilter.Q.setValueAtTime(1.0, this.audioCtx.currentTime);
 
+            // 1.4 Studio Vocal Presence & Diction Filter (3.2 kHz Intelligibility Sweet Spot)
+            // Lifts vocal articulation, singer lyrics, and speech clarity directly into the forefront
             this.vocalClarityFilter = this.audioCtx.createBiquadFilter();
             this.vocalClarityFilter.type = 'peaking';
             this.vocalClarityFilter.frequency.setValueAtTime(3200, this.audioCtx.currentTime);
             this.vocalClarityFilter.gain.setValueAtTime(this.vocalClarityEnabled ? 3.6 : 0, this.audioCtx.currentTime);
             this.vocalClarityFilter.Q.setValueAtTime(1.1, this.audioCtx.currentTime);
 
+            // 1.5 Vocal Consonant Crispness & Sibilance Definition (5.4 kHz)
             this.vocalCrispFilter = this.audioCtx.createBiquadFilter();
             this.vocalCrispFilter.type = 'peaking';
             this.vocalCrispFilter.frequency.setValueAtTime(5400, this.audioCtx.currentTime);
             this.vocalCrispFilter.gain.setValueAtTime(this.vocalClarityEnabled ? 2.0 : 0, this.audioCtx.currentTime);
             this.vocalCrispFilter.Q.setValueAtTime(1.2, this.audioCtx.currentTime);
 
+            // 1.6 Vocal Air & High-End Sheen (10.5 kHz High-Shelf)
             this.vocalAirFilter = this.audioCtx.createBiquadFilter();
             this.vocalAirFilter.type = 'highshelf';
             this.vocalAirFilter.frequency.setValueAtTime(10500, this.audioCtx.currentTime);
             this.vocalAirFilter.gain.setValueAtTime(this.vocalClarityEnabled ? 1.8 : 0, this.audioCtx.currentTime);
 
+            // 1.7 Setup 10-Band Precision Mastering Equalizer
             this.filters = this.eqFrequencies.map((freq, idx) => {
                 const filter = this.audioCtx.createBiquadFilter();
                 if (idx === 0) filter.type = 'lowshelf';
@@ -262,10 +276,12 @@ class AudioPlayerEngine {
                 return filter;
             });
 
+            // 2. Studio Master Gain Stage (Apple ALAC / 100 dB+ Calibrated Output)
             this.studioGain = this.audioCtx.createGain();
             const gainMult = Math.pow(10, this.masterGainDb / 20);
             this.studioGain.gain.setValueAtTime(gainMult, this.audioCtx.currentTime);
 
+            // 2.5 True Mastering Peak Safety Limiter (Fast 45ms Release, Zero Pumping on Vocals, Zero Clipping)
             this.limiter = this.audioCtx.createDynamicsCompressor();
             this.limiter.threshold.setValueAtTime(-0.6, this.audioCtx.currentTime);
             this.limiter.knee.setValueAtTime(2.0, this.audioCtx.currentTime);
@@ -273,15 +289,19 @@ class AudioPlayerEngine {
             this.limiter.attack.setValueAtTime(0.001, this.audioCtx.currentTime);
             this.limiter.release.setValueAtTime(0.045, this.audioCtx.currentTime);
 
+            // 3. Master Gain Node (Bit-Perfect Pure PCM Volume Control)
             this.masterGain = this.audioCtx.createGain();
             this.masterGain.gain.setValueAtTime(this.volume, this.audioCtx.currentTime);
 
+            // 4. Analyser node for Live Spectrum Visualizer
             this.analyser = this.audioCtx.createAnalyser();
             this.analyser.fftSize = 128;
             this.analyser.smoothingTimeConstant = 0.8;
 
+            // Connect Apple ALAC routing by default
             this.applyRoutingForPreset(this.currentPreset || 'flat');
             this.startVisualizer();
+            console.log('[Apple ALAC] Subsonic Anti-Vibration & Vocal Clarity Pipeline active (100 dB+ Master)');
         } catch (e) {
             console.warn('[WebAudio] Initialized in direct audio mode:', e);
         }
@@ -292,14 +312,29 @@ class AudioPlayerEngine {
         try {
             this.sourceNode.disconnect();
             const nodesToDisconnect = [
-                this.subsonicFilter1, this.subsonicFilter2, this.bassTamerFilter,
-                this.deMudFilter, this.vocalBodyFilter, this.vocalClarityFilter,
-                this.vocalCrispFilter, this.vocalAirFilter, this.studioGain,
-                this.limiter, this.masterGain, this.analyser
+                this.subsonicFilter1,
+                this.subsonicFilter2,
+                this.bassTamerFilter,
+                this.deMudFilter,
+                this.vocalBodyFilter,
+                this.vocalClarityFilter,
+                this.vocalCrispFilter,
+                this.vocalAirFilter,
+                this.studioGain,
+                this.limiter,
+                this.masterGain,
+                this.analyser
             ];
-            nodesToDisconnect.forEach(n => { if (n) { try { n.disconnect(); } catch (e) {} } });
-            if (this.filters) this.filters.forEach(f => { try { f.disconnect(); } catch (e) {} });
+            nodesToDisconnect.forEach(n => {
+                if (n) { try { n.disconnect(); } catch (e) {} }
+            });
+            if (this.filters) {
+                this.filters.forEach(f => { try { f.disconnect(); } catch (e) {} });
+            }
 
+            // Core Audio Chain:
+            // source -> subsonic1 (40Hz HP) -> subsonic2 (40Hz HP) -> bassTamer -> deMud (240Hz)
+            // -> vocalBody (1.2kHz) -> vocalClarity (3.2kHz) -> vocalCrisp (5.4kHz) -> vocalAir (10.5kHz)
             this.sourceNode.connect(this.subsonicFilter1);
             this.subsonicFilter1.connect(this.subsonicFilter2);
             this.subsonicFilter2.connect(this.bassTamerFilter);
@@ -310,6 +345,7 @@ class AudioPlayerEngine {
             this.vocalCrispFilter.connect(this.vocalAirFilter);
 
             let intermediateNode = this.vocalAirFilter;
+
             if (preset !== 'flat') {
                 this.filters.forEach(filter => {
                     intermediateNode.connect(filter);
@@ -322,14 +358,19 @@ class AudioPlayerEngine {
             this.limiter.connect(this.masterGain);
             this.masterGain.connect(this.analyser);
             this.analyser.connect(this.audioCtx.destination);
-        } catch (err) {}
+        } catch (err) {
+            console.warn('[Audio Routing Error]:', err);
+        }
     }
 
     setStudioMasterGain(db) {
         this.masterGainDb = typeof db === 'number' ? db : 9.5;
         const mult = Math.pow(10, this.masterGainDb / 20);
         if (this.studioGain && this.audioCtx) {
-            try { this.studioGain.gain.setValueAtTime(mult, this.audioCtx.currentTime); } catch (e) {}
+            try {
+                this.studioGain.gain.setValueAtTime(mult, this.audioCtx.currentTime);
+                console.log('[Apple ALAC] Master output calibrated to ' + this.masterGainDb + ' dB (' + mult.toFixed(2) + 'x)');
+            } catch (e) {}
         }
         localStorage.setItem('alac_master_gain_db', this.masterGainDb);
     }
@@ -364,8 +405,8 @@ class AudioPlayerEngine {
     setEQPreset(presetName) {
         this.currentPreset = presetName || 'flat';
         const presets = {
-            flat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            appleMusicMaster: [0.8, 0.6, 0.2, 0.0, 0.0, 0.0, 0.4, 0.8, 1.0, 1.2],
+            flat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // Pure Bit-Perfect Studio Reference (Spotify / Apple Music match)
+            appleMusicMaster: [0.8, 0.6, 0.2, 0.0, 0.0, 0.0, 0.4, 0.8, 1.0, 1.2], // Audiophile High-Res air polish
             bassBoost: [4.5, 3.5, 2.0, 0.5, 0, 0, 0, 0, 0.5, 1.0],
             vocalClarity: [-1.0, -0.5, 0, 1.5, 3.0, 3.0, 1.5, 0.5, 0, 0],
             electronic: [4.0, 3.0, 1.5, 0, -1.0, 1.5, 2.5, 3.0, 3.5, 3.5],
@@ -374,7 +415,9 @@ class AudioPlayerEngine {
         };
         const gains = presets[presetName] || presets.appleMusicMaster;
         this.filters.forEach((filter, idx) => {
-            if (filter && typeof gains[idx] === 'number') filter.gain.value = gains[idx];
+            if (filter && typeof gains[idx] === 'number') {
+                filter.gain.value = gains[idx];
+            }
         });
         this.applyRoutingForPreset(this.currentPreset);
     }
@@ -480,8 +523,6 @@ class AudioPlayerEngine {
         el.addEventListener('playing', () => {
             this.stopKeepAlive();
             this.isPlaying = true;
-            this._consecutiveErrors = 0;
-            this._retriedWithProxy = false;
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.playbackState = 'playing';
             }
@@ -492,9 +533,7 @@ class AudioPlayerEngine {
         });
 
         el.addEventListener('pause', () => {
-            if (!el.ended) {
-                this.startKeepAlive();
-            }
+            if (!el.ended) this.startKeepAlive();
             this.isPlaying = false;
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.playbackState = 'paused';
@@ -530,19 +569,21 @@ class AudioPlayerEngine {
                 }
             }
 
-            if (el.duration > 25 && el.currentTime >= el.duration - 20 && !this._preloadedForCurrentTrack) {
+            // Preload next track 15 seconds before completion for zero-latency lockscreen continuous playback
+            if (el.duration > 20 && el.currentTime >= el.duration - 15 && !this._preloadedForCurrentTrack) {
                 this._preloadedForCurrentTrack = true;
                 this.preloadNextTrackStream();
             }
 
             const now = Date.now();
-            if (now - this.lastSaveTime > 2000) {
+            if (now - this.lastSaveTime > 1500) {
                 this.lastSaveTime = now;
                 this.savePlaybackState();
             }
         });
 
         el.addEventListener('ended', () => {
+            console.log('[Audio Ended]: Track finished, advancing to next...');
             this.isPlaying = false;
             if (this.onPlayStateChange) this.onPlayStateChange(false);
             const currentTrack = this.getCurrentTrack();
@@ -551,40 +592,75 @@ class AudioPlayerEngine {
             }
             if (this.repeatMode === 'one') {
                 el.currentTime = 0;
-                el.play().catch(() => {});
+                el.play().catch(e => console.warn('Repeat play error:', e));
             } else {
                 this.next(true);
             }
         });
 
         el.addEventListener('waiting', () => {
+            console.log('[Audio Stream]: Buffering chunk...');
             if (this._waitingTimeout) clearTimeout(this._waitingTimeout);
             this._waitingTimeout = setTimeout(() => {
                 if (this.isPlaying && !el.paused && el.readyState < 3) {
-                    el.play().catch(() => {});
-                }
-            }, 1800);
-        });
-
-        el.addEventListener('stalled', () => {
-            if (this._stallTimeout) clearTimeout(this._stallTimeout);
-            this._stallTimeout = setTimeout(() => {
-                if (this.isPlaying && !el.paused) {
+                    console.log('[Audio Stream]: Buffer recovery pulse...');
                     el.play().catch(() => {});
                 }
             }, 1500);
         });
 
+        el.addEventListener('stalled', () => {
+            console.warn('[Audio Stream]: Network stalled. Attempting seamless reconnection...');
+            if (this._stallTimeout) clearTimeout(this._stallTimeout);
+            this._stallTimeout = setTimeout(() => {
+                if (this.isPlaying && !el.paused) {
+                    const curTime = el.currentTime;
+                    el.currentTime = curTime + 0.05;
+                    el.play().catch(() => {});
+                }
+            }, 1200);
+        });
+
+        // Continuous playback heartbeat watchdog (prevents 0:44 / mid-track freeze)
+        if (this._playbackWatchdog) clearInterval(this._playbackWatchdog);
+        this._playbackWatchdog = setInterval(() => {
+            if (this.isPlaying && !el.paused && !el.ended) {
+                const cur = el.currentTime;
+                if (this._lastWatchdogPos !== undefined && Math.abs(cur - this._lastWatchdogPos) < 0.02) {
+                    this._stuckCounter = (this._stuckCounter || 0) + 1;
+                    if (this._stuckCounter >= 4) { // Frozen for 2 seconds
+                        console.warn('[Audio Watchdog]: Playback stalled at', cur, 's. Auto-recovering...');
+                        this._stuckCounter = 0;
+                        el.currentTime = cur + 0.1;
+                        el.play().catch(() => {});
+                    }
+                } else {
+                    this._stuckCounter = 0;
+                    this._lastWatchdogPos = cur;
+                }
+            } else {
+                this._stuckCounter = 0;
+            }
+        }, 500);
+
+        el.addEventListener('playing', () => {
+            this._consecutiveErrors = 0;
+            this._retriedWithProxy = false;
+        });
+
         el.addEventListener('error', (e) => {
             const cur = this.getCurrentTrack();
+            console.error('[Audio Error]: Playback error event:', e, el.error);
             this.isPlaying = false;
             if (this.onPlayStateChange) this.onPlayStateChange(false);
 
             const isPodcast = cur && (cur.isPodcast || cur.quality === 'Podcast Audio Stream' || (typeof cur.id === 'string' && cur.id.startsWith('pod_')));
 
+            // If podcast direct stream failed and hasn't been proxied yet, retry with /api/stream proxy
             if (isPodcast && cur && cur.streamUrl && !cur.streamUrl.includes('/api/stream') && !this._retriedWithProxy) {
                 this._retriedWithProxy = true;
                 const proxyUrl = `${window.API_PREFIX || ''}/api/stream?url=${encodeURIComponent(cur.streamUrl)}`;
+                console.log('[Audio Player] Retrying podcast playback via CORS proxy:', proxyUrl);
                 this.audio.src = proxyUrl;
                 this.audio.play().catch(() => {});
                 return;
@@ -592,27 +668,31 @@ class AudioPlayerEngine {
             this._retriedWithProxy = false;
 
             this._consecutiveErrors = (this._consecutiveErrors || 0) + 1;
-            if (this._consecutiveErrors >= 3) {
+            if (this._consecutiveErrors >= 2) {
+                console.warn('[Audio Player] Stopping auto-skip due to repeated playback errors.');
                 this._consecutiveErrors = 0;
                 if (this.onStatusMessage) this.onStatusMessage(`Audio playback paused due to stream error.`);
                 return;
             }
 
             if (this.onStatusMessage && cur) {
-                this.onStatusMessage(`Stream unavailable for "${cur.title}". Skipping...`);
+                this.onStatusMessage(`Stream unavailable for "${cur.title}".`);
             }
             if (this._errorRetryTimeout) clearTimeout(this._errorRetryTimeout);
             this._errorRetryTimeout = setTimeout(() => {
-                this.next(true);
-            }, 800);
+                this.next(true); // ADVANCE AND PLAY AUTOMATICALLY!
+            }, 1000);
         });
     }
 
     setVolume(val) {
         this.volume = Math.max(0, Math.min(1, val));
         if (this.masterGain && this.audioCtx) {
+            // WebAudio active: keep HTMLMediaElement at unity gain 1.0 to preserve 24-bit headroom, control volume cleanly at masterGain
             this.audio.volume = 1.0;
-            try { this.masterGain.gain.setValueAtTime(this.volume, this.audioCtx.currentTime); } catch (e) {}
+            try {
+                this.masterGain.gain.setValueAtTime(this.volume, this.audioCtx.currentTime);
+            } catch (e) {}
         } else {
             this.audio.volume = this.volume;
         }
@@ -669,52 +749,40 @@ class AudioPlayerEngine {
         if (this.onQueueChange) this.onQueueChange(this.queue, this.currentIndex);
     }
 
-    async preloadNextTrackStream() {
+    preloadNextTrackStream() {
         try {
-            if (this.currentIndex + 1 >= this.queue.length && this.repeatMode !== 'all') {
+            for (let offset = 1; offset <= 2; offset++) {
+                const nextIdx = this.currentIndex + offset;
+                if (nextIdx < this.queue.length) {
+                    const nxt = this.queue[nextIdx];
+                    if (nxt && !nxt.streamUrl) {
+                        fetch(`${window.API_PREFIX || ''}/api/resolve?title=${encodeURIComponent(nxt.title)}&artist=${encodeURIComponent(nxt.artist || '')}`)
+                            .then(r => r.json())
+                            .then(d => {
+                                if (d.success && d.track && d.track.streamUrl) {
+                                    let su = d.track.streamUrl;
+                                    if (su.includes('.saavncdn.com')) su = su.replace(/_(12|48|96|160).mp4/i, '_320.mp4');
+                                    nxt.streamUrl = su;
+                                    nxt.image = nxt.image || d.track.image;
+                                    nxt.artwork = nxt.artwork || d.track.artwork;
+                                    nxt.duration = nxt.duration || d.track.duration;
+                                }
+                            }).catch(() => {});
+                    }
+                }
+            }
+            if (this.repeatMode !== 'all' && window.VibeEngine && typeof window.VibeEngine.getContinuousRadioTrack === 'function') {
                 const cur = this.getCurrentTrack();
-                if (cur && window.VibeEngine && typeof window.VibeEngine.getContinuousRadioTrack === 'function' && !this._isPreloadingContinuousRadio) {
+                if (cur && !this._isPreloadingContinuousRadio) {
                     this._isPreloadingContinuousRadio = true;
-                    try {
-                        const newSong = await window.VibeEngine.getContinuousRadioTrack(cur, this.history);
-                        if (newSong && !this.queue.some(q => String(q.id) === String(newSong.id) || isSameSongOrReprise(q.title, newSong.title))) {
+                    window.VibeEngine.getContinuousRadioTrack(cur, this.history).then(newSong => {
+                        this._isPreloadingContinuousRadio = false;
+                        if (newSong && newSong.streamUrl && !this.queue.some(q => String(q.id) === String(newSong.id))) {
                             this.queue.push(newSong);
                             if (this.onQueueChange) this.onQueueChange(this.queue, this.currentIndex);
                             if (window.renderSideQueueContent) window.renderSideQueueContent();
                         }
-                    } catch (e) {}
-                    this._isPreloadingContinuousRadio = false;
-                }
-            }
-
-            const nextIdx = this.currentIndex + 1;
-            if (nextIdx < this.queue.length) {
-                const nxt = this.queue[nextIdx];
-                if (!nxt) return;
-
-                if (!nxt.streamUrl) {
-                    const res = await fetch(`${window.API_PREFIX || ''}/api/resolve?title=${encodeURIComponent(nxt.title)}&artist=${encodeURIComponent(nxt.artist || '')}`);
-                    const d = await res.json();
-                    if (d.success && d.track && d.track.streamUrl) {
-                        nxt.streamUrl = d.track.streamUrl;
-                        nxt.image = nxt.image || d.track.image;
-                        nxt.artwork = nxt.artwork || d.track.artwork;
-                        nxt.duration = nxt.duration || d.track.duration;
-                    }
-                }
-
-                if (nxt.streamUrl) {
-                    let su = nxt.streamUrl;
-                    if (su.includes('.saavncdn.com')) {
-                        su = su.replace(/_(12|48|96|160)\.mp4/i, '_320.mp4');
-                        nxt.streamUrl = su;
-                    }
-                    const nextKey = String(nxt.id || nxt.title);
-                    if (this._preloadedTrackId !== nextKey) {
-                        this._preloadedTrackId = nextKey;
-                        this.preloadAudio.src = su;
-                        this.preloadAudio.load();
-                    }
+                    }).catch(() => { this._isPreloadingContinuousRadio = false; });
                 }
             }
         } catch (e) {}
@@ -722,23 +790,29 @@ class AudioPlayerEngine {
 
     async playTrackWithVibeRadio(track) {
         if (!track) return;
-        this.userQueue = [];
+        this.userQueue = []; // Clear manual queue so vibe radio plays directly next
         this.isSequentialContext = false;
         this._isSkipping = false;
         this._skipTimeout = null;
+        // Start playback immediately with isolated track and trigger seedVibeQueue
         await this.playTrack(track, [track], 0, false);
+        this.seedVibeQueue(track);
     }
 
     async seedVibeQueue(track) {
-        if (!track || this._isSeedingQueue) return;
-        this._isSeedingQueue = true;
+        if (!track) return;
         try {
             let radioTracks = null;
             if (window.VibeEngine && typeof window.VibeEngine.getVibeRadioQueue === 'function') {
-                radioTracks = await window.VibeEngine.getVibeRadioQueue(track, 20, this.history);
+                radioTracks = await window.VibeEngine.getVibeRadioQueue(track, 20);
             }
             if (!radioTracks || radioTracks.length <= 1) {
-                const prefix = window.API_PREFIX || '';
+                const isCatalyst = typeof window !== 'undefined' && (
+                    window.location.hostname.includes('catalystserverless') ||
+                    window.location.hostname.includes('zohocatalyst') ||
+                    window.location.pathname.startsWith('/app')
+                );
+                const prefix = window.API_PREFIX || (isCatalyst ? '/server/music_api' : '');
                 const qParams = new URLSearchParams({
                     id: track.id || '',
                     title: track.title || '',
@@ -753,64 +827,60 @@ class AudioPlayerEngine {
                 }
             }
 
+            if (!radioTracks || radioTracks.length <= 1) {
+                try {
+                    const isCatalyst = typeof window !== 'undefined' && (
+                        window.location.hostname.includes('catalystserverless') ||
+                        window.location.hostname.includes('zohocatalyst') ||
+                        window.location.pathname.startsWith('/app')
+                    );
+                    const prefix = window.API_PREFIX || (isCatalyst ? '/server/music_api' : '');
+                    const artistQuery = (track.artist || '').split(/[,&]/)[0].trim();
+                    const sQuery = artistQuery ? `${artistQuery} hits` : `${track.language || 'tamil'} hits`;
+                    const sRes = await fetch(`${prefix}/api/search?q=${encodeURIComponent(sQuery)}&limit=15`);
+                    if (sRes.ok) {
+                        const sJson = await sRes.json();
+                        const resList = sJson.results || sJson.songs || [];
+                        if (resList.length > 0) {
+                            radioTracks = [track, ...resList];
+                        }
+                    }
+                } catch (e2) {}
+            }
+
             if (radioTracks && radioTracks.length > 1) {
                 const cur = this.getCurrentTrack();
-                if (cur && (String(cur.id) === String(track.id) || isSameSongOrReprise(cur.title, track.title))) {
+                if (cur && (cur.id === track.id || (cur.title || '').toLowerCase().trim() === (track.title || '').toLowerCase().trim())) {
                     const historyIds = new Set((this.history || []).map(h => String(h.id)));
-                    const historyCanonical = new Set((this.history || []).map(h => normalizeCanonicalTitle(h.title)).filter(Boolean));
-                    const seenCanonical = new Set([normalizeCanonicalTitle(cur.title)]);
-
-                    function cleanAlbumKey(alb) {
-                        if (!alb) return '';
-                        return alb.replace(/\(.*?\)/g, '')
-                                  .replace(/original motion picture soundtrack|soundtrack|single|ost|ep|theme/gi, '')
-                                  .trim().toLowerCase();
-                    }
-                    const albumSeen = new Set();
-                    const curAlbKey = cleanAlbumKey(cur.album);
-                    if (curAlbKey && curAlbKey.length > 2) {
-                        albumSeen.add(curAlbKey); // Spotify Rule: Seed track's album excluded
-                    }
-
-                    const remaining = [];
-                    for (const t of radioTracks) {
+                    const historyTitles = new Set((this.history || []).map(h => (h.title || '').toLowerCase().trim()));
+                    const historyCanon = new Set((this.history || []).map(h => normalizeCanonicalTitle(h.title)).filter(Boolean));
+                    const seenCanon = new Set([normalizeCanonicalTitle(cur.title)].filter(Boolean));
+                    const remaining = radioTracks.filter(t => {
                         const canon = normalizeCanonicalTitle(t.title);
-                        if (!t.id || String(t.id) === String(cur.id)) continue;
-                        if (isSameSongOrReprise(t.title, cur.title)) continue;
-                        if (historyIds.has(String(t.id)) || (canon && (historyCanonical.has(canon) || seenCanonical.has(canon)))) continue;
-
-                        // Spotify Rule: Max 1 track per album across queue
-                        const tAlb = cleanAlbumKey(t.album);
-                        if (tAlb && tAlb.length > 2) {
-                            if (albumSeen.has(tAlb)) continue;
-                            albumSeen.add(tAlb);
-                        }
-
-                        if (canon) seenCanonical.add(canon);
-                        remaining.push(t);
+                        if (!t.id || String(t.id) === String(cur.id)) return false;
+                        if (isSameSongOrReprise(t.title, cur.title)) return false;
+                        if (historyIds.has(String(t.id)) || historyTitles.has((t.title || '').toLowerCase().trim())) return false;
+                        if (canon && (historyCanon.has(canon) || seenCanon.has(canon))) return false;
+                        if (canon) seenCanon.add(canon);
+                        return true;
+                    });
+                    this.queue = [cur, ...remaining];
+                    this.currentIndex = 0;
+                    if (this.onQueueChange) this.onQueueChange(this.queue, this.currentIndex);
+                    if (typeof window !== 'undefined' && typeof window.renderSideQueueContent === 'function') {
+                        window.renderSideQueueContent();
                     }
-
-                    if (remaining.length > 0) {
-                        this.queue = [cur, ...remaining];
-                        this.currentIndex = 0;
-                        if (this.onQueueChange) this.onQueueChange(this.queue, this.currentIndex);
-                        if (typeof window !== 'undefined' && typeof window.renderSideQueueContent === 'function') {
-                            window.renderSideQueueContent();
-                        }
-                        this.preloadNextTrackStream();
-                    }
+                    this.preloadNextTrackStream();
+                    console.log(`[VibeEngine] Autoplay Radio Queue seeded for "${cur.title}". Next up: "${remaining[0]?.title}" by ${remaining[0]?.artist}`);
                 }
             }
         } catch (e) {
             console.warn('[VibeEngine] seedVibeQueue error:', e);
-        } finally {
-            this._isSeedingQueue = false;
         }
     }
 
     async playTrack(track, queue = null, index = -1, isSequential = null) {
         if (!track) return;
-        this.stopKeepAlive();
 
         if (typeof isSequential === 'boolean') {
             this.isSequentialContext = isSequential;
@@ -829,13 +899,15 @@ class AudioPlayerEngine {
             if (isSequential === null && queue.length > 1) {
                 this.isSequentialContext = true;
             }
-            if (!this.isSequentialContext && this.queue.length <= 1) {
+            if (!this.isSequentialContext) {
                 this.seedVibeQueue(track);
             }
         } else if (!this.queue || this.queue.length === 0) {
             this.queue = [track];
             this.currentIndex = 0;
             this.isSequentialContext = false;
+        this._isSkipping = false;
+        this._skipTimeout = null;
             this.seedVibeQueue(track);
         } else {
             const existingIdx = this.queue.findIndex(t => String(t.id) === String(track.id) || (t.title && t.title === track.title));
@@ -845,15 +917,18 @@ class AudioPlayerEngine {
                 this.queue = [track];
                 this.currentIndex = 0;
                 this.isSequentialContext = false;
+        this._isSkipping = false;
+        this._skipTimeout = null;
                 this.seedVibeQueue(track);
             }
         }
 
         if (track && (track.id || track.title)) {
             const trackId = String(track.id || track.title);
-            this.history = this.history.filter(h => String(h.id || h.title) !== trackId);
-            this.history.push(track);
-            if (this.history.length > 40) this.history.shift();
+            if (!this.history.some(h => String(h.id || h.title) === trackId)) {
+                this.history.push(track);
+                if (this.history.length > 50) this.history.shift();
+            }
         }
 
         if (this.onQueueChange) this.onQueueChange(this.queue, this.currentIndex);
@@ -869,6 +944,7 @@ class AudioPlayerEngine {
         let finalUrl = track.streamUrl || track.url;
         const isBlobSource = typeof finalUrl === 'string' && finalUrl.startsWith('blob:');
 
+        // Resolve streamUrl if missing or invalid
         if (!isBlobSource && !isValidUrl(finalUrl)) {
             if (this.onStatusMessage) this.onStatusMessage(`Resolving Hi-Res stream for "${track.title}"...`);
             try {
@@ -893,26 +969,34 @@ class AudioPlayerEngine {
             finalUrl = `${window.API_PREFIX || ''}${finalUrl}`;
         }
 
+        // Automatic 320kbps upgrade for Saavn CDN streams
         if (finalUrl && finalUrl.includes('.saavncdn.com')) {
-            finalUrl = finalUrl.replace(/_(12|48|96|160)\.mp4/i, '_320.mp4');
+            finalUrl = finalUrl.replace(/_(12|48|96|160).mp4/i, '_320.mp4');
             track.streamUrl = finalUrl;
         }
 
+        this.preloadNextTrackStream();
+
         if (!isValidUrl(finalUrl)) {
-            if (this.onStatusMessage) this.onStatusMessage(`Stream unavailable for "${track.title}". Skipping...`);
+            if (this.onStatusMessage) this.onStatusMessage(`Stream unavailable for "${track.title}". Skipping to next track...`);
             setTimeout(() => this.next(true), 600);
             return;
         }
 
         this.notifyInstancePlaybackStart();
 
+        const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream);
+        const isMobile = typeof navigator !== 'undefined' && (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
         const isPodcast = track && (track.isPodcast || track.quality === 'Podcast Audio Stream' || (typeof track.id === 'string' && track.id.startsWith('pod_')));
 
-        if (!this.isIOS && !this.isMobile && !isPodcast) {
+        // Initialize WebAudio DSP chain (Apple Music Hi-Res Lossless) - Desktop lossless only
+        if (!isIOS && !isMobile && !isPodcast) {
             this.initWebAudio();
         }
 
-        if (!isBlobSource && !this.isIOS && !this.isMobile && !isPodcast) {
+        // Only ensure crossOrigin is anonymous on desktop lossless where WebAudio DSP is active.
+        // Never use on mobile or podcasts to avoid CORS blocking and lock-screen suspension!
+        if (!isBlobSource && !isIOS && !isMobile && !isPodcast) {
             this.audio.crossOrigin = 'anonymous';
         } else {
             this.audio.removeAttribute('crossOrigin');
@@ -920,13 +1004,15 @@ class AudioPlayerEngine {
 
         if (this.masterGain && this.audioCtx) {
             this.audio.volume = 1.0;
-            try { this.masterGain.gain.setValueAtTime(this.volume, this.audioCtx.currentTime); } catch (e) {}
+            try {
+                this.masterGain.gain.setValueAtTime(this.volume, this.audioCtx.currentTime);
+            } catch (e) {}
         } else {
             this.audio.volume = this.volume;
         }
-
         this.audio.src = finalUrl;
 
+        // Apply metadata and update document title immediately
         this.updateMediaSession(track);
         if (this.onTrackChange) this.onTrackChange(track);
         this.savePlaybackState();
@@ -937,9 +1023,11 @@ class AudioPlayerEngine {
             }
             this._preloadedForCurrentTrack = false;
             await this.audio.play();
+            // Re-apply metadata and lock screen action handlers post-play to prevent WebKit overwrite
             this.updateMediaSession(track);
             this.attachMediaSessionActionHandlers();
-            this.preloadNextTrackStream();
+            setTimeout(() => { this.updateMediaSession(track); this.attachMediaSessionActionHandlers(); }, 350);
+            setTimeout(() => { this.updateMediaSession(track); this.attachMediaSessionActionHandlers(); }, 1000);
         } catch (playErr) {
             console.warn('[Audio Player] Playback start notification:', playErr);
             this.isPlaying = false;
@@ -959,9 +1047,12 @@ class AudioPlayerEngine {
         let cur = this.getCurrentTrack();
         const active = this.audio;
 
+        // If nothing is loaded yet, start the last played track or the first available track
         if (!active.src && !cur) {
             const restored = this.restorePlaybackState();
-            if (restored) cur = this.getCurrentTrack();
+            if (restored) {
+                cur = this.getCurrentTrack();
+            }
             if (!cur && window.allLoadedSongs && window.allLoadedSongs.length > 0) {
                 await this.playTrack(window.allLoadedSongs[0], window.allLoadedSongs, 0);
                 return;
@@ -977,7 +1068,6 @@ class AudioPlayerEngine {
         }
 
         if (active.paused) {
-            this.stopKeepAlive();
             this.notifyInstancePlaybackStart();
             if (cur) this.updateMediaSession(cur);
             if (this.audioCtx && this.audioCtx.state === 'suspended') {
@@ -987,11 +1077,12 @@ class AudioPlayerEngine {
                 await active.play();
                 if (cur) this.updateMediaSession(cur);
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-            } catch (e) {
-                await this.resumeFromLockScreen();
+            } catch(e) {
+                console.warn('Playback resume blocked:', e);
             }
         } else {
-            this.pause();
+            active.pause();
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
         }
         this.savePlaybackState();
     }
@@ -1010,7 +1101,7 @@ class AudioPlayerEngine {
         if (this.audioCtx && this.audioCtx.state === 'suspended') {
             this.audioCtx.resume().catch(() => {});
         }
-        this.audio.play().catch(() => this.resumeFromLockScreen());
+        this.audio.play().catch(e => console.warn('Resume error:', e));
         this.savePlaybackState();
     }
 
@@ -1035,6 +1126,7 @@ class AudioPlayerEngine {
         try {
             if (this.queue.length === 0) return;
 
+            // Priority 1: User-queued songs (FIFO)
             if (this.userQueue.length > 0) {
                 this.userQueue.shift();
                 this.currentIndex++;
@@ -1072,6 +1164,7 @@ class AudioPlayerEngine {
                 return;
             }
 
+            // End of queue reached!
             if (this.repeatMode === 'all') {
                 this.currentIndex = 0;
                 const track = this.queue[0];
@@ -1081,12 +1174,13 @@ class AudioPlayerEngine {
                 return;
             }
 
+            // Continuous Vibe flow when queue finishes
             const cur = this.getCurrentTrack();
             if (cur && window.VibeEngine && typeof window.VibeEngine.getContinuousRadioTrack === 'function') {
                 if (this.onStatusMessage) this.onStatusMessage('Curating Vibe Suggestions...');
                 try {
                     const newSong = await window.VibeEngine.getContinuousRadioTrack(cur, this.history);
-                    if (newSong) {
+                    if (newSong && newSong.streamUrl) {
                         this.queue.push(newSong);
                         this.currentIndex = this.queue.length - 1;
                         if (this.onQueueChange) this.onQueueChange(this.queue, this.currentIndex);
@@ -1094,9 +1188,12 @@ class AudioPlayerEngine {
                         if (autoPlay) await this.playTrack(newSong, this.queue, this.currentIndex, false);
                         return;
                     }
-                } catch (err) {}
+                } catch (err) {
+                    console.warn('[VibeEngine] continuous radio flow error:', err);
+                }
             }
 
+            console.log('[AudioPlayer] Reached end of queue.');
             this.pause();
         } finally {
             this._isSkipping = false;
@@ -1123,6 +1220,7 @@ class AudioPlayerEngine {
                 if (window.renderSideQueueContent) window.renderSideQueueContent();
                 await this.playTrack(track, this.queue, this.currentIndex, this.isSequentialContext);
             } else if (this.history && this.history.length > 1) {
+                // If at start of queue, navigate backwards into play history
                 const prevTrack = this.history[this.history.length - 2];
                 if (prevTrack) {
                     await this.playTrack(prevTrack, this.queue, 0, this.isSequentialContext);
@@ -1155,6 +1253,9 @@ class AudioPlayerEngine {
         return this.repeatMode;
     }
 
+    /**
+     * iOS Safari Lock Screen Resume Handler
+     */
     async resumeFromLockScreen() {
         this.stopKeepAlive();
         this.isPlaying = true;
@@ -1166,6 +1267,7 @@ class AudioPlayerEngine {
 
         this.notifyInstancePlaybackStart();
 
+        // 1. Direct native play call synchronously within action handler to retain iOS user activation privilege
         try {
             const p = active.play();
             if (p !== undefined) {
@@ -1177,32 +1279,51 @@ class AudioPlayerEngine {
                 if (this.onPlayStateChange) this.onPlayStateChange(true);
                 return;
             }
-        } catch (err) {}
+        } catch (err) {
+            console.warn('[LockScreen Resume]: Direct play failed, recovering audio stream...', err);
+        }
 
-        if (cur) {
+        // 2. Stream reload recovery (handles socket closure/network standby during locked pause)
+        try {
+            const curTime = active.currentTime || 0;
+            const streamUrl = cur?.streamUrl || active.src;
+            if (streamUrl) {
+                active.src = streamUrl;
+                if (curTime > 0) {
+                    active.addEventListener('loadedmetadata', () => {
+                        try { active.currentTime = curTime; } catch(e){}
+                    }, { once: true });
+                }
+                active.load();
+                await active.play();
+                this.isPlaying = true;
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+                if (cur) this.updateMediaSession(cur);
+                this.updatePositionState();
+                if (this.onPlayStateChange) this.onPlayStateChange(true);
+                return;
+            }
+        } catch (reloadErr) {
+            console.warn('[LockScreen Resume]: Stream reload failed, resolving fresh stream...', reloadErr);
+        }
+
+        // 3. Fallback: Re-resolve stream URL if CDN token expired while locked
+        if (cur && typeof window !== 'undefined' && window.resolveTrackStreamUrl) {
             try {
-                const curTime = active.currentTime || 0;
-                const res = await fetch(`${window.API_PREFIX || ''}/api/resolve?title=${encodeURIComponent(cur.title)}&artist=${encodeURIComponent(cur.artist || '')}`);
-                const data = await res.json();
-                const freshUrl = (data.success && data.track && data.track.streamUrl) ? data.track.streamUrl : (cur.streamUrl || active.src);
+                const freshUrl = await window.resolveTrackStreamUrl(cur);
                 if (freshUrl) {
                     cur.streamUrl = freshUrl;
                     active.src = freshUrl;
-                    if (curTime > 0) {
-                        active.addEventListener('loadedmetadata', () => {
-                            try { active.currentTime = curTime; } catch (e) {}
-                        }, { once: true });
-                    }
                     active.load();
                     await active.play();
                     this.isPlaying = true;
                     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-                    this.updateMediaSession(cur);
+                    if (cur) this.updateMediaSession(cur);
                     this.updatePositionState();
                     if (this.onPlayStateChange) this.onPlayStateChange(true);
                 }
             } catch (resolveErr) {
-                console.error('[LockScreen Resume]: Recovery failed:', resolveErr);
+                console.error('[LockScreen Resume]: Full recovery failed:', resolveErr);
             }
         }
     }
@@ -1215,9 +1336,13 @@ class AudioPlayerEngine {
     attachMediaSessionActionHandlers() {
         if (!('mediaSession' in navigator)) return;
 
+        // 1. CRITICAL FOR MOBILE LOCK SCREEN:
+        // Explicitly clear seekbackward and seekforward to null first!
+        // When seekbackward/seekforward are registered, iOS Safari lock screen hides the Next and Previous song buttons!
         try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch (e) {}
         try { navigator.mediaSession.setActionHandler('seekforward', null); } catch (e) {}
 
+        // 2. CRITICAL: Next Track & Previous Track buttons for iPhone Lock Screen, Dynamic Island, Apple Watch & Android
         try {
             navigator.mediaSession.setActionHandler('previoustrack', () => {
                 this.prev();
@@ -1230,18 +1355,32 @@ class AudioPlayerEngine {
             });
         } catch (e) {}
 
+        // 3. Play & Pause
         try {
             navigator.mediaSession.setActionHandler('play', () => {
+                this.isPlaying = true;
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = 'playing';
+                }
                 this.resumeFromLockScreen();
             });
         } catch (e) {}
 
         try {
             navigator.mediaSession.setActionHandler('pause', () => {
-                this.pause();
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = 'paused';
+                }
+                this.isPlaying = false;
+                this.audio.pause();
+                this.startKeepAlive();
+                this.updatePositionState();
+                if (this.onPlayStateChange) this.onPlayStateChange(false);
+                this.savePlaybackState();
             });
         } catch (e) {}
 
+        // 4. Smooth progress scrubber on lock screen
         try {
             navigator.mediaSession.setActionHandler('seekto', (details) => {
                 if (details.seekTime !== undefined && isFinite(details.seekTime)) {
@@ -1255,13 +1394,10 @@ class AudioPlayerEngine {
             });
         } catch (e) {}
 
+        // 5. Stop
         try {
             navigator.mediaSession.setActionHandler('stop', () => {
-                this.stopKeepAlive();
-                this.audio.pause();
-                this.isPlaying = false;
-                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-                if (this.onPlayStateChange) this.onPlayStateChange(false);
+                this.pause();
             });
         } catch (e) {}
     }
@@ -1282,18 +1418,26 @@ class AudioPlayerEngine {
         }
     }
 
+    /**
+     * Bulletproof Lock Screen Metadata & Title Synchronizer
+     * Updates document.title, Apple Touch Icon, and MediaSession metadata.
+     */
     updateMediaSession(track) {
         if (!track) track = this.getCurrentTrack();
         if (!track) return;
 
+        // 1. Clean Title, Artist, Album
         const sTitle = (track.title || 'Studio Lossless').trim();
-        const sArtist = ((track.artist && track.artist !== 'undefined' && track.artist !== 'Unknown')
-            ? track.artist
+        const sArtist = ((track.artist && track.artist !== 'undefined' && track.artist !== 'Unknown') 
+            ? track.artist 
             : (track.primaryArtist || track.subtitle || 'Omonk Lossless Artist')).trim();
         const sAlbum = (track.album || 'Hi-Res Lossless Master').trim();
 
+        // 2. CRITICAL: Dynamically update document.title
+        // Ensures iOS native fallback displays the Song Title and Artist instead of website title
         document.title = sArtist ? `${sTitle} • ${sArtist}` : sTitle;
 
+        // 3. Extract High-Res Artwork
         let artUrl = '';
         if (typeof track.artwork === 'string' && track.artwork.trim()) {
             artUrl = track.artwork.trim();
@@ -1311,11 +1455,15 @@ class AudioPlayerEngine {
             artUrl = artUrl.replace('http://', 'https://');
         }
 
+        // 4. Dynamically update Apple Touch Icon in DOM so lockscreen pulls song cover
         try {
             const touchIcon = document.querySelector('link[rel="apple-touch-icon"]');
-            if (touchIcon && artUrl) touchIcon.href = artUrl;
+            if (touchIcon && artUrl) {
+                touchIcon.href = artUrl;
+            }
         } catch (e) {}
 
+        // 5. Update MediaSession API with multi-resolution artwork
         if ('mediaSession' in navigator) {
             try {
                 navigator.mediaSession.metadata = new MediaMetadata({
@@ -1351,8 +1499,8 @@ class AudioPlayerEngine {
     savePlaybackState() {
         const track = this.getCurrentTrack();
         if (!track) return;
-        const profId = (window.ProfileManager && window.ProfileManager.getActiveProfileId)
-            ? window.ProfileManager.getActiveProfileId()
+        const profId = (window.ProfileManager && window.ProfileManager.getActiveProfileId) 
+            ? window.ProfileManager.getActiveProfileId() 
             : 'primary';
         const key = `lossless_prof_${profId}_playback_state`;
         try {
@@ -1368,12 +1516,14 @@ class AudioPlayerEngine {
                 timestamp: Date.now()
             };
             localStorage.setItem(key, JSON.stringify(payload));
-        } catch (e) {}
+        } catch (e) {
+            console.warn('[Player Save Error]:', e);
+        }
     }
 
     restorePlaybackState() {
-        const profId = (window.ProfileManager && window.ProfileManager.getActiveProfileId)
-            ? window.ProfileManager.getActiveProfileId()
+        const profId = (window.ProfileManager && window.ProfileManager.getActiveProfileId) 
+            ? window.ProfileManager.getActiveProfileId() 
             : 'primary';
         const key = `lossless_prof_${profId}_playback_state`;
         const raw = localStorage.getItem(key);
@@ -1387,19 +1537,25 @@ class AudioPlayerEngine {
             this.currentIndex = state.currentIndex >= 0 && state.currentIndex < this.queue.length ? state.currentIndex : 0;
             this.isShuffled = !!state.isShuffled;
             this.repeatMode = state.repeatMode || 'none';
-            if (typeof state.volume === 'number') this.setVolume(state.volume);
+            if (typeof state.volume === 'number') {
+                this.setVolume(state.volume);
+            }
 
             let finalUrl = state.track.streamUrl;
             if (finalUrl) {
                 if (finalUrl.includes('.saavncdn.com')) {
-                    finalUrl = finalUrl.replace(/_(12|48|96|160)\.mp4/i, '_320.mp4');
+                    finalUrl = finalUrl.replace(/_(12|48|96|160).mp4/i, '_320.mp4');
                 }
                 this.audio.src = finalUrl;
-                if (state.currentTime > 0) this.audio.currentTime = state.currentTime;
+                if (state.currentTime > 0) {
+                    this.audio.currentTime = state.currentTime;
+                }
             }
 
             if (this.onTrackChange) this.onTrackChange(state.track);
             if (this.onTimeUpdate) this.onTimeUpdate(state.currentTime || 0, state.duration || state.track.duration || 0);
+
+            // Synchronize metadata immediately upon state restore
             this.updateMediaSession(state.track);
 
             this.isPlaying = false;
@@ -1407,9 +1563,11 @@ class AudioPlayerEngine {
 
             return state.track;
         } catch (e) {
+            console.warn('[Player Restore Error]:', e);
             return null;
         }
     }
 }
 
+// Global Singleton
 window.AudioPlayer = new AudioPlayerEngine();

@@ -625,89 +625,88 @@
     const recentHistory = (Array.isArray(history) ? history : []).slice(-35);
     const historyIds = new Set(recentHistory.map(h => typeof h === 'string' ? h : String(h?.id)).filter(Boolean));
     if (currentTrack.id) historyIds.add(String(currentTrack.id));
-
-    const historyCanonical = new Set(recentHistory.map(h => typeof h === 'string' ? '' : normalizeCanonicalTitle(h?.title)).filter(Boolean));
+    const historyTitles = new Set(recentHistory.map(h => typeof h === 'string' ? '' : (h?.title || '').toLowerCase().trim()).filter(Boolean));
+    if (currentTrack.title) historyTitles.add((currentTrack.title || '').toLowerCase().trim());
+    const historyCanon = new Set(recentHistory.map(h => typeof h === 'string' ? '' : normalizeCanonicalTitle(h?.title)).filter(Boolean));
     const curCanon = normalizeCanonicalTitle(currentTrack.title);
-    if (curCanon) historyCanonical.add(curCanon);
+    if (curCanon) historyCanon.add(curCanon);
 
-    const curLang = detectLanguage(currentTrack);
-    const curVibe = detectVibeCategory(currentTrack);
-
-    const isEligible = (cand) => {
-      if (!cand || !cand.title) return false;
-      if (cand.id && historyIds.has(String(cand.id))) return false;
+    const isNotDuplicate = (cand) => {
+      if (!cand || !cand.id || !cand.title) return false;
+      const titleKey = cand.title.toLowerCase().trim();
+      const canonKey = normalizeCanonicalTitle(cand.title);
       if (isSameSongOrReprise(cand.title, currentTrack.title)) return false;
-      const canon = normalizeCanonicalTitle(cand.title);
-      if (canon && historyCanonical.has(canon)) return false;
-      const candLang = detectLanguage(cand);
-      if (curLang && candLang && curLang !== candLang) return false;
-      const candVibe = detectVibeCategory(cand);
-      if ((curVibe === 'sad' && (candVibe === 'dance' || candVibe === 'mass')) ||
-          ((curVibe === 'dance' || curVibe === 'mass') && candVibe === 'sad')) {
-        return false;
-      }
+      if (historyIds.has(String(cand.id))) return false;
+      if (historyTitles.has(titleKey)) return false;
+      if (canonKey && historyCanon.has(canonKey)) return false;
       return true;
     };
 
+    // Step 1: Original Upstream Vibe Radio candidates
     try {
       const qParams = new URLSearchParams({
         id: currentTrack.id || '',
         title: currentTrack.title || '',
         artist: currentTrack.artist || '',
         album: currentTrack.album || '',
-        lang: curLang || 'tamil'
+        lang: currentTrack.language || 'tamil'
       });
       const res = await fetch(`${prefix}/api/radio?${qParams.toString()}`);
       if (res.ok) {
         const json = await res.json();
-        const valid = (json.tracks || []).filter(t => isEligible(t) && t.streamUrl);
-        if (valid.length > 0) {
-          valid.sort((a, b) => calculateVibeDistance(currentTrack, a) - calculateVibeDistance(currentTrack, b));
-          return valid[0];
+        const candidateTracks = json.tracks || [];
+        for (const cand of candidateTracks) {
+          if (isNotDuplicate(cand) && cand.streamUrl) {
+            return cand;
+          }
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[VibeEngine] getContinuousRadioTrack fetch failed:', e);
+    }
 
+    // Step 2: Original Query search for fresh hits by artist
     try {
       const artist = (currentTrack.artist || '').split(/[,&]/)[0].trim();
-      const vibeHint = curVibe === 'sad' ? 'melody sad' : curVibe === 'dance' ? 'kuthu dance' : 'melody hits';
       if (artist) {
-        const sRes = await fetch(`${prefix}/api/search?q=${encodeURIComponent(`${artist} ${vibeHint}`)}&limit=15`);
+        const sRes = await fetch(`${prefix}/api/search?q=${encodeURIComponent(artist + ' hits')}&limit=10`);
         if (sRes.ok) {
           const sJson = await sRes.json();
-          const valid = (sJson.results || sJson.songs || []).filter(t => isEligible(t) && t.streamUrl);
-          if (valid.length > 0) {
-            valid.sort((a, b) => calculateVibeDistance(currentTrack, a) - calculateVibeDistance(currentTrack, b));
-            return valid[0];
+          const sTracks = sJson.results || sJson.songs || [];
+          for (const cand of sTracks) {
+            if (isNotDuplicate(cand) && cand.streamUrl) {
+              return cand;
+            }
           }
         }
       }
     } catch (e) {}
 
+    // Fallback: original local pool
     const pool = (typeof window !== 'undefined' && window.AllSongPool && window.AllSongPool.length > 0)
       ? window.AllSongPool
       : [];
-    return getNextVibeTrack(currentTrack, pool, history, curLang);
+    return getNextVibeTrack(currentTrack, pool, history);
   }
 
-  async function getVibeRadioQueue(seedTrack, count = 20, history = []) {
+  /**
+   * Builds an instant Spotify Autoplay / Track Radio Queue seeded by a track.
+   * e.g., For "Machi Open the Bottle", immediately queues "Vethalaiya Potendi",
+   * "Vaada Bin Laada", "Aaluma Doluma", "Naa Ready", etc.
+   */
+  async function getVibeRadioQueue(seedTrack, count = 20) {
     if (!seedTrack) return [];
     const isCatalyst = typeof window !== 'undefined' && (
       window.location.hostname.includes('catalystserverless') ||
       window.location.hostname.includes('zohocatalyst') ||
       window.location.pathname.startsWith('/app')
     );
-    const prefix = (typeof window !== 'undefined' && window.API_PREFIX) ? window.API_PREFIX : (isCatalyst ? '/server/music_api' : '');
+    const prefix = isCatalyst ? '/server/music_api' : '';
 
     const queue = [seedTrack];
-    const seenIds = new Set(seedTrack.id ? [String(seedTrack.id)] : []);
-    const seenCanon = new Set([normalizeCanonicalTitle(seedTrack.title)].filter(Boolean));
-
-    for (const h of (history || []).slice(-35)) {
-      if (h?.id) seenIds.add(String(h.id));
-      const hc = normalizeCanonicalTitle(h?.title);
-      if (hc) seenCanon.add(hc);
-    }
+    const seen = new Set();
+    if (seedTrack.id) seen.add(String(seedTrack.id));
+    if (seedTrack.title) seen.add(seedTrack.title.toLowerCase().trim());
 
     try {
       const qParams = new URLSearchParams({
@@ -715,44 +714,37 @@
         title: seedTrack.title || '',
         artist: seedTrack.artist || '',
         album: seedTrack.album || '',
-        lang: detectLanguage(seedTrack) || 'tamil'
+        lang: seedTrack.language || 'tamil'
       });
       const res = await fetch(`${prefix}/api/radio?${qParams.toString()}`);
       if (res.ok) {
         const json = await res.json();
-        const tracks = (json.tracks || [])
-          .filter(t => t && t.streamUrl && !isSameSongOrReprise(t.title, seedTrack.title))
-          .sort((a, b) => calculateVibeDistance(seedTrack, a) - calculateVibeDistance(seedTrack, b));
-
-        function cleanAlbumKey(alb) {
-          if (!alb) return '';
-          return alb.replace(/\(.*?\)/g, '')
-                    .replace(/original motion picture soundtrack|soundtrack|single|ost|ep|theme/gi, '')
-                    .trim().toLowerCase();
-        }
-        const albumSeen = new Set();
-        const seedAlbKey = cleanAlbumKey(seedTrack.album);
-        if (seedAlbKey && seedAlbKey.length > 2) albumSeen.add(seedAlbKey);
-
+        const tracks = json.tracks || [];
         for (const t of tracks) {
-          const canon = normalizeCanonicalTitle(t.title);
-          const tAlb = cleanAlbumKey(t.album);
-          if (tAlb && tAlb.length > 2 && albumSeen.has(tAlb)) continue; // Spotify Rule: Max 1 per album
-
-          if (!seenIds.has(String(t.id)) && (!canon || !seenCanon.has(canon))) {
-            seenIds.add(String(t.id));
-            if (canon) seenCanon.add(canon);
-            if (tAlb && tAlb.length > 2) albumSeen.add(tAlb);
+          const titleKey = (t.title || '').toLowerCase().trim();
+          if (t && t.streamUrl && !seen.has(String(t.id)) && !seen.has(titleKey)) {
+            seen.add(String(t.id));
+            seen.add(titleKey);
             queue.push(t);
             if (queue.length >= count) break;
           }
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[VibeEngine] getVibeRadioQueue error:', e);
+    }
 
     return queue;
   }
 
+    /**
+   * Curates a contiguous playlist queue of tracks matching the exact vibe of the source track.
+   * e.g., If source is sad ("Thenpaandi Cheemayi"), builds an unbroken queue of matching sad songs!
+   */
+  /**
+   * High-Precision Spotify & YouTube Recommendation Algorithmic Matcher
+   * Fetches upstream suggestions, artist vibe streams, and ranks using 5D acoustic vectors.
+   */
   async function getAlgorithmicMatchingTracks(seedTrack, count = 15) {
     if (!seedTrack) return [];
     const isCatalyst = typeof window !== 'undefined' && (
@@ -768,24 +760,6 @@
     if (seedTrack.title) {
       seen.add((seedTrack.title + ' ' + (seedTrack.artist || '')).toLowerCase().trim());
     }
-
-    function cleanAlbKey(alb) {
-      if (!alb) return '';
-      return alb.replace(/\(.*?\)/g, '')
-                .replace(/original motion picture soundtrack|soundtrack|single|ost|ep|theme/gi, '')
-                .trim().toLowerCase();
-    }
-    function cleanArtKey(art) {
-      if (!art) return '';
-      return art.split(/[,&]/)[0].replace(/[.\-_]/g, ' ').trim().toLowerCase();
-    }
-
-    const albumCount = new Map();
-    const artistCount = new Map();
-    const seedAlbKey = cleanAlbKey(seedTrack.album);
-    if (seedAlbKey && seedAlbKey.length > 2) albumCount.set(seedAlbKey, 1);
-    const seedArtKey = cleanArtKey(seedTrack.artist);
-    if (seedArtKey) artistCount.set(seedArtKey, 1);
 
     function addCandidate(raw) {
       if (!raw) return;
@@ -838,23 +812,6 @@
 
       seen.add(key);
       seen.add(id);
-
-      if (album && /romantic melody/i.test(album) && (!seedTrack.album || !seedTrack.album.toLowerCase().includes('romantic melody'))) {
-        return; // Exclude legacy static Romantic Melody compilation album
-      }
-
-      // Spotify Cluster Diversity Rules:
-      const candAlbKey = cleanAlbKey(album);
-      if (candAlbKey && candAlbKey.length > 2) {
-        if ((albumCount.get(candAlbKey) || 0) >= 1) return; // Max 1 per album
-      }
-      const candArtKey = cleanArtKey(artist);
-      if (candArtKey) {
-        if ((artistCount.get(candArtKey) || 0) >= 2) return; // Max 2 per artist
-      }
-
-      if (candAlbKey && candAlbKey.length > 2) albumCount.set(candAlbKey, (albumCount.get(candAlbKey) || 0) + 1);
-      if (candArtKey) artistCount.set(candArtKey, (artistCount.get(candArtKey) || 0) + 1);
       candidates.push(cand);
     }
 
