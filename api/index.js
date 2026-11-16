@@ -1688,20 +1688,6 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                             }
                         }
 
-                        if (/(\bfa\s*fa\b|\bom\s*fa\b|\bfafafa\b)/i.test(q)) {
-                            const faTitle = 'FA FA FA (From "OM Chapter 1: Udhiram - The Blood Wood") [Tamil]';
-                            if (!suggestions.includes(faTitle)) suggestions.unshift(faTitle);
-                            tracks.unshift({
-                                id: 'fafafa_om_chapter1',
-                                title: faTitle,
-                                artist: 'Sai Abhyankkar, Thamizh Aadhavan',
-                                album: 'FA FA FA (From "OM Chapter 1: Udhiram - The Blood Wood") [Tamil]',
-                                artwork: 'https://c.saavncdn.com/696/Veezha-Veera-From-OM-Chapter-1-Udhiram-The-Blood-Wood-Tamil-Tamil-2026-20261019161818-500x500.jpg',
-                                duration: '3:35',
-                                source: 'JioSaavn',
-                                audioQuality: 'FLAC 24-bit/96kHz'
-                            });
-                        }
 
                         if (d.albums && Array.isArray(d.albums.data)) {
                             for (const item of d.albums.data) {

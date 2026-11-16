@@ -574,32 +574,6 @@ async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
     const responses = await Promise.all(fetchPromises);
 
     const rawSongs = [];
-    if (/(\bfa\s*fa\b|\bom\s*fa\b|\bfafafa\b)/i.test(rawQuery)) {
-        rawSongs.push({
-            id: 'fafafa_om_chapter1',
-            type: 'song',
-            title: 'FA FA FA (From "OM Chapter 1: Udhiram - The Blood Wood") [Tamil]',
-            name: 'FA FA FA (From "OM Chapter 1: Udhiram - The Blood Wood") [Tamil]',
-            artist: 'Sai Abhyankkar, Thamizh Aadhavan',
-            artists: ['Sai Abhyankkar', 'Thamizh Aadhavan'],
-            primaryArtist: 'Sai Abhyankkar',
-            album: 'FA FA FA (From "OM Chapter 1: Udhiram - The Blood Wood") [Tamil]',
-            year: '2026',
-            language: 'tamil',
-            duration: 215,
-            artwork: 'https://c.saavncdn.com/696/Veezha-Veera-From-OM-Chapter-1-Udhiram-The-Blood-Wood-Tamil-Tamil-2026-20261019161818-500x500.jpg',
-            popularity: 9999999,
-            playCount: 9999999,
-            qualities: {
-                lossless: 'https://aac.saavncdn.com/696/33b63dd76847575d76550d30dcc97bf5_320.mp4',
-                high: 'https://aac.saavncdn.com/696/33b63dd76847575d76550d30dcc97bf5_320.mp4',
-                standard: 'https://aac.saavncdn.com/696/33b63dd76847575d76550d30dcc97bf5_160.mp4',
-                saver: 'https://aac.saavncdn.com/696/33b63dd76847575d76550d30dcc97bf5_96.mp4'
-            },
-            streamUrl: 'https://aac.saavncdn.com/696/33b63dd76847575d76550d30dcc97bf5_320.mp4',
-            otherVersions: []
-        });
-    }
     const rawAlbums = [];
     const rawArtists = [];
     const rawPlaylists = [];
