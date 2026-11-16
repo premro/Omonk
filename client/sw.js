@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lossless-studio-v8.9.12';
+const CACHE_NAME = 'lossless-studio-v8.10.0';
 const ASSETS = [
   './',
   './index.html',

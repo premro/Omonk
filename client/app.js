@@ -5549,8 +5549,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ================= MULTI-DEVICE AUTO-REFRESH & LIVE UPDATE SYNC =================
-    const CURRENT_APP_VERSION = "8.9.10";
+    const CURRENT_APP_VERSION = "8.10.0";
     let latestServerTimestamp = 0;
+    let latestRemoteVersion = null;
+    let userDismissedUpdateVersion = null;
+    try {
+        userDismissedUpdateVersion = localStorage.getItem('omonk_dismissed_update');
+    } catch (e) {}
+
     const syncRefreshBtn = document.getElementById('syncRefreshBtn');
     const updateBanner = document.getElementById('updateAvailableBanner');
     const updateNowBtn = document.getElementById('updateNowBtn');
@@ -5575,14 +5581,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             syncBroadcast = new BroadcastChannel('lossless_studio_sync');
             syncBroadcast.onmessage = (event) => {
                 if (event.data?.version && isSemverNewer(event.data.version, CURRENT_APP_VERSION)) {
-                    showUpdateAvailableUI();
+                    showUpdateAvailableUI(event.data.version);
                 }
             };
         }
     } catch (e) {}
 
-    function showUpdateAvailableUI() {
-        if (updateBanner) updateBanner.style.display = 'block';
+    function showUpdateAvailableUI(remoteVer) {
+        if (remoteVer && userDismissedUpdateVersion && !isSemverNewer(remoteVer, userDismissedUpdateVersion)) {
+            return;
+        }
+        if (updateBanner) updateBanner.style.display = 'flex';
         if (syncRefreshBtn) {
             syncRefreshBtn.classList.add('has-update');
             const txt = document.getElementById('syncRefreshText');
@@ -5590,12 +5599,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function hideUpdateUI() {
+        if (updateBanner) updateBanner.style.display = 'none';
+        if (syncRefreshBtn) {
+            syncRefreshBtn.classList.remove('has-update');
+            const txt = document.getElementById('syncRefreshText');
+            if (txt) txt.textContent = 'Sync';
+        }
+    }
+
     async function triggerInstantRefresh() {
+        hideUpdateUI();
         if (syncRefreshBtn) {
             syncRefreshBtn.innerHTML = '<span>⏳ Syncing...</span>';
             syncRefreshBtn.disabled = true;
         }
         showToast('Refreshing app state & clearing cache...', '🔄');
+
+        try {
+            if (latestRemoteVersion) {
+                localStorage.setItem('omonk_dismissed_update', latestRemoteVersion);
+            }
+        } catch (e) {}
 
         // 1. Kick off non-blocking serverless sync with strict 2.5s timeout (never hangs)
         try {
@@ -5651,39 +5676,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         triggerInstantRefresh();
     });
 
-    let userDismissedUpdateVersion = null;
     dismissUpdateBtn?.addEventListener('click', () => {
-        if (updateBanner) updateBanner.style.display = 'none';
-        userDismissedUpdateVersion = true;
+        hideUpdateUI();
+        if (latestRemoteVersion) {
+            userDismissedUpdateVersion = latestRemoteVersion;
+            try {
+                localStorage.setItem('omonk_dismissed_update', latestRemoteVersion);
+            } catch (e) {}
+        }
     });
 
     async function checkForStudioUpdates() {
         try {
-            // Check version.json first (client static asset), then fallback to /api/version
             let res = await fetch(`version.json?_t=${Date.now()}`).catch(() => null);
             if (!res || !res.ok) {
                 res = await fetch(`${API_PREFIX}/api/version?_t=${Date.now()}`).catch(() => null);
             }
             if (res && res.ok) {
                 const data = await res.json();
+                latestRemoteVersion = data.version || null;
                 const isNewer = data.version && isSemverNewer(data.version, CURRENT_APP_VERSION);
-                if (isNewer) {
+                const isDismissed = userDismissedUpdateVersion && !isSemverNewer(data.version, userDismissedUpdateVersion);
+
+                if (isNewer && !isDismissed) {
                     console.log(`[Update Available]: Current ${CURRENT_APP_VERSION} -> Remote ${data.version}`);
-                    if (!userDismissedUpdateVersion && updateBanner) {
-                        updateBanner.style.display = 'flex';
-                    }
-                    if (syncRefreshBtn) {
-                        syncRefreshBtn.classList.add('has-update');
-                        const txt = document.getElementById('syncRefreshText');
-                        if (txt) txt.textContent = 'Update';
-                    }
+                    showUpdateAvailableUI(data.version);
                 } else {
-                    if (updateBanner) updateBanner.style.display = 'none';
-                    if (syncRefreshBtn) {
-                        syncRefreshBtn.classList.remove('has-update');
-                        const txt = document.getElementById('syncRefreshText');
-                        if (txt) txt.textContent = 'Sync';
-                    }
+                    hideUpdateUI();
                 }
             }
         } catch (e) {}
