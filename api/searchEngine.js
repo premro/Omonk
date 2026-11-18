@@ -6,9 +6,16 @@ function getCatalogTracks() {
     if (_catalogTracks) return _catalogTracks;
     _catalogTracks = [];
     try {
-        const p = path.join(__dirname, 'chartsData.json');
-        if (fs.existsSync(p)) {
-            const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+        let data = null;
+        try {
+            data = require('./chartsData.json');
+        } catch (e) {
+            const p = path.join(__dirname, 'chartsData.json');
+            if (fs.existsSync(p)) {
+                data = JSON.parse(fs.readFileSync(p, 'utf8'));
+            }
+        }
+        if (data) {
             const seen = new Set();
             for (const [lang, tfMap] of Object.entries(data.charts || {})) {
                 for (const [tf, list] of Object.entries(tfMap || {})) {
