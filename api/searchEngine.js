@@ -1,3 +1,46 @@
+const path = require('path');
+const fs = require('fs');
+
+let _catalogTracks = null;
+function getCatalogTracks() {
+    if (_catalogTracks) return _catalogTracks;
+    _catalogTracks = [];
+    try {
+        const p = path.join(__dirname, 'chartsData.json');
+        if (fs.existsSync(p)) {
+            const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+            const seen = new Set();
+            for (const [lang, tfMap] of Object.entries(data.charts || {})) {
+                for (const [tf, list] of Object.entries(tfMap || {})) {
+                    if (Array.isArray(list)) {
+                        for (const t of list) {
+                            if (t && t.id && !seen.has(t.id)) {
+                                seen.add(t.id);
+                                _catalogTracks.push({
+                                    id: String(t.id),
+                                    title: t.title,
+                                    artist: t.artist,
+                                    primaryArtist: t.artist,
+                                    album: t.album || '',
+                                    year: t.year || '',
+                                    duration: t.duration || 210,
+                                    language: t.language || lang,
+                                    image: t.artwork || t.image || '',
+                                    artwork: t.artwork || t.image || '',
+                                    streamUrl: t.streamUrl || '',
+                                    quality: t.quality || 'FLAC / 320kbps Lossless Hi-Fi',
+                                    hasLyrics: true
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } catch (e) {}
+    return _catalogTracks;
+}
+
 // Universal Lossless Search & Relevance Ranking Engine
 'use strict';
 
@@ -467,13 +510,14 @@ function calcItemScore(item, parsed) {
         score += popBoost;
     }
 
-    const isSongKaraoke = /karaoke|instrumental|minus\s*one|originally\s*perfomed/i.test(item.title);
+    const fullItemStr = `${item.title || ''} ${item.artist || ''} ${item.album || ''}`.toLowerCase();
+    const isSongKaraoke = /karaoke|instrumental|minus\s*one|originally\s*perfomed|originally\s*performed|in the style of|prosource|ameritz/i.test(fullItemStr);
     const isSongRemix = /remix|lofi|reprise|unplugged|slowed|sped\s*up/i.test(item.title);
-    const isSongCover = /cover|tribute|recreated/i.test(item.title) || /aish|zzang/i.test(itemArtist);
+    const isSongCover = /cover|tribute|recreated/i.test(fullItemStr) || /aish|zzang/i.test(itemArtist);
 
-    if (isSongKaraoke && !parsed.filters.isKaraoke) score -= 80;
+    if (isSongKaraoke && !parsed.filters.isKaraoke) score -= 300;
     if (isSongRemix && !parsed.filters.isRemix) score -= 40;
-    if (isSongCover && !parsed.filters.isCover) score -= 80;
+    if (isSongCover && !parsed.filters.isCover) score -= 200;
 
     if (parsed.entityHint === item.type) score += 35;
     if (parsed.artistHint && itemArtist.includes(normalize(parsed.artistHint))) score += 30;
@@ -692,6 +736,41 @@ async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
             best.otherVersions = group.slice(1);
         }
         dedupedSongs.push(best);
+    }
+
+    // Inject verified catalog tracks (e.g. Beggin' by Madcon)
+    try {
+        const catalog = getCatalogTracks();
+        const qClean = normalize(parsed.cleanText);
+        const qTokens = qClean.split(' ').filter(w => w.length > 1);
+        if (qTokens.length > 0) {
+            for (const cat of catalog) {
+                const cStr = normalize(`${cat.title} ${cat.artist} ${cat.album}`);
+                if (qTokens.every(tok => cStr.includes(tok))) {
+                    const normCat = normalizeSong({
+                        id: cat.id,
+                        title: cat.title,
+                        name: cat.title,
+                        artist: cat.artist,
+                        primaryArtists: cat.artist,
+                        album: cat.album,
+                        duration: cat.duration,
+                        language: cat.language,
+                        image: cat.image || cat.artwork,
+                        media_preview_url: cat.streamUrl,
+                        streamUrl: cat.streamUrl,
+                        downloadUrl: [{ quality: '320kbps', link: cat.streamUrl }]
+                    });
+                    if (normCat) {
+                        normCat.score = 9999;
+                        normCat.streamUrl = cat.streamUrl;
+                        dedupedSongs.unshift(normCat);
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('Catalog inject err:', e);
     }
 
     const sorter = (a, b) => (b.score - a.score) || (b.popularity - a.popularity) || a.title.localeCompare(b.title);
