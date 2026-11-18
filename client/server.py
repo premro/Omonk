@@ -123,7 +123,7 @@ class LosslessRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         # 2. API Charts (Daily, Weekly, Monthly Hits)
         if path == '/api/artists':
-            lang = qs.get('lang', ['all'])[0]
+            lang = qs.get('lang', qs.get('language', ['all']))[0]
             artists = charts_data.get_artists(lang)
             return self.send_json({"success": True, "count": len(artists), "artists": artists})
 
@@ -135,8 +135,8 @@ class LosslessRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self.send_json({"success": False, "error": "Artist not found"}, 404)
 
         if path == '/api/charts':
-            chart_type = qs.get('type', ['daily'])[0]
-            lang = qs.get('lang', ['tamil'])[0]
+            chart_type = qs.get('type', qs.get('timeframe', ['daily']))[0]
+            lang = qs.get('lang', qs.get('language', ['tamil']))[0]
             resolve_audio = qs.get('resolve', ['false'])[0].lower() == 'true'
             
             hits = charts_data.get_hits(chart_type, lang)
@@ -176,8 +176,9 @@ class LosslessRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path == '/api/search':
             query = qs.get('q', [''])[0]
             limit = int(qs.get('limit', [25])[0])
+            language = qs.get('lang', [''])[0] or qs.get('language', [''])[0]
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                future_tracks = executor.submit(spotiflac.search_tracks, query, limit)
+                future_tracks = executor.submit(spotiflac.search_tracks, query, limit, language)
                 future_albums = executor.submit(spotiflac.search_albums, query, 3)
                 results = future_tracks.result()
                 albums = future_albums.result()
@@ -371,6 +372,8 @@ class LosslessRequestHandler(http.server.SimpleHTTPRequestHandler):
                 res = spotiflac.extract_spotify_album(url)
             elif 'track' in url:
                 res = spotiflac.extract_spotify_track(url)
+                if res.get('success') and 'track' in res and 'tracks' not in res:
+                    res['tracks'] = [res['track']]
             else:
                 return self.send_json({"success": False, "error": "Unrecognized Spotify URL format"}, 400)
             return self.send_json(res)

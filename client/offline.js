@@ -13,11 +13,29 @@ function getApiPrefix() {
     }
     if (typeof window !== 'undefined' && (
         window.location.hostname.includes('catalystserverless') ||
-        window.location.hostname.includes('zohocatalyst') 
+        window.location.hostname.includes('zohocatalyst') ||
+        window.location.pathname.startsWith('/app')
     )) {
         return '/server/music_api';
     }
     return '';
+}
+
+const _downloadedIds = new Set();
+
+async function _syncDownloadedIds() {
+    try {
+        const tracks = await getOfflineTracks();
+        _downloadedIds.clear();
+        (tracks || []).forEach(t => {
+            if (t && t.id) _downloadedIds.add(String(t.id));
+        });
+    } catch (e) {}
+}
+
+function isSongDownloadedSync(trackId) {
+    if (!trackId) return false;
+    return _downloadedIds.has(String(trackId));
 }
 
 async function initOfflineDB() {
@@ -40,7 +58,7 @@ async function initOfflineDB() {
         };
         request.onsuccess = (e) => {
             db = e.target.result;
-            resolve(db);
+            _syncDownloadedIds().finally(() => resolve(db));
         };
         request.onerror = (e) => {
             console.error('IndexedDB error:', e);
@@ -72,7 +90,7 @@ async function saveTrackOffline(track, audioBlob, lyricsData = null) {
             downloadedAt: Date.now()
         };
         const req = store.put(offlineRecord);
-        req.onsuccess = () => resolve(offlineRecord);
+        req.onsuccess = () => { _downloadedIds.add(String(track.id)); resolve(offlineRecord); };
         req.onerror = (e) => reject(e);
     });
 }
@@ -105,7 +123,7 @@ async function removeOfflineTrack(trackId) {
         const tx = db.transaction('tracks', 'readwrite');
         const store = tx.objectStore('tracks');
         const req = store.delete(String(trackId));
-        req.onsuccess = () => resolve(true);
+        req.onsuccess = () => { _downloadedIds.delete(String(trackId)); resolve(true); };
         req.onerror = (e) => reject(e);
     });
 }
@@ -354,7 +372,8 @@ window.OfflineEngine = {
     getOfflineTrack,
     removeOfflineTrack,
     isTrackOffline,
-    isSongDownloaded: isTrackOffline,
+    isSongDownloaded: isSongDownloadedSync,
+    isSongDownloadedSync: isSongDownloadedSync,
     downloadTrackToFile,
     downloadTrackToOfflineDB,
     encodeAudioBufferToWav24

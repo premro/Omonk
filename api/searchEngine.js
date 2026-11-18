@@ -20,7 +20,7 @@ const INTERNATIONAL_ARTISTS = [
     'adele', 'beyonce', 'lady gaga', 'sam smith', 'harry styles', 'one direction',
     'bts', 'blackpink', 'michael jackson', 'queen', 'linkin park', 'marshmello', 'sia',
     'shakira', 'pitbull', 'david guetta', 'calvin harris', 'cardi b', 'nicki minaj',
-    'travis scott', 'kendrick lamar', 'kanye west', 'twenty one pilots', 'halsey', 'olivia rodrigo'
+    'travis scott', 'kendrick lamar', 'kanye west', 'twenty one pilots', 'halsey', 'olivia rodrigo', 'madcon', 'måneskin', 'maneskin', 'tame impala', 'tate mcrae', 'karol g'
 ];
 
 const ERAS = {
@@ -76,7 +76,7 @@ function normalize(str) {
 }
 
 function parseQuery(raw) {
-    let clean = raw.trim();
+    let clean = (raw || '').replace(/["'`“”‘’()[\]]/g, ' ').replace(/\s+/g, ' ').trim();
     let detectedLang = null;
     let detectedEra = null;
     let entityHint = null;

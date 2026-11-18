@@ -379,9 +379,11 @@ async function importSpotify(inputUrl) {
 
             // If it is a single track
             if (type === 'track') {
+                const artistsList = (entity?.artists || []).map(a => a.name).filter(Boolean);
+                const artistName = artistsList.join(', ') || entity?.subtitle || 'Spotify Artist';
                 const singleTrack = {
                     title: cleanTrackName(entity?.title || title) || title,
-                    artist: entity?.subtitle || 'Spotify Artist',
+                    artist: artistName,
                     duration: Math.round((entity?.duration || 210000) / 1000),
                     artwork: cover
                 };
@@ -399,12 +401,16 @@ async function importSpotify(inputUrl) {
                 return { success: false, error: 'No playable tracks found in this playlist. Please ensure it is a public Spotify playlist.' };
             }
 
-            const tracks = trackList.map(t => ({
-                title: cleanTrackName(t.title) || t.title,
-                artist: t.subtitle || '',
-                duration: Math.round((t.duration || 210000) / 1000),
-                artwork: cover
-            }));
+            const tracks = trackList.map(t => {
+                const artistsList = (t.artists || []).map(a => a.name).filter(Boolean);
+                const artistName = artistsList.join(', ') || t.subtitle || '';
+                return {
+                    title: cleanTrackName(t.title) || t.title,
+                    artist: artistName,
+                    duration: Math.round((t.duration || 210000) / 1000),
+                    artwork: cover
+                };
+            });
 
             return {
                 success: true,

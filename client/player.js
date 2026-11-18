@@ -836,7 +836,15 @@ class AudioPlayerEngine {
                     );
                     const prefix = window.API_PREFIX || (isCatalyst ? '/server/music_api' : '');
                     const artistQuery = (track.artist || '').split(/[,&]/)[0].trim();
-                    const sQuery = artistQuery ? `${artistQuery} hits` : `${track.language || 'tamil'} hits`;
+                    let sQuery = '';
+                    if (artistQuery) {
+                        sQuery = `${artistQuery} hits`;
+                    } else if (track.language) {
+                        sQuery = `${track.language} hits`;
+                    } else {
+                        const isIndic = /[\u0B80-\u0BFF\u0C00-\u0C7F\u0900-\u097F\u0A80-\u0AFF\u0D00-\u0D7F]/.test(track.title || '');
+                        sQuery = isIndic ? 'tamil hits' : 'english hits';
+                    }
                     const sRes = await fetch(`${prefix}/api/search?q=${encodeURIComponent(sQuery)}&limit=15`);
                     if (sRes.ok) {
                         const sJson = await sRes.json();

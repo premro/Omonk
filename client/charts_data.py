@@ -273,6 +273,7 @@ CHART_CATALOG = {
     },
     "english": {
         "daily": [
+            {"title": "Beggin'", "artist": "Madcon", "album": "So Dark the Con of Man", "duration": 216},
             {"title": "Espresso", "artist": "Sabrina Carpenter", "album": "Short n' Sweet", "duration": 175},
             {"title": "Please Please Please", "artist": "Sabrina Carpenter", "album": "Short n' Sweet", "duration": 186},
             {"title": "Taste", "artist": "Sabrina Carpenter", "album": "Short n' Sweet", "duration": 157},
@@ -285,6 +286,7 @@ CHART_CATALOG = {
             {"title": "Not Like Us", "artist": "Kendrick Lamar", "album": "Not Like Us", "duration": 274}
         ],
         "weekly": [
+            {"title": "Beggin'", "artist": "Madcon", "album": "So Dark the Con of Man", "duration": 216},
             {"title": "Fortnight", "artist": "Taylor Swift, Post Malone", "album": "The Tortured Poets Department", "duration": 228},
             {"title": "I Can Do It With a Broken Heart", "artist": "Taylor Swift", "album": "The Tortured Poets Department", "duration": 218},
             {"title": "Cruel Summer", "artist": "Taylor Swift", "album": "Lover", "duration": 178},
@@ -297,6 +299,7 @@ CHART_CATALOG = {
             {"title": "Flowers", "artist": "Miley Cyrus", "album": "Endless Summer Vacation", "duration": 200}
         ],
         "monthly": [
+            {"title": "Beggin'", "artist": "Madcon", "album": "So Dark the Con of Man", "duration": 216},
             {"title": "Shape of You", "artist": "Ed Sheeran", "album": "÷ (Divide)", "duration": 233},
             {"title": "Perfect", "artist": "Ed Sheeran", "album": "÷ (Divide)", "duration": 263},
             {"title": "Bad Habits", "artist": "Ed Sheeran", "album": "= (Equals)", "duration": 231},
@@ -730,6 +733,19 @@ ARTISTS_CATALOG = [
         ]
     },
     # English / Global
+    {
+        "id": "madcon",
+        "name": "Madcon",
+        "language": "english",
+        "role": "Pop / Hip-Hop Duo",
+        "avatar": "https://c.saavncdn.com/525/Beggin-Frank-Walker-Remixes-English-2019-20190524021021-500x500.jpg",
+        "monthlyListeners": "15.8M",
+        "tracks": [
+            {"id": "mc_1", "title": "Beggin'", "artist": "Madcon", "album": "So Dark the Con of Man", "duration": 216, "quality": "FLAC / 320kbps Hi-Fi", "streamUrl": "https://aac.saavncdn.com/525/d6725bd1e03e20c92862dc6b0038d0b3_320.mp4"},
+            {"id": "mc_2", "title": "Glow", "artist": "Madcon", "album": "Contraband", "duration": 229, "quality": "FLAC / 320kbps Hi-Fi"},
+            {"id": "mc_3", "title": "Don't Worry", "artist": "Madcon, Ray Dalton", "album": "Don't Worry", "duration": 214, "quality": "FLAC / 320kbps Hi-Fi"}
+        ]
+    },
     {
         "id": "the_weeknd",
         "name": "The Weeknd",

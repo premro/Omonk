@@ -1,6 +1,7 @@
 const GLOBAL_API_PREFIX = (typeof window !== 'undefined' && (
     window.location.hostname.includes('catalystserverless') ||
-    window.location.hostname.includes('zohocatalyst') 
+    window.location.hostname.includes('zohocatalyst') ||
+    window.location.pathname.startsWith('/app')
 )) ? '/server/music_api' : '';
 if (typeof window !== 'undefined' && !window.API_PREFIX) {
     window.API_PREFIX = GLOBAL_API_PREFIX;
@@ -16,7 +17,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentView = 'home';
     const isCatalyst = typeof window !== 'undefined' && (
         window.location.hostname.includes('catalystserverless') ||
-        window.location.hostname.includes('zohocatalyst') 
+        window.location.hostname.includes('zohocatalyst') ||
+        window.location.pathname.startsWith('/app')
     );
     const API_PREFIX = isCatalyst ? '/server/music_api' : '';
 
@@ -51,8 +53,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     let availableLanguages = [...DEFAULT_LANGUAGES];
     let selectedLanguages = JSON.parse(localStorage.getItem('preferred_languages') || '[]');
     if (!Array.isArray(selectedLanguages) || selectedLanguages.length === 0) {
-        selectedLanguages = ['tamil'];
+        const single = localStorage.getItem('preferred_language');
+        selectedLanguages = single ? [single] : ['tamil'];
     }
+    window.selectedLanguages = selectedLanguages;
+
+    function getActiveLanguage() {
+        if (Array.isArray(selectedLanguages) && selectedLanguages.length > 0) return selectedLanguages[0];
+        if (Array.isArray(window.selectedLanguages) && window.selectedLanguages.length > 0) return window.selectedLanguages[0];
+        try {
+            const stored = JSON.parse(localStorage.getItem('preferred_languages') || '[]');
+            if (Array.isArray(stored) && stored.length > 0) return stored[0];
+        } catch (e) {}
+        const single = localStorage.getItem('preferred_language');
+        if (single) return single;
+        return 'english';
+    }
+    window.getActiveLanguage = getActiveLanguage;
     let currentChartType = 'daily'; // 'daily' | 'weekly' | 'monthly'
     let currentChartLang = '';
     let currentArtistLang = 'all';
@@ -455,6 +472,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const first = availableLanguages.find(l => l.code === selectedLanguages[0]) || DEFAULT_LANGUAGES.find(l => l.code === selectedLanguages[0]);
         headerLangFlag.textContent = first ? first.flag : "🌐";
         currentChartLang = selectedLanguages[0] || 'tamil';
+        window.selectedLanguages = selectedLanguages;
+        localStorage.setItem('preferred_language', selectedLanguages[0] || 'tamil');
         SpotifyEngine.setPreferredLanguages(selectedLanguages);
     }
 
@@ -497,7 +516,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         selectedLanguages = codes;
+        window.selectedLanguages = selectedLanguages;
         localStorage.setItem('preferred_languages', JSON.stringify(selectedLanguages));
+        localStorage.setItem('preferred_language', selectedLanguages[0]);
         updateHeaderLanguageDisplay();
         langModal.classList.remove('active');
         showToast('Language preferences updated!', '✨');
@@ -2654,17 +2675,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 for (const h of history) {
                     if (!querySuggestions.includes(h)) querySuggestions.push(h);
                 }
-            } else {
-                const trending = [
-                    'tamil 90s melody hits',
-                    'anirudh hits',
-                    'deva gana songs',
-                    'ar rahman classics',
-                    'trending viral songs'
-                ];
-                for (const s of trending) {
-                    if (!querySuggestions.includes(s)) querySuggestions.push(s);
-                }
             }
         }
 
@@ -3108,7 +3118,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const isCatalyst = typeof window !== 'undefined' && (
                     window.location.hostname.includes('catalystserverless') ||
-                    window.location.hostname.includes('zohocatalyst') 
+                    window.location.hostname.includes('zohocatalyst') ||
+                    window.location.pathname.startsWith('/app')
                 );
                 const prefix = window.API_PREFIX || (isCatalyst ? '/server/music_api' : '');
                 const res = await fetch(`${prefix}/api/album?id=${encodeURIComponent(album.id)}`);
@@ -3169,7 +3180,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const isCatalyst = typeof window !== 'undefined' && (
                     window.location.hostname.includes('catalystserverless') ||
-                    window.location.hostname.includes('zohocatalyst') 
+                    window.location.hostname.includes('zohocatalyst') ||
+                    window.location.pathname.startsWith('/app')
                 );
                 const prefix = window.API_PREFIX || (isCatalyst ? '/server/music_api' : '');
                 const res = await fetch(`${prefix}/api/album?id=${encodeURIComponent(album.id)}`);
@@ -3207,11 +3219,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             { id: 'podcasts', label: 'Podcasts & Shows' }
         ];
         return `
-            <div class="search-category-chips" style="display: flex !important; align-items: center !important; gap: 8px !important; margin: 16px 0 20px 0 !important; overflow-x: auto !important; overflow-y: hidden !important; padding: 4px 2px 8px 2px !important; scrollbar-width: none !important; flex-shrink: 0 !important; min-height: 48px !important; height: 48px !important; box-sizing: border-box !important; width: 100% !important;">
+            <div class="search-category-chips" style="display: flex; gap: 8px; margin: 16px 0 20px 0; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none;">
                 ${categories.map(cat => {
                     const isActive = cat.id === activeCat;
                     return `
-                        <button class="search-chip ${isActive ? 'active' : ''}" data-search-filter="${cat.id}" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; height: 36px !important; min-height: 36px !important; max-height: 36px !important; padding: 0 18px !important; border-radius: 999px !important; font-size: 13.5px !important; font-weight: ${isActive ? '700' : '600'} !important; line-height: normal !important; cursor: pointer !important; white-space: nowrap !important; user-select: none !important; box-sizing: border-box !important; border: 1px solid ${isActive ? '#ffffff' : 'rgba(255,255,255,0.14)'} !important; background: ${isActive ? '#ffffff' : 'rgba(255,255,255,0.08)'} !important; color: ${isActive ? '#000000' : '#e4e4e7'} !important; flex-shrink: 0 !important; transition: all 0.15s ease !important;">
+                        <button class="search-chip ${isActive ? 'active' : ''}" data-search-filter="${cat.id}" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; height: 34px !important; min-height: 34px !important; padding: 0 18px !important; border-radius: 999px !important; font-size: 13.5px !important; font-weight: ${isActive ? '700' : '600'} !important; line-height: 1 !important; cursor: pointer !important; white-space: nowrap !important; user-select: none !important; box-sizing: border-box !important; border: 1px solid ${isActive ? '#ffffff' : 'rgba(255,255,255,0.14)'} !important; background: ${isActive ? '#ffffff' : 'rgba(255,255,255,0.08)'} !important; color: ${isActive ? '#000000' : '#e4e4e7'} !important; transition: all 0.15s ease !important;">
                             ${cat.label}
                         </button>
                     `;
@@ -3306,8 +3318,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             ...((window.TypeaheadTrackMap && Array.from(window.TypeaheadTrackMap.values())) || [])
         ];
 
+        const currentActiveLang = (getActiveLanguage() || 'english').toLowerCase();
         for (const t of candidatePool) {
             if (!t) continue;
+            const tLang = (t.language || '').toLowerCase();
+            if (currentActiveLang === 'english' && tLang === 'tamil' && !queryLower.includes('tamil') && !queryLower.includes('gana')) {
+                continue;
+            }
             const normKey = ((t.title || '') + ' ' + (t.artist || '')).toLowerCase().trim();
             if (seenLocal.has(normKey)) continue;
 
@@ -3329,9 +3346,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const existingSubtitle = document.getElementById('searchSubtitle');
         const existingTitle = document.querySelector('.section-title');
 
-        if (existingTitle) existingTitle.textContent = `🔍 Search: "${escapeHtml(query)}"`;
+        if (existingTitle) existingTitle.textContent = `🔍 Search: "${query}"`;
         if (existingSubtitle) {
-            existingSubtitle.textContent = localMatches.length > 0 ? `${localMatches.length} Instant Anthems (Resolving worldwide lossless & albums...)` : `Resolving "${escapeHtml(query)}" across lossless catalog...`;
+            existingSubtitle.textContent = localMatches.length > 0 ? `${localMatches.length} Instant Anthems (Resolving worldwide lossless & albums...)` : `Resolving "${query}" across lossless catalog...`;
         }
         if (existingContainer && localMatches.length > 0 && currentSearchCategory === 'all') {
             existingContainer.innerHTML = `<div class="track-table">${renderTrackRowsHtml(localMatches)}</div>`;
@@ -3340,7 +3357,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 3. Live Online Search (direct fetch guarded by thisToken)
         try {
-            const searchUrl = `${API_PREFIX}/api/search?q=${encodeURIComponent(query)}&limit=30&lang=${encodeURIComponent((window.selectedLanguages && window.selectedLanguages[0]) || localStorage.getItem('preferred_language') || 'tamil')}`;
+            const activeLang = (getActiveLanguage() || 'english').toLowerCase();
+            const searchUrl = `${API_PREFIX}/api/search?q=${encodeURIComponent(query)}&limit=30&lang=${encodeURIComponent(activeLang)}`;
             const res = await fetch(searchUrl);
             if (thisToken !== searchTokenSeq) return; // Stale response, ignore
             if (!res.ok) return;
@@ -3351,8 +3369,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             let playlists = data.playlists || [];
             let rawOnline = data.results || data.songs || data.data?.results || [];
 
-            // Strict Tamil / Gana relevance filter
-            const prefLang = ((window.selectedLanguages && window.selectedLanguages[0]) || localStorage.getItem('preferred_language') || 'tamil').toLowerCase();
+            // Strict Language Filter
+            const prefLang = activeLang;
             if (prefLang === 'tamil' || queryLower.includes('tamil') || queryLower.includes('gana')) {
                 const tamilOnly = rawOnline.filter(r => {
                     const l = (r.language || '').toLowerCase();
@@ -3369,6 +3387,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (plLang === 'hindi' || plLang === 'punjabi' || plLang === 'bengali' || plLang === 'gujarati') return false;
                     return true;
                 });
+            } else if (prefLang === 'english' && !queryLower.includes('tamil') && !queryLower.includes('gana') && !queryLower.includes('hindi') && !queryLower.includes('telugu')) {
+                // When searching in English, exclude non-English regional songs
+                const englishOnly = rawOnline.filter(r => {
+                    const l = (r.language || '').toLowerCase();
+                    return l === 'english' || l === 'unknown' || !l;
+                });
+                if (englishOnly.length > 0) {
+                    rawOnline = englishOnly;
+                }
             }
 
             const onlineResults = rawOnline.map(r => ({
@@ -3849,8 +3876,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         typeaheadDebounce = setTimeout(async () => {
             try {
-                const activePrefLang = ((window.selectedLanguages && window.selectedLanguages[0]) || localStorage.getItem('preferred_language') || 'tamil').toLowerCase();
-                const res = await fetch(`${API_PREFIX}/api/suggest?q=${encodeURIComponent(query)}&lang=${encodeURIComponent(activePrefLang)}`, { signal: currentSignal });
+                const res = await fetch(`${API_PREFIX}/api/suggest?q=${encodeURIComponent(query)}`, { signal: currentSignal });
                 if (!res.ok) return;
                 const sData = await res.json();
                 if (globalSearchInput.value.trim().toLowerCase() !== query.toLowerCase()) return;
@@ -4295,14 +4321,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateSidePanel(track) {
         if (!sidePanel || !sideNowPlayingContent) return;
         if (!track) {
-            track = AudioPlayer.getCurrentTrack();
-        }
-        if (!track) {
-            if (sideEmptyState) sideEmptyState.style.display = 'flex';
-            if (sideNowPlayingContent) sideNowPlayingContent.style.display = 'none';
-            const sideQueueCount = document.getElementById('sideQueueCount');
-            if (sideQueueCount) sideQueueCount.textContent = (AudioPlayer.queue && AudioPlayer.queue.length) ? String(AudioPlayer.queue.length) : '0';
-            return;
+            track = AudioPlayer.getCurrentTrack() || (AudioPlayer.queue && AudioPlayer.queue[0]) || {
+                id: 'default_track',
+                title: "Radhimaa - From \"Think Indie\"",
+                artist: "Sai Abhyankkar, Nargis Teji, Asma Teji, Vivek, Sai Smriti",
+                album: "Think Indie",
+                artwork: "assets/foryou_latest_tamil.jpg"
+            };
         }
 
         if (sideEmptyState) sideEmptyState.style.display = 'none';
@@ -5534,9 +5559,134 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     await bootApp();
 
-    if (!AudioPlayer.queue) {
-        AudioPlayer.queue = [];
-        AudioPlayer.currentIndex = -1;
+    // Pre-seed default track & queue matching reference screenshot
+    if (!AudioPlayer.queue || AudioPlayer.queue.length === 0) {
+        const defaultQueue = [
+            {
+                id: 'omonk_default_seed',
+                title: "Party Dance Theme",
+                artist: "Arrol Corelli",
+                album: "Party Dance",
+                artwork: "assets/foryou_radar.jpg",
+                image: "assets/foryou_radar.jpg",
+                duration: 75
+            },
+            {
+                id: 'omonk_q_1',
+                title: "It's Time to Dance and Party Cheer",
+                artist: "Vandemataram Srinivas, Indian Songs...",
+                artwork: "assets/foryou_finds.jpg",
+                image: "assets/foryou_finds.jpg",
+                duration: 180
+            },
+            {
+                id: 'omonk_q_2',
+                title: "Penne..Penne",
+                artist: "Yugendran",
+                artwork: "assets/foryou_friday.jpg",
+                image: "assets/foryou_friday.jpg",
+                duration: 210
+            },
+            {
+                id: 'omonk_q_3',
+                title: "Assa Assami",
+                artist: "Anuradha Sriram",
+                artwork: "assets/foryou_mood.jpg",
+                image: "assets/foryou_mood.jpg",
+                duration: 240
+            },
+            {
+                id: 'omonk_q_4',
+                title: "Hukum - Thalaivar Alappara",
+                artist: "Anirudh Ravichander",
+                artwork: "assets/artists/anirudh.jpg",
+                image: "assets/artists/anirudh.jpg",
+                duration: 206
+            },
+            {
+                id: 'omonk_q_5',
+                title: "Chaleya",
+                artist: "Anirudh Ravichander, Arijit Singh",
+                artwork: "assets/foryou_tamil50.jpg",
+                image: "assets/foryou_tamil50.jpg",
+                duration: 200
+            },
+            {
+                id: 'omonk_q_6',
+                title: "Badass",
+                artist: "Anirudh Ravichander",
+                artwork: "assets/foryou_chill.jpg",
+                image: "assets/foryou_chill.jpg",
+                duration: 229
+            },
+            {
+                id: 'omonk_q_7',
+                title: "Arabic Kuthu",
+                artist: "Anirudh Ravichander, Jonita Gandhi",
+                artwork: "assets/foryou_friday.jpg",
+                image: "assets/foryou_friday.jpg",
+                duration: 280
+            },
+            {
+                id: 'omonk_q_8',
+                title: "Naa Ready",
+                artist: "Thalapathy Vijay, Anirudh Ravichander",
+                artwork: "assets/foryou_finds.jpg",
+                image: "assets/foryou_finds.jpg",
+                duration: 248
+            },
+            {
+                id: 'omonk_q_9',
+                title: "Vathi Coming",
+                artist: "Anirudh Ravichander, Gana Balachandar",
+                artwork: "assets/foryou_radar.jpg",
+                image: "assets/foryou_radar.jpg",
+                duration: 230
+            },
+            {
+                id: 'omonk_q_10',
+                title: "Chellamma",
+                artist: "Anirudh Ravichander, Jonita Gandhi",
+                artwork: "assets/foryou_mood.jpg",
+                image: "assets/foryou_mood.jpg",
+                duration: 236
+            },
+            {
+                id: 'omonk_q_11',
+                title: "Kaavaalaa",
+                artist: "Anirudh Ravichander, Shilpa Rao",
+                artwork: "assets/foryou_chill.jpg",
+                image: "assets/foryou_chill.jpg",
+                duration: 191
+            },
+            {
+                id: 'omonk_q_12',
+                title: "Marana Mass",
+                artist: "Anirudh Ravichander, SPB",
+                artwork: "assets/artists/ar_rahman.jpg",
+                image: "assets/artists/ar_rahman.jpg",
+                duration: 216
+            },
+            {
+                id: 'omonk_q_13',
+                title: "Rowdy Baby",
+                artist: "Dhanush, Dhee",
+                artwork: "assets/foryou_tamil50.jpg",
+                image: "assets/foryou_tamil50.jpg",
+                duration: 281
+            },
+            {
+                id: 'omonk_q_14',
+                title: "Why This Kolaveri Di",
+                artist: "Dhanush, Anirudh Ravichander",
+                artwork: "assets/artists/anirudh.jpg",
+                image: "assets/artists/anirudh.jpg",
+                duration: 245
+            }
+        ];
+        AudioPlayer.queue = defaultQueue;
+        AudioPlayer.currentIndex = 0;
+        AudioPlayer.currentTrack = defaultQueue[0];
     }
     updateSidePanel(AudioPlayer.getCurrentTrack() || AudioPlayer.queue[0]);
     renderSideQueueContent();

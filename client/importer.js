@@ -151,9 +151,11 @@ class PlaylistImporter {
             id: t.id || `sp_tr_${Date.now()}_${idx}`,
             title: t.title,
             artist: t.artist,
+            album: t.album || data.title || '',
             duration: t.duration || 210,
             artwork: t.artwork || data.artwork || '',
-            quality: 'FLAC / 320kbps Hi-Fi'
+            streamUrl: t.streamUrl || '',
+            quality: t.quality || 'FLAC / 320kbps Hi-Fi'
         }));
 
         const newPlaylist = {
