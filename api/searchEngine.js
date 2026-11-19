@@ -518,11 +518,11 @@ function calcItemScore(item, parsed) {
     }
 
     const fullItemStr = `${item.title || ''} ${item.artist || ''} ${item.album || ''}`.toLowerCase();
-    const isSongKaraoke = /karaoke|instrumental|minus\s*one|originally\s*perfomed|originally\s*performed|in the style of|prosource|ameritz|serene\s*songs/i.test(fullItemStr);
+    const isSongKaraoke = /karaoke|instrumental|minus\s*one|originally\s*perfomed|originally\s*performed|in the style of|prosource|ameritz|serene\s*songs|party\s*tyme|made\s*pop|backing\s*version|tribute\s*version/i.test(fullItemStr);
     const isSongRemix = /remix|lofi|reprise|unplugged|slowed|sped\s*up/i.test(item.title);
     const isSongCover = /cover|tribute|recreated/i.test(fullItemStr) || /aish|zzang/i.test(itemArtist);
 
-    if (isSongKaraoke && !parsed.filters.isKaraoke) score -= 300;
+    if (isSongKaraoke && !parsed.filters.isKaraoke) score -= 500;
     if (isSongRemix && !parsed.filters.isRemix) score -= 40;
     if (isSongCover && !parsed.filters.isCover) score -= 200;
 
@@ -781,6 +781,12 @@ async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
     }
 
     const sorter = (a, b) => (b.score - a.score) || (b.popularity - a.popularity) || a.title.localeCompare(b.title);
+        if (!parsed.filters.isKaraoke) {
+        dedupedSongs = dedupedSongs.filter(s => {
+            const str = `${s.title || ""} ${s.artist || ""} ${s.album || ""}`.toLowerCase();
+            return !/karaoke|instrumental|minus\s*one|party\s*tyme|prosource|ameritz|serene\s*songs|made\s*pop|backing\s*version|tribute\s*version/i.test(str);
+        });
+    }
     dedupedSongs.sort(sorter);
     scoredAlbums.sort((a, b) => ((b.trackCount > 1 ? 1 : 0) - (a.trackCount > 1 ? 1 : 0)) || (b.score - a.score) || (b.popularity - a.popularity));
     scoredArtists.sort(sorter);
@@ -804,12 +810,17 @@ async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
         }
     }
 
-    // Determine Top Result
+    // Determine Top Result (Spotify-Grade)
     let topResult = null;
-    if (parsed.entityHint === 'artist' && scoredArtists.length > 0) {
+    const catalogMatch = dedupedSongs.find(s => s.score >= 9000);
+    if (catalogMatch) {
+        topResult = catalogMatch;
+    } else if (parsed.entityHint === 'artist' && scoredArtists.length > 0) {
         topResult = scoredArtists[0];
     } else if (parsed.entityHint === 'album' && scoredAlbums.length > 0) {
         topResult = scoredAlbums[0];
+    } else if (dedupedSongs.length > 0 && dedupedSongs[0].score >= 80) {
+        topResult = dedupedSongs[0];
     } else if (scoredArtists.length > 0 && scoredArtists[0].score >= 140) {
         topResult = scoredArtists[0];
     } else if (scoredAlbums.length > 0 && scoredAlbums[0].score >= 140) {
@@ -821,7 +832,7 @@ async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
     }
 
     if (topResult && topResult.type === "song" && (!topResult.streamUrl || topResult.streamUrl.trim().length <= 5)) {
-        topResult = finalSongs[0] || null;
+        topResult = dedupedSongs.find(s => s && s.streamUrl && s.streamUrl.trim().length > 5) || null;
     }
 
     let didYouMean = null;

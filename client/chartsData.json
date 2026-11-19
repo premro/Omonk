@@ -11247,7 +11247,7 @@
           "artist": "Madcon",
           "album": "So Dark the Con of Man",
           "duration": 216,
-          "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab67616d0000b273197d278a26922f72a4d4b080",
+          "artwork": "assets/beggin_madcon.jpg",
           "language": "english",
           "quality": "FLAC / 320kbps Hi-Fi",
           "bitrate": "Lossless Studio 24-bit/48kHz",
@@ -11862,7 +11862,7 @@
           "artist": "Madcon",
           "album": "So Dark the Con of Man",
           "duration": 216,
-          "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab67616d0000b273197d278a26922f72a4d4b080",
+          "artwork": "assets/beggin_madcon.jpg",
           "language": "english",
           "quality": "FLAC / 320kbps Hi-Fi",
           "bitrate": "Lossless Studio 24-bit/48kHz",
@@ -12477,7 +12477,7 @@
           "artist": "Madcon",
           "album": "So Dark the Con of Man",
           "duration": 216,
-          "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab67616d0000b273197d278a26922f72a4d4b080",
+          "artwork": "assets/beggin_madcon.jpg",
           "language": "english",
           "quality": "FLAC / 320kbps Hi-Fi",
           "bitrate": "Lossless Studio 24-bit/48kHz",
@@ -20813,7 +20813,7 @@
         "id": "madcon",
         "name": "Madcon",
         "role": "Pop / Hip-Hop Duo",
-        "avatar": "https://image-cdn-ak.spotifycdn.com/image/ab67616d0000b273197d278a26922f72a4d4b080",
+        "avatar": "assets/beggin_madcon.jpg",
         "monthlyListeners": "15.8M",
         "language": "english",
         "tracks": [
@@ -20825,7 +20825,7 @@
             "duration": 216,
             "quality": "FLAC / 320kbps Hi-Fi",
             "streamUrl": "https://aac.saavncdn.com/525/d6725bd1e03e20c92862dc6b0038d0b3_320.mp4",
-            "artwork": "https://image-cdn-ak.spotifycdn.com/image/ab67616d0000b273197d278a26922f72a4d4b080",
+            "artwork": "assets/beggin_madcon.jpg",
             "hasLyrics": true
           }
         ]

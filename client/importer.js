@@ -192,6 +192,7 @@ class PlaylistImporter {
             artist: t.artist,
             duration: t.duration || 210,
             artwork: t.artwork || data.artwork || '',
+            streamUrl: t.streamUrl || '',
             quality: 'FLAC / 320kbps Hi-Fi'
         }));
 

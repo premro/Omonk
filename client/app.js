@@ -3416,14 +3416,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 year: r.year || ''
             }));
 
-            // Smart Deduplication: Merge local + online
-            const combined = [...localMatches];
-            const seen = new Set(localMatches.map(t => (t.title + ' ' + t.artist).toLowerCase().trim()));
+            // Smart Deduplication: Online authoritative results come FIRST
+            const seen = new Set();
+            const combined = [];
             for (const ot of onlineResults) {
                 const normKey = (ot.title + ' ' + ot.artist).toLowerCase().trim();
                 if (!seen.has(normKey)) {
                     seen.add(normKey);
                     combined.push(ot);
+                }
+            }
+            for (const lt of localMatches) {
+                const normKey = (lt.title + ' ' + lt.artist).toLowerCase().trim();
+                if (!seen.has(normKey)) {
+                    seen.add(normKey);
+                    combined.push(lt);
                 }
             }
 
@@ -3435,7 +3442,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 songs: combined,
                 albums: albums,
                 playlists: playlists,
-                artists: data.artists || []
+                artists: data.artists || [],
+                topResult: data.topResult || null
             };
 
             const sub = document.getElementById('searchSubtitle');
@@ -3488,7 +3496,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="search-playlists-grid">
                     ${playlists.map(pl => `
                         <div class="search-playlist-card" data-playlist-id="${pl.id}">
-                            <img class="search-playlist-art" src="${pl.artwork || 'icon-512.png'}" alt="${pl.title}" loading="lazy">
+                            <img class="search-playlist-art" src="${pl.artwork || 'icon-512.png'}" alt="${pl.title}" loading="lazy" onerror="this.onerror=null;this.src='icon-512.png';">
                             <div class="search-playlist-title">${pl.title}</div>
                             <div class="search-playlist-sub">${pl.subtitle || 'Playlist • Curated'}</div>
                         </div>
@@ -3591,33 +3599,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 6. "ALL" TAB (SPOTIFY-GRADE RELEVANCE ENGINE)
         let html = '';
 
-        // Select the most relevant Top Result item
+        // Select the most relevant Top Result item (Spotify-Grade)
         const qTokens = (query || '').toLowerCase().split(/\s+/).filter(Boolean);
+        const queryLower = (query || '').toLowerCase().trim();
         let topResultType = null;
         let topResultItem = null;
 
-        // Check if top playlist title genuinely matches the query
+        const serverTop = currentSearchPayload.topResult;
         const plMatch = playlists[0] && qTokens.some(tok => playlists[0].title.toLowerCase().includes(tok));
-        // Check if top album title matches
         const albMatch = albums[0] && qTokens.some(tok => albums[0].title.toLowerCase().includes(tok));
-        // Check if top song title or artist matches
         const songMatch = songs[0] && qTokens.some(tok => songs[0].title.toLowerCase().includes(tok) || songs[0].artist.toLowerCase().includes(tok));
 
-        if (plMatch && (query.toLowerCase().includes('gana') || query.toLowerCase().includes('playlist') || query.toLowerCase().includes('hits') || query.toLowerCase().includes('mix'))) {
-            topResultType = 'playlist';
-            topResultItem = playlists[0];
-        } else if (albMatch && albums[0].title.toLowerCase() === query.toLowerCase().trim()) {
-            topResultType = 'album';
-            topResultItem = albums[0];
+        if (serverTop && (serverTop.type === 'song' || serverTop.title)) {
+            topResultType = serverTop.type || 'song';
+            topResultItem = serverTop;
         } else if (songMatch || songs[0]) {
             topResultType = 'song';
             topResultItem = songs[0];
-        } else if (playlists[0]) {
+        } else if (albMatch && (queryLower.includes('album') || queryLower.includes('soundtrack') || queryLower.includes('ost'))) {
+            topResultType = 'album';
+            topResultItem = albums[0];
+        } else if (plMatch && (queryLower.includes('gana') || queryLower.includes('playlist') || queryLower.includes('hits') || queryLower.includes('mix'))) {
             topResultType = 'playlist';
             topResultItem = playlists[0];
         } else if (albums[0]) {
             topResultType = 'album';
             topResultItem = albums[0];
+        } else if (playlists[0]) {
+            topResultType = 'playlist';
+            topResultItem = playlists[0];
         }
 
         // SPOTIFY-GRADE 2-COLUMN TOP SECTION: Top Result on Left, Top 4 Songs on Right!
@@ -3635,7 +3645,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 : `${topResultItem.creator || 'Curated Collection'} • ${topResultItem.songCount ? topResultItem.songCount + ' Tracks' : 'Lossless Playlist'}`;
             const badgeLabel = isSong ? 'Song' : isAlbum ? 'Album' : 'Playlist';
 
-            const topSongs = (topResultType === 'song' && songs.length > 1) ? songs.slice(1, 5) : songs.slice(0, 4);
+            const topSongs = (topResultType === 'song' && songs.length > 1) ? songs.filter(s => String(s.id) !== String(topResultItem.id)).slice(0, 4) : songs.slice(0, 4);
 
             html += `
                 <div class="spotify-search-top-grid">
@@ -3643,7 +3653,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="spotify-top-result-col">
                         <h2 class="spotify-section-heading">Top result</h2>
                         <div class="spotify-top-result-card" id="topResultCard">
-                            <img class="spotify-top-result-art" src="${itemArt}" alt="${itemTitle}">
+                            <img class="spotify-top-result-art" src="${itemArt}" alt="${itemTitle}" onerror="this.onerror=null;this.src='icon-512.png';">
                             <div class="spotify-top-result-title">${itemTitle}</div>
                             <div class="spotify-top-result-meta">
                                 <span class="spotify-type-badge">${badgeLabel}</span>
@@ -3666,7 +3676,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 ${topSongs.map(s => `
                                     <div class="spotify-song-row" data-song-id="${s.id}">
                                         <div class="spotify-song-thumb-wrap">
-                                            <img class="spotify-song-thumb" src="${s.artwork || 'icon-512.png'}" alt="${s.title}" loading="lazy">
+                                            <img class="spotify-song-thumb" src="${s.artwork || 'icon-512.png'}" alt="${s.title}" loading="lazy" onerror="this.onerror=null;this.src='icon-512.png';">
                                             <div class="spotify-song-play-icon">
                                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l11.08-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14z"/></svg>
                                             </div>
@@ -3696,7 +3706,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="search-playlists-grid" style="grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));">
                         ${playlists.slice(0, 6).map(pl => `
                             <div class="search-playlist-card" data-playlist-id="${pl.id}">
-                                <img class="search-playlist-art" src="${pl.artwork || 'icon-512.png'}" alt="${pl.title}" loading="lazy">
+                                <img class="search-playlist-art" src="${pl.artwork || 'icon-512.png'}" alt="${pl.title}" loading="lazy" onerror="this.onerror=null;this.src='icon-512.png';">
                                 <div class="search-playlist-title">${pl.title}</div>
                                 <div class="search-playlist-sub">${pl.subtitle || 'Playlist • Curated'}</div>
                             </div>
@@ -3714,7 +3724,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 12px;">Album Soundtrack</h3>
                     <div class="album-showcase-card">
                         <div class="album-showcase-header">
-                            <img class="album-showcase-art" src="${alb.artwork || 'icon-512.png'}" alt="${alb.title}">
+                            <img class="album-showcase-art" src="${alb.artwork || 'icon-512.png'}" alt="${alb.title}" onerror="this.onerror=null;this.src='icon-512.png';">
                             <div class="album-showcase-meta">
                                 <span class="album-badge">🎬 MOVIE / ALBUM SOUNDTRACK</span>
                                 <h2 class="album-showcase-title">${alb.title}</h2>
@@ -4527,6 +4537,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     AudioPlayer.onTrackChange = (track) => {
         playerTitle.textContent = track.title;
         playerArtist.textContent = (track.artist && track.artist !== "undefined" && track.artist !== "Unknown") ? track.artist : (track.primaryArtist || track.subtitle || "Lossless Artist");
+        playerArt.onerror = () => { playerArt.onerror = null; playerArt.src = 'icon-512.png'; };
         playerArt.src = track.artwork || track.image || 'assets/omonk_logo.jpg';
 
         const curPlayerDlBtn = document.getElementById('playerDownloadBtn');

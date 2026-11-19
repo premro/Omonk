@@ -766,6 +766,10 @@
       const title = raw.title || raw.name || '';
       if (!title) return;
       if (isSameSongOrReprise(title, seedTrack.title)) return;
+      const candFull = `${title} ${raw.artist || ''} ${raw.album || ''}`.toLowerCase();
+      if (/karaoke|instrumental|minus\s*one|party\s*tyme|prosource|ameritz|serene\s*songs|made\s*pop|backing\s*version|tribute/i.test(candFull)) {
+        return;
+      }
       const key = (title + ' ' + (raw.artist || (raw.artists?.primary?.[0]?.name) || '')).toLowerCase().trim();
       if (seen.has(key)) return;
       const id = String(raw.id || ('cand_' + Math.random().toString(36).slice(2, 9)));
