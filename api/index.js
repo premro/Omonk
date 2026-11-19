@@ -1010,6 +1010,10 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     if (sId && seen.has(sId)) return false;
                     if (seen.has(titleKey)) return false;
                     if (isSameSongOrReprise(s.title, seedTitle)) return false;
+                    const fullCandStr = `${s.title} ${s.artist || ''} ${s.album || ''}`.toLowerCase();
+                    if (/karaoke|instrumental|minus\s*one|party tyme|prosource|ameritz|serene songs|made pop|tribute version/i.test(fullCandStr)) {
+                        return false;
+                    }
 
                     // Exclude static compilation album
                     if (s.album && /romantic melody/i.test(s.album)) return false;

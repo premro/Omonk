@@ -832,7 +832,9 @@ async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
     // Populate top album tracks so soundtrack displays full tracklist
     // ONLY prepend album tracks to songs if the query targeted this album or entityHint is album!
     const queryTargetedAlbum = parsed.entityHint === 'album' || 
-        (scoredAlbums.length > 0 && normalize(rawQuery).includes(normalize(scoredAlbums[0].title)));
+        (scoredAlbums.length > 0 && 
+         normalize(rawQuery) === normalize(scoredAlbums[0].title) && 
+         (!parsed.artistHint || normalize(scoredAlbums[0].artist).includes(normalize(parsed.artistHint))));
     if (scoredAlbums.length > 0) {
         const topAlb = scoredAlbums[0];
         if (!topAlb.tracks || topAlb.tracks.length === 0) {
@@ -855,7 +857,9 @@ async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
                             s.score = Math.max(150 - idx * 2, calcItemScore(s, parsed));
                         });
                         const existingIds = new Set(albSongs.map(s => s.id));
-                        dedupedSongs = [...albSongs, ...dedupedSongs.filter(s => !existingIds.has(s.id))];
+                        const highPriority = dedupedSongs.filter(s => s.score >= 9000);
+                        const hpIds = new Set(highPriority.map(s => s.id));
+                        dedupedSongs = [...highPriority, ...albSongs.filter(s => !hpIds.has(s.id)), ...dedupedSongs.filter(s => !existingIds.has(s.id) && !hpIds.has(s.id))];
                     }
                 }
             } catch (e) {

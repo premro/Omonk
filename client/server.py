@@ -245,6 +245,7 @@ class LosslessRequestHandler(http.server.SimpleHTTPRequestHandler):
                 filtered = [
                     t for t in radio_tracks
                     if str(t.get('id', '')) != str(track_id) and not is_same_or_reprise(t.get('title', ''), title)
+                    and not re.search(r'\b(party tyme|prosource|ameritz|serene songs|karaoke|made pop)\b', f"{t.get('title','')} {t.get('artist','')} {t.get('album','')}".lower())
                 ]
                 return self.send_json({"success": True, "count": len(filtered), "tracks": filtered})
             except Exception as e:

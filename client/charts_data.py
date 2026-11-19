@@ -738,7 +738,7 @@ ARTISTS_CATALOG = [
         "name": "Madcon",
         "language": "english",
         "role": "Pop / Hip-Hop Duo",
-        "avatar": "https://c.saavncdn.com/525/Beggin-Frank-Walker-Remixes-English-2019-20190524021021-500x500.jpg",
+        "avatar": "https://image-cdn-ak.spotifycdn.com/image/ab67616d0000b273197d278a26922f72a4d4b080",
         "monthlyListeners": "15.8M",
         "tracks": [
             {"id": "mc_1", "title": "Beggin'", "artist": "Madcon", "album": "So Dark the Con of Man", "duration": 216, "quality": "FLAC / 320kbps Hi-Fi", "streamUrl": "https://aac.saavncdn.com/525/d6725bd1e03e20c92862dc6b0038d0b3_320.mp4"},
