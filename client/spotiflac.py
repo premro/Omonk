@@ -123,8 +123,12 @@ def _query_saavn(q_str, limit=20):
 
 def _find_catalog_tracks(query):
     """Searches local catalog (chartsData.json) for instant verified track matches."""
-    q_clean = re.sub(r"""['"`“”‘’\(\)\[\]]""", " ", query).strip().lower()
-    words = [w for w in re.findall(r'[a-zA-Z0-9]+', q_clean) if len(w) > 1]
+    q_norm = _normalize_search_title(query) or query
+    q_clean = re.sub(r"""['"`“”‘’\(\)\[\]]""", " ", q_norm).strip().lower()
+    stop_words = {'original', 'version', 'official', 'video', 'audio', 'song', 'remastered', 'feat', 'ft'}
+    words = [w for w in re.findall(r'[a-zA-Z0-9]+', q_clean) if len(w) > 1 and w not in stop_words]
+    if not words:
+        words = [w for w in re.findall(r'[a-zA-Z0-9]+', q_clean) if len(w) > 1]
     if not words:
         return []
     
@@ -298,20 +302,46 @@ def _normalize_search_title(title):
     return re.sub(r'\s+', ' ', t).strip()
 
 def resolve_track_audio(title, artist=""):
-    """Multi-stage fuzzy resolver for Spotify, iTunes, and JioSaavn tracks."""
-    clean_t = _normalize_search_title(title) or clean_text(title)
-    primary_art = clean_text(artist).split(',')[0].split('&')[0].strip() if artist else ""
+    """Multi-stage fuzzy resolver for Spotify, YouTube, iTunes, and JioSaavn tracks."""
+    if not title:
+        return None
 
+    clean_t = _normalize_search_title(title) or clean_text(title)
+    clean_a = clean_text(artist)
+    primary_art = clean_a.split(',')[0].split('&')[0].strip() if clean_a else ""
+
+    # 1. Instant match in verified catalog
+    check_catalog_queries = [
+        f"{clean_t} {primary_art}".strip(),
+        f"{primary_art} {clean_t}".strip(),
+        clean_t
+    ]
+    for cq in check_catalog_queries:
+        if not cq:
+            continue
+        cat_matches = _find_catalog_tracks(cq)
+        for cm in cat_matches:
+            if cm.get('streamUrl'):
+                cm_norm = _normalize_search_title(cm.get('title', '')).lower()
+                target_norm = clean_t.lower()
+                if target_norm in cm_norm or cm_norm in target_norm:
+                    return cm
+
+    # 2. Formulate search queries (including swapped artist/title)
     queries = []
     if clean_t and primary_art:
         queries.append(f"{clean_t} {primary_art}")
-    if title and artist and f"{title} {artist}".strip() not in queries:
+        queries.append(f"{primary_art} {clean_t}")
+    if title and artist and f"{clean_text(title)} {primary_art}".strip() not in queries:
         queries.append(f"{clean_text(title)} {primary_art}".strip())
     if clean_t and clean_t not in queries:
         queries.append(clean_t)
 
     best_candidate = None
     best_score = -1
+
+    clean_primary = re.sub(r"""['"’`\-_]""", "", primary_art.lower()).strip() if primary_art else ""
+    target_t = clean_t.lower()
 
     for q in queries:
         tracks = search_tracks(q, limit=10)
@@ -320,42 +350,57 @@ def resolve_track_audio(title, artist=""):
                 continue
             cand_raw_t = t.get('title', '')
             cand_t = _normalize_search_title(cand_raw_t).lower()
-            target_t = clean_t.lower()
+            cand_art = (t.get('artist') or '').lower()
+            clean_cand_art = re.sub(r"""['"’`\-_]""", "", cand_art).strip()
 
             score = 0
-            if cand_t == target_t:
-                score += 60
-            elif target_t and (re.search(rf'\b{re.escape(target_t)}\b', cand_t) or re.search(rf'\b{re.escape(cand_t)}\b', target_t)):
-                score += 45
-            elif target_t and (target_t in cand_t or cand_t in target_t):
-                if len(target_t) >= 4 and len(cand_t) >= 4:
-                    score += 25
 
-            cand_art = (t.get('artist') or '').lower()
-            if primary_art:
-                clean_primary = re.sub(r"['\"\u2019`\-_]", "", primary_art.lower()).strip()
-                clean_cand_art = re.sub(r"['\"\u2019`\-_]", "", cand_art).strip()
+            # Normal order: title matches cand_t, artist matches cand_art
+            title_exact = (cand_t == target_t)
+            title_partial = bool(target_t and (re.search(rf'\b{re.escape(target_t)}\b', cand_t) or re.search(rf'\b{re.escape(cand_t)}\b', target_t)))
+            title_substr = bool(target_t and (target_t in cand_t or cand_t in target_t) and len(target_t) >= 4 and len(cand_t) >= 4)
+
+            # Swapped order: title matches cand_art, artist matches cand_t
+            swapped_title_match = bool(clean_primary and (cand_t == clean_primary or clean_primary in cand_t or cand_t in clean_primary))
+            swapped_art_match = bool(target_t and (target_t in clean_cand_art or any(w in clean_cand_art for w in target_t.split() if len(w) >= 3)))
+
+            artist_matched = False
+            if clean_primary:
                 if clean_primary in clean_cand_art:
-                    score += 45
+                    artist_matched = True
+                    score += 50
                 elif any(word in clean_cand_art for word in clean_primary.split() if len(word) >= 3):
-                    score += 25
+                    artist_matched = True
+                    score += 30
+
+            if title_exact:
+                score += 65
+            elif title_partial:
+                score += 45
+            elif title_substr:
+                score += 25
+            elif swapped_title_match and swapped_art_match:
+                score += 85
+                artist_matched = True
+
+            # If user/source specified an artist, but this candidate has ZERO artist match:
+            # Heavily penalize so we don't return an unrelated song by another artist!
+            if clean_primary and not artist_matched and not swapped_art_match:
+                score -= 80
 
             cand_combined = f"{cand_raw_t} {cand_art} {t.get('album', '')}".lower()
-            if re.search(r'\b(karaoke|tribute|cover version|backing track|in the style of)\b', cand_combined):
+            if re.search(r'\b(karaoke|tribute|cover version|backing track|in the style of|serene songs|prosource|ameritz)\b', cand_combined):
                 if not re.search(r'\b(karaoke|tribute|cover)\b', f"{title} {artist}".lower()):
-                    score -= 50
-
-            if primary_art and clean_primary not in clean_cand_art and score < 50:
-                score -= 30
+                    score -= 100
 
             if score > best_score:
                 best_score = score
                 best_candidate = t
 
-        if best_score >= 70 and best_candidate:
+        if best_score >= 65 and best_candidate:
             return best_candidate
 
-    if best_score >= 40:
+    if best_score >= 45 and best_candidate:
         return best_candidate
 
     return None
@@ -707,20 +752,36 @@ def extract_youtube_tracks(video_or_playlist_url):
                 artist = author
                 track_title = clean
                 if len(parts) >= 2:
-                    artist = parts[0]
-                    track_title = parts[1]
+                    p0, p1 = parts[0], parts[1]
+                    known_artists = [
+                        'madcon', 'ed sheeran', 'anirudh', 'anirudh ravichander', 'a.r. rahman', 'ar rahman',
+                        'ilayaraja', 'ilayaraaja', 'yuvan', 'yuvan shankar raja', 'harris jayaraj', 'pradeep kumar',
+                        'sid sriram', 'spb', 'dhanush', 'the weeknd', 'taylor swift', 'dua lipa', 'justin bieber'
+                    ]
+                    if any(k in p1.lower() for k in known_artists) or re.search(r'\b(feat|ft|singers?|vocals?|composer)\b', p1, re.I):
+                        track_title = p0
+                        artist = p1
+                    else:
+                        artist = p0
+                        track_title = p1
                 
+                resolved = resolve_track_audio(track_title, artist) or resolve_track_audio(artist, track_title) or resolve_track_audio(clean, author)
+                single_track = {
+                    "title": (resolved.get('title') if resolved else (track_title or clean or raw_title)),
+                    "artist": (resolved.get('artist') if resolved else (artist or author)),
+                    "album": (resolved.get('album', '') if resolved else ''),
+                    "duration": (resolved.get('duration', 210) if resolved else 210),
+                    "artwork": (resolved.get('image') or resolved.get('artwork') or thumb),
+                    "streamUrl": (resolved.get('streamUrl', '') if resolved else ''),
+                    "quality": "FLAC / 320kbps Lossless Hi-Fi"
+                }
+
                 return {
                     "success": True,
-                    "title": raw_title,
-                    "artwork": thumb,
+                    "title": single_track["title"],
+                    "artwork": single_track["artwork"],
                     "count": 1,
-                    "tracks": [{
-                        "title": track_title or clean or raw_title,
-                        "artist": artist or author,
-                        "duration": 210,
-                        "artwork": thumb
-                    }]
+                    "tracks": [single_track]
                 }
         except Exception as e:
             return {"success": False, "error": str(e)}

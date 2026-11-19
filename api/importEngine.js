@@ -310,8 +310,15 @@ async function importYouTube(inputUrl) {
         let trackArtist = primaryArtist;
         let trackTitle = clean || title;
         if (parts.length >= 2) {
-            trackArtist = parts[0];
-            trackTitle = parts.slice(1).join(' - ');
+            const p0 = parts[0], p1 = parts[1];
+            const knownArtists = ['madcon', 'ed sheeran', 'anirudh', 'anirudh ravichander', 'a.r. rahman', 'ar rahman', 'ilayaraja', 'ilayaraaja', 'yuvan', 'yuvan shankar raja', 'harris jayaraj', 'pradeep kumar', 'sid sriram', 'spb', 'dhanush', 'the weeknd', 'taylor swift', 'dua lipa', 'justin bieber'];
+            if (knownArtists.some(k => p1.toLowerCase().includes(k)) || /\b(feat|ft|singers?|vocals?|composer)\b/i.test(p1)) {
+                trackTitle = p0;
+                trackArtist = p1;
+            } else {
+                trackArtist = p0;
+                trackTitle = parts.slice(1).join(' - ');
+            }
         }
         tracks.push({
             title: trackTitle,

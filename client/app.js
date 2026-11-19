@@ -3369,15 +3369,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             let playlists = data.playlists || [];
             let rawOnline = data.results || data.songs || data.data?.results || [];
 
-            // Strict Language Filter
+            // Language filtering: Universal search without dropping authentic tracks
             const prefLang = activeLang;
-            if (prefLang === 'tamil' || queryLower.includes('tamil') || queryLower.includes('gana')) {
-                const tamilOnly = rawOnline.filter(r => {
-                    const l = (r.language || '').toLowerCase();
-                    return l === 'tamil' || l === 'unknown' || !l;
-                });
-                if (tamilOnly.length >= 2) {
-                    rawOnline = tamilOnly;
+            const isExplicitRegionalSearch = /tamil|gana|kuthu|hindi|telugu|malayalam|kannada|punjabi/i.test(queryLower);
+
+            if (isExplicitRegionalSearch) {
+                if (queryLower.includes('tamil') || queryLower.includes('gana') || queryLower.includes('kuthu')) {
+                    const tamilOnly = rawOnline.filter(r => {
+                        const l = (r.language || '').toLowerCase();
+                        return l === 'tamil' || l === 'unknown' || !l;
+                    });
+                    if (tamilOnly.length >= 2) {
+                        rawOnline = tamilOnly;
+                    }
                 }
                 playlists = playlists.filter(p => {
                     const plLang = (p.language || '').toLowerCase();
@@ -3387,15 +3391,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (plLang === 'hindi' || plLang === 'punjabi' || plLang === 'bengali' || plLang === 'gujarati') return false;
                     return true;
                 });
-            } else if (prefLang === 'english' && !queryLower.includes('tamil') && !queryLower.includes('gana') && !queryLower.includes('hindi') && !queryLower.includes('telugu')) {
-                // When searching in English, exclude non-English regional songs
-                const englishOnly = rawOnline.filter(r => {
-                    const l = (r.language || '').toLowerCase();
-                    return l === 'english' || l === 'unknown' || !l;
+            } else {
+                // Universal search: NEVER discard authentic matches (like Beggin by Madcon, English/international tracks, etc.)
+                // Filter out soundalike spam (e.g. Serene Songs, ProSource, Ameritz) unless explicitly requested
+                rawOnline = rawOnline.filter(r => {
+                    const rArtist = (r.artist || r.singers || '').toLowerCase();
+                    if (/serene songs|prosource|ameritz/i.test(rArtist) && !/serene songs|prosource|ameritz/i.test(queryLower)) {
+                        return false;
+                    }
+                    return true;
                 });
-                if (englishOnly.length > 0) {
-                    rawOnline = englishOnly;
-                }
             }
 
             const onlineResults = rawOnline.map(r => ({
@@ -5204,7 +5209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // 2. Clicking a song that is not playing:
-        if (currentView === 'playlist' || currentView === 'album' || currentView === 'liked' || currentView === 'offline') {
+        if (currentView === 'playlist' || currentView === 'playlist-detail' || currentView === 'album' || currentView === 'album-detail' || currentView === 'liked' || currentView === 'offline') {
             const effectivePool = (pool && Array.isArray(pool) && pool.length > 0) ? pool : (typeof allLoadedSongs !== 'undefined' && allLoadedSongs.length > 0 ? allLoadedSongs : (window.allLoadedSongs || [track]));
             const trackIdx = effectivePool.findIndex(t => String(t.id) === String(track.id) || (t.title && track.title && t.title === track.title));
             const finalIdx = trackIdx >= 0 ? trackIdx : idx;

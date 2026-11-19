@@ -518,7 +518,7 @@ function calcItemScore(item, parsed) {
     }
 
     const fullItemStr = `${item.title || ''} ${item.artist || ''} ${item.album || ''}`.toLowerCase();
-    const isSongKaraoke = /karaoke|instrumental|minus\s*one|originally\s*perfomed|originally\s*performed|in the style of|prosource|ameritz/i.test(fullItemStr);
+    const isSongKaraoke = /karaoke|instrumental|minus\s*one|originally\s*perfomed|originally\s*performed|in the style of|prosource|ameritz|serene\s*songs/i.test(fullItemStr);
     const isSongRemix = /remix|lofi|reprise|unplugged|slowed|sped\s*up/i.test(item.title);
     const isSongCover = /cover|tribute|recreated/i.test(fullItemStr) || /aish|zzang/i.test(itemArtist);
 

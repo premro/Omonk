@@ -1211,9 +1211,26 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     }
                 }
 
-                // 3. Fallback to first song with streamUrl
+                // 3. Check swapped title and artist
+                if (!matched && firstArtist) {
+                    const normArt = normalizeCanonicalTitle(firstArtist) || firstArtist.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    for (const s of songs) {
+                        const normSong = normalizeCanonicalTitle(s.title) || (s.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                        if (normArt && (normSong === normArt || normSong.includes(normArt) || normArt.includes(normSong))) {
+                            matched = s;
+                            break;
+                        }
+                    }
+                }
+
+                // 4. Safe fallback: only accept if candidate artist or title shares at least one meaningful token
                 if (!matched) {
-                    matched = songs.find(s => s.streamUrl) || songs[0];
+                    const allTargetWords = `${cleanTitle} ${firstArtist}`.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+                    matched = songs.find(s => {
+                        if (!s.streamUrl) return false;
+                        const sStr = `${s.title} ${s.artist || ''}`.toLowerCase();
+                        return allTargetWords.some(w => sStr.includes(w));
+                    });
                 }
 
                 if (matched && matched.streamUrl) {
