@@ -49,6 +49,14 @@ class AudioPlayerEngine {
         this.prefetchAudio.muted = true;
         this._prefetchedUrl = '';
 
+        // Persistent lock-screen pause anchor - keeps iOS/Android Now Playing lock-screen card active when paused
+        this.pauseAnchorAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
+        this.pauseAnchorAudio.loop = true;
+        this.pauseAnchorAudio.volume = 0.0005;
+        this.pauseAnchorAudio.setAttribute("playsinline", "true");
+        this.pauseAnchorAudio.setAttribute("webkit-playsinline", "true");
+        this._pauseAnchorTimer = null;
+
         this.isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         this.isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -481,6 +489,49 @@ class AudioPlayerEngine {
         return null;
     }
 
+    ensureAudioSessionType() {
+        if (typeof navigator !== "undefined" && "audioSession" in navigator) {
+            try {
+                navigator.audioSession.type = "playback";
+            } catch (e) {}
+        }
+    }
+
+    startLockscreenPauseAnchor() {
+        if (this._isSkipping || this.audio.ended || !this.getCurrentTrack()) return;
+        if (this._pauseAnchorTimer) clearTimeout(this._pauseAnchorTimer);
+        try {
+            this.pauseAnchorAudio.currentTime = 0;
+            const p = this.pauseAnchorAudio.play();
+            if (p && typeof p.catch === "function") {
+                p.catch(() => {});
+            }
+        } catch (e) {}
+
+        const cur = this.getCurrentTrack();
+        if (cur) this.updateMediaSession(cur);
+        if ("mediaSession" in navigator) {
+            navigator.mediaSession.playbackState = "paused";
+        }
+
+        // Auto-stop anchor after 30 minutes to prevent battery drain
+        this._pauseAnchorTimer = setTimeout(() => {
+            this.stopLockscreenPauseAnchor();
+        }, 30 * 60 * 1000);
+    }
+
+    stopLockscreenPauseAnchor() {
+        if (this._pauseAnchorTimer) {
+            clearTimeout(this._pauseAnchorTimer);
+            this._pauseAnchorTimer = null;
+        }
+        try {
+            if (this.pauseAnchorAudio && !this.pauseAnchorAudio.paused) {
+                this.pauseAnchorAudio.pause();
+            }
+        } catch (e) {}
+    }
+
     async recoverStalledOrExpiredStream() {
         if (this._recoveringStream) return;
         const cur = this.getCurrentTrack();
@@ -493,14 +544,20 @@ class AudioPlayerEngine {
             if (freshUrl && this.getCurrentTrack()?.id === cur.id) {
                 this.audio.src = freshUrl;
                 if (resumePos > 0) {
-                    this.audio.addEventListener('loadedmetadata', () => {
+                    this.audio.addEventListener("loadedmetadata", () => {
                         try { this.audio.currentTime = resumePos; } catch (e) {}
                     }, { once: true });
                 }
+                this.ensureAudioSessionType();
+                this.stopLockscreenPauseAnchor();
                 await this.audio.play();
+                this.isPlaying = true;
+                if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
+                this.updatePositionState();
+                if (this.onPlayStateChange) this.onPlayStateChange(true);
             }
         } catch (e) {
-            console.warn('[Stream Recovery] Reload failed:', e);
+            console.warn("[Stream Recovery] Reload failed:", e);
         } finally {
             this._recoveringStream = false;
         }
@@ -510,6 +567,7 @@ class AudioPlayerEngine {
         const el = this.audio;
 
         el.addEventListener('play', () => {
+            this.stopLockscreenPauseAnchor();
             this.isPlaying = true;
             this.playStartTime = el.currentTime;
             if ('mediaSession' in navigator) {
@@ -525,6 +583,7 @@ class AudioPlayerEngine {
         });
 
         el.addEventListener('playing', () => {
+            this.stopLockscreenPauseAnchor();
             this.isPlaying = true;
             this._consecutiveErrors = 0;
             this._retriedWithProxy = false;
@@ -546,6 +605,9 @@ class AudioPlayerEngine {
             this.updatePositionState();
             if (this.onPlayStateChange) this.onPlayStateChange(false);
             this.savePlaybackState();
+            if (!this.audio.ended && !this._isSkipping && this.getCurrentTrack()) {
+                this.startLockscreenPauseAnchor();
+            }
         });
 
         el.addEventListener('loadedmetadata', () => {
@@ -574,8 +636,8 @@ class AudioPlayerEngine {
                 }
             }
 
-            // Preload & pre-buffer next track 20s before completion for zero-latency lockscreen transition
-            if (el.duration > 25 && el.currentTime >= el.duration - 20 && !this._preloadedForCurrentTrack) {
+            // Gapless Pre-Buffering: Warm next track at 75% of duration (or 20s before completion)
+            if (el.duration > 10 && (el.currentTime >= el.duration * 0.75 || el.currentTime >= el.duration - 20) && !this._preloadedForCurrentTrack) {
                 this._preloadedForCurrentTrack = true;
                 this.preloadNextTrackStream();
             }
@@ -672,6 +734,17 @@ class AudioPlayerEngine {
                 this.next(true);
             }, 900);
         });
+
+        if (typeof document !== "undefined") {
+            document.addEventListener("visibilitychange", () => {
+                const cur = this.getCurrentTrack();
+                if (cur) {
+                    this.updateMediaSession(cur);
+                    this.attachMediaSessionActionHandlers();
+                    this.updatePositionState();
+                }
+            });
+        }
     }
 
     setVolume(val) {
@@ -861,6 +934,7 @@ class AudioPlayerEngine {
 
     async playTrack(track, queue = null, index = -1, isSequential = null) {
         if (!track) return;
+        this.stopLockscreenPauseAnchor();
 
         if (typeof isSequential === 'boolean') {
             this.isSequentialContext = isSequential;
@@ -984,6 +1058,8 @@ class AudioPlayerEngine {
                 this.audioCtx.resume().catch(() => {});
             }
             this._preloadedForCurrentTrack = false;
+            this.ensureAudioSessionType();
+            this.stopLockscreenPauseAnchor();
             await this.audio.play();
             this.updateMediaSession(track);
             this.attachMediaSessionActionHandlers();
@@ -1027,6 +1103,8 @@ class AudioPlayerEngine {
 
         if (active.paused) {
             this.notifyInstancePlaybackStart();
+            this.stopLockscreenPauseAnchor();
+            this.ensureAudioSessionType();
             if (cur) this.updateMediaSession(cur);
             if (this.audioCtx && this.audioCtx.state === 'suspended') {
                 this.audioCtx.resume().catch(() => {});
@@ -1049,9 +1127,14 @@ class AudioPlayerEngine {
         this.audio.pause();
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
         this.savePlaybackState();
+        if (!this.audio.ended && !this._isSkipping && this.getCurrentTrack()) {
+            this.startLockscreenPauseAnchor();
+        }
     }
 
     resume() {
+        this.stopLockscreenPauseAnchor();
+        this.ensureAudioSessionType();
         const cur = this.getCurrentTrack();
         if (cur) this.updateMediaSession(cur);
         if (this.audioCtx && this.audioCtx.state === 'suspended') {
@@ -1077,6 +1160,7 @@ class AudioPlayerEngine {
 
     async next(autoPlay = true) {
         if (this._isSkipping) return;
+        this.stopLockscreenPauseAnchor();
         this._isSkipping = true;
 
         try {
@@ -1154,6 +1238,7 @@ class AudioPlayerEngine {
 
     async prev() {
         if (this._isSkipping) return;
+        this.stopLockscreenPauseAnchor();
         this._isSkipping = true;
 
         try {
@@ -1205,6 +1290,8 @@ class AudioPlayerEngine {
     }
 
     async resumeFromLockScreen() {
+        this.stopLockscreenPauseAnchor();
+        this.ensureAudioSessionType();
         this.isPlaying = true;
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'playing';
@@ -1252,6 +1339,8 @@ class AudioPlayerEngine {
 
         try {
             navigator.mediaSession.setActionHandler('play', () => {
+                this.stopLockscreenPauseAnchor();
+                this.ensureAudioSessionType();
                 this.isPlaying = true;
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
                 this.resumeFromLockScreen();
@@ -1266,6 +1355,9 @@ class AudioPlayerEngine {
                 this.updatePositionState();
                 if (this.onPlayStateChange) this.onPlayStateChange(false);
                 this.savePlaybackState();
+                if (!this.audio.ended && !this._isSkipping && this.getCurrentTrack()) {
+                    this.startLockscreenPauseAnchor();
+                }
             });
         } catch (e) {}
 
