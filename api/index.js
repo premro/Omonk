@@ -1421,7 +1421,8 @@ function isSameSongOrReprise(candTitle, seedTitle) {
         if (pathname === '/api/lyrics/search' || pathname === '/lyrics/search') {
             const q = u.searchParams.get('q') || u.searchParams.get('query') || '';
             const language = u.searchParams.get('language') || '';
-            lyricsEngine.searchLrclib(q, language).then(results => {
+            const duration = u.searchParams.get('duration') || 0;
+            lyricsEngine.searchLrclib(q, language, duration).then(results => {
                 res.writeHead(200, {
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*'

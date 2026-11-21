@@ -3,19 +3,37 @@
  * Supports Romanized/English (Tanglish/Tenglish/Hinglish) + Native Script (Tamil, Telugu, Hindi, etc.)
  * Filters cross-language dubs and provides in-player 1-tap script switching.
  */
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function getLyricsApiPrefix() {
+    if (typeof window === 'undefined') return '';
+    if (window.API_PREFIX) return window.API_PREFIX;
+    const isCatalyst =
+        window.location.hostname.includes('catalystserverless') ||
+        window.location.hostname.includes('zohocatalyst') ||
+        window.location.pathname.startsWith('/app');
+    return isCatalyst ? '/server/music_api' : '';
+}
 
 class LyricsManager {
     constructor() {
-        this.currentLyrics = []; // [{ time: seconds, text: string }]
+        this.currentLyrics = [];
         this.plainLyrics = "";
         this.activeLineIndex = -1;
         this.container = null;
         this.isAutoScrollEnabled = true;
         this.currentTrack = null;
 
-        // Dual Script State
         this.hasDual = false;
-        this.activeScript = "english"; // 'english' | 'native'
+        this.activeScript = "english";
         this.englishLyrics = [];
         this.englishPlain = "";
         this.nativeLyrics = [];
@@ -41,7 +59,6 @@ class LyricsManager {
         const engBtn = document.getElementById('lyricsScriptEnglishBtn');
         const natBtn = document.getElementById('lyricsScriptNativeBtn');
 
-        // Script Switchers (English <-> Native)
         engBtn?.addEventListener('click', () => {
             if (this.activeScript === 'english') return;
             this.switchScript('english');
@@ -52,7 +69,6 @@ class LyricsManager {
             this.switchScript('native');
         });
 
-        // Search Drawer Toggle
         openBtn?.addEventListener('click', () => {
             if (!searchSection) return;
             const isVisible = searchSection.style.display !== 'none';
@@ -98,7 +114,6 @@ class LyricsManager {
 
         this.render();
 
-        // Immediately sync seek time
         if (window.AudioPlayer?.audio) {
             this.updateTime(window.AudioPlayer.audio.currentTime || 0);
         }
@@ -146,7 +161,6 @@ class LyricsManager {
         const toggleWrap = document.getElementById('lyricsScriptToggleWrap');
         if (toggleWrap) toggleWrap.style.display = 'none';
 
-        // 1. Check local persistent lyrics cache
         const cacheKey = `lyrics_cache_${track.id}`;
         try {
             const cached = localStorage.getItem(cacheKey);
@@ -155,13 +169,14 @@ class LyricsManager {
                 this.applyFetchedData(data);
                 return;
             }
-        } catch(e) {}
+        } catch (e) {}
 
-        // 2. Fetch from backend with clean title, language matching & regional dub filtering
+        const prefix = getLyricsApiPrefix();
         let fetchedData = null;
         try {
             const langParam = encodeURIComponent(track.language || 'tamil');
-            const res = await fetch(`${window.API_PREFIX || ""}/api/lyrics?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}&duration=${track.duration || 0}&language=${langParam}`);
+            const durParam = Math.round(Number(track.duration) || 0);
+            const res = await fetch(`${prefix}/api/lyrics?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}&duration=${durParam}&language=${langParam}`);
             if (res.ok) {
                 fetchedData = await res.json();
             }
@@ -171,13 +186,14 @@ class LyricsManager {
             this.applyFetchedData(fetchedData);
             try {
                 localStorage.setItem(cacheKey, JSON.stringify(fetchedData));
-            } catch(e) {}
+            } catch (e) {}
             return;
         }
 
-        // 3. ZERO-TOUCH AUTO-APPLY FALLBACK: Search LRCLIB index and auto-apply best synchronized lyrics
+        // Duration-matched auto-apply fallback
         try {
             const cleanTitle = (track.title || '').replace(/\(.*?\)|\[.*?\]/g, '').trim();
+            const durParam = Math.round(Number(track.duration) || 0);
             const searchQueries = [
                 `${cleanTitle} ${(track.artist || '').split(/[,&]/)[0]}`.trim(),
                 cleanTitle,
@@ -185,19 +201,21 @@ class LyricsManager {
             ];
 
             for (const sq of searchQueries) {
-                const sRes = await fetch(`${window.API_PREFIX || ""}/api/lyrics/search?q=${encodeURIComponent(sq)}&language=${encodeURIComponent(track.language || 'tamil')}`);
+                const sRes = await fetch(`${prefix}/api/lyrics/search?q=${encodeURIComponent(sq)}&language=${encodeURIComponent(track.language || 'tamil')}&duration=${durParam}`);
                 if (!sRes.ok) continue;
                 const sData = await sRes.json();
-                const candidates = sData.results || [];
+                const candidates = (sData.results || []).filter(c => !c.scriptLabel?.startsWith('⚠️'));
                 if (candidates.length > 0) {
-                    const chosen = candidates.find(c => c.syncedLyrics || c.hasSynced) || candidates[0];
+                    const chosen = candidates.find(c => (c.syncedLyrics || c.hasSynced) && (durParam === 0 || Math.abs((c.duration || 0) - durParam) <= 10))
+                        || candidates.find(c => c.syncedLyrics || c.hasSynced)
+                        || candidates[0];
                     if (chosen && (chosen.syncedLyrics || chosen.plainLyrics)) {
                         this.applyLrclibLyrics(chosen);
                         return;
                     }
                 }
             }
-        } catch(e) {}
+        } catch (e) {}
 
         this.renderError("No lyrics found for this song.");
     }
@@ -218,12 +236,13 @@ class LyricsManager {
             this.englishPlain = data.english?.plainLyrics || "";
             this.nativeLyrics = data.native ? this.parseLRC(data.native.syncedLyrics) : [];
             this.nativePlain = data.native?.plainLyrics || "";
-            this.nativeLabel = data.native?.scriptLabel || "🌐 Native";
+            this.nativeLabel = data.native?.scriptLabel || data.nativeLabel || "🌐 Native";
 
             if (toggleWrap) toggleWrap.style.display = 'inline-flex';
-            if (natBtn) natBtn.textContent = this.nativeLabel.replace(' (Tamil)', '').replace(' (Telugu)', '');
+            if (natBtn) {
+                natBtn.textContent = this.nativeLabel.replace(/\s*\((Tamil|Telugu|Kannada|Malayalam|Hindi)\)/gi, '');
+            }
 
-            // Choose default script
             const defaultScript = data.defaultScript || 'english';
             this.activeScript = defaultScript;
             if (engBtn) engBtn.classList.toggle('active', defaultScript === 'english');
@@ -249,8 +268,8 @@ class LyricsManager {
 
         const sideSnippet = document.getElementById('sideLyricsSnippet');
         if (sideSnippet && this.currentLyrics && this.currentLyrics.length > 0) {
-            const l1 = this.currentLyrics[0].text;
-            const l2 = this.currentLyrics[1]?.text || '';
+            const l1 = escapeHtml(this.currentLyrics[0].text);
+            const l2 = this.currentLyrics[1]?.text ? escapeHtml(this.currentLyrics[1].text) : '';
             sideSnippet.innerHTML = `<span style="color: #fff; font-weight: 800;">${l1}</span>${l2 ? `<br><span style="opacity: 0.65; font-size: 14.5px; font-weight: 500;">${l2}</span>` : ''}`;
         }
     }
@@ -263,8 +282,10 @@ class LyricsManager {
         resultsEl.innerHTML = '<div style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 13px;"><div class="pulse-loader" style="margin-bottom:6px;"></div>Searching https://lrclib.net/...</div>';
 
         try {
+            const prefix = getLyricsApiPrefix();
             const lang = encodeURIComponent(this.currentTrack?.language || '');
-            const res = await fetch(`${window.API_PREFIX || ""}/api/lyrics/search?q=${encodeURIComponent(query)}&language=${lang}`);
+            const dur = Math.round(Number(this.currentTrack?.duration) || 0);
+            const res = await fetch(`${prefix}/api/lyrics/search?q=${encodeURIComponent(query)}&language=${lang}&duration=${dur}`);
             const data = await res.json();
             const list = data.results || [];
 
@@ -280,16 +301,16 @@ class LyricsManager {
                     : '<span class="lrclib-tag plain">📄 Plain Text</span>';
 
                 const isDub = item.scriptLabel && item.scriptLabel.startsWith('⚠️');
-                const scriptBadge = `<span class="lrclib-tag ${isDub ? 'dub-warn' : 'script-tag'}">${item.scriptLabel || 'Text'}</span>`;
+                const scriptBadge = `<span class="lrclib-tag ${isDub ? 'dub-warn' : 'script-tag'}">${escapeHtml(item.scriptLabel || 'Text')}</span>`;
 
                 html += `
                     <div class="lrclib-item" data-lrclib-idx="${idx}">
                         <div style="flex: 1; min-width: 0; padding-right: 12px;">
                             <div style="font-weight: 600; font-size: 13px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                ${item.trackName}
+                                ${escapeHtml(item.trackName)}
                             </div>
                             <div style="font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                ${item.artistName} ${item.albumName ? '• ' + item.albumName : ''}
+                                ${escapeHtml(item.artistName)} ${item.albumName ? '• ' + escapeHtml(item.albumName) : ''}
                             </div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
@@ -303,14 +324,11 @@ class LyricsManager {
 
             resultsEl.innerHTML = html;
 
-            // Bind Apply buttons
             resultsEl.querySelectorAll('.apply-lrclib-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const idx = parseInt(btn.getAttribute('data-lrclib-idx'), 10);
                     const chosen = list[idx];
-                    if (!chosen) return;
-
-                    this.applyLrclibLyrics(chosen);
+                    if (chosen) this.applyLrclibLyrics(chosen);
                 });
             });
         } catch (e) {
@@ -334,7 +352,7 @@ class LyricsManager {
                     plainLyrics: item.plainLyrics || "",
                     hasDual: false
                 }));
-            } catch(e) {}
+            } catch (e) {}
         }
 
         const toggleWrap = document.getElementById('lyricsScriptToggleWrap');
@@ -382,7 +400,7 @@ class LyricsManager {
         this.container.innerHTML = `
             <div class="lyrics-placeholder" style="text-align: center; padding: 30px 20px;">
                 <div style="font-size: 32px; margin-bottom: 8px;">🎤</div>
-                <p class="text-zinc-400" style="margin-bottom: 14px;">${msg}</p>
+                <p class="text-zinc-400" style="margin-bottom: 14px;">${escapeHtml(msg)}</p>
                 <button class="btn-chip primary" id="triggerLrclibEmptyBtn" style="padding: 8px 16px; font-size: 13px;">
                     🌐 Search https://lrclib.net/ for Lyrics
                 </button>
@@ -409,14 +427,13 @@ class LyricsManager {
             this.currentLyrics.forEach((item, index) => {
                 html += `
                     <div class="lyric-line" data-index="${index}" data-time="${item.time}">
-                        <span class="lyric-text">${item.text}</span>
+                        <span class="lyric-text">${escapeHtml(item.text)}</span>
                     </div>
                 `;
             });
             html += '</div>';
             this.container.innerHTML = html;
 
-            // Click-to-seek jump handlers
             const lines = this.container.querySelectorAll('.lyric-line');
             lines.forEach(el => {
                 el.addEventListener('click', () => {
@@ -429,7 +446,7 @@ class LyricsManager {
         } else if (this.plainLyrics) {
             this.container.innerHTML = `
                 <div class="plain-lyrics-view">
-                    <pre>${this.plainLyrics}</pre>
+                    <pre>${escapeHtml(this.plainLyrics)}</pre>
                 </div>
             `;
         } else {
@@ -452,14 +469,15 @@ class LyricsManager {
             });
         }
 
-        // Live update Spotify-grade Lyrics Preview card in Right Side Panel (Screenshot 3)
         const sideSnippet = document.getElementById('sideLyricsSnippet');
         if (sideSnippet && this.currentLyrics && this.currentLyrics.length > 0) {
             const idx = this.activeLineIndex >= 0 ? this.activeLineIndex : 0;
             const currentLine = this.currentLyrics[idx];
             const nextLine = this.currentLyrics[idx + 1];
             if (currentLine) {
-                sideSnippet.innerHTML = `<span style="color: #fff; font-weight: 800;">${currentLine.text}</span>${nextLine ? `<br><span style="opacity: 0.65; font-size: 14.5px; font-weight: 500;">${nextLine.text}</span>` : ''}`;
+                const l1 = escapeHtml(currentLine.text);
+                const l2 = nextLine ? escapeHtml(nextLine.text) : '';
+                sideSnippet.innerHTML = `<span style="color: #fff; font-weight: 800;">${l1}</span>${l2 ? `<br><span style="opacity: 0.65; font-size: 14.5px; font-weight: 500;">${l2}</span>` : ''}`;
             }
         }
     }

@@ -1,7 +1,16 @@
 const https = require('https');
 const http = require('http');
 
+const MAX_CACHE_ENTRIES = 500;
 const lyricsMemoryCache = new Map();
+
+function setBoundedCache(key, value) {
+    if (lyricsMemoryCache.size >= MAX_CACHE_ENTRIES) {
+        const oldestKey = lyricsMemoryCache.keys().next().value;
+        lyricsMemoryCache.delete(oldestKey);
+    }
+    lyricsMemoryCache.set(key, value);
+}
 
 function cleanTitle(title) {
     if (!title) return '';
@@ -40,7 +49,7 @@ function detectScript(text) {
     return topLang;
 }
 
-function getScriptLabel(script) {
+function getScriptLabel(script, targetLang = '') {
     const labels = {
         english: '🔤 English / Romanized',
         tamil: '🌐 Native தமிழ் (Tamil)',
@@ -50,6 +59,15 @@ function getScriptLabel(script) {
         hindi: '🌐 Native हिन्दी (Hindi)',
         unknown: '📄 Text Lyrics'
     };
+    const normTarget = (targetLang || '').toLowerCase().trim();
+    if (
+        normTarget &&
+        script !== 'english' &&
+        script !== 'unknown' &&
+        normTarget !== script
+    ) {
+        return `⚠️ ${script.toUpperCase()} Dub`;
+    }
     return labels[script] || `🌐 ${script}`;
 }
 
@@ -59,7 +77,7 @@ function requestJson(url) {
         const mod = u.protocol === 'https:' ? https : http;
         const req = mod.get(url, {
             headers: {
-                'User-Agent': 'LosslessMusicStudio/6.9 (https://omonk.web.app)',
+                'User-Agent': 'LosslessMusicStudio/8.1 (https://omonk.web.app)',
                 'Accept': 'application/json'
             }
         }, (res) => {
@@ -81,7 +99,7 @@ function requestJson(url) {
     });
 }
 
-async function searchLrclib(query, language = '') {
+async function searchLrclib(query, language = '', targetDuration = 0) {
     const qClean = cleanTitle(query);
     if (!qClean) return [];
 
@@ -89,27 +107,49 @@ async function searchLrclib(query, language = '') {
     const res = await requestJson(url);
     if (!res.data || !Array.isArray(res.data)) return [];
 
-    return res.data.slice(0, 20).map(item => {
+    const normLang = (language || '').toLowerCase().trim();
+    const dur = Math.round(Number(targetDuration) || 0);
+
+    const mapped = res.data.slice(0, 25).map(item => {
         const text = item.syncedLyrics || item.plainLyrics || '';
         const script = detectScript(text);
+        const itemDur = Math.round(item.duration || 0);
+        const durDiff = (dur > 0 && itemDur > 0) ? Math.abs(dur - itemDur) : 0;
+        const isWrongDub = Boolean(normLang && script !== 'english' && script !== 'unknown' && script !== normLang);
+
+        let score = 0;
+        if (item.syncedLyrics) score += 50;
+        if (dur > 0 && durDiff <= 4) score += 40;
+        else if (dur > 0 && durDiff <= 10) score += 15;
+        else if (dur > 0 && durDiff > 20) score -= 35;
+        if (!isWrongDub) score += 30;
+        else score -= 60;
+
         return {
             id: item.id,
             trackName: item.trackName || item.name || '',
             artistName: item.artistName || '',
             albumName: item.albumName || '',
-            duration: Math.round(item.duration || 0),
+            duration: itemDur,
+            durationDiff: durDiff,
             hasSynced: Boolean(item.syncedLyrics),
             hasPlain: Boolean(item.plainLyrics),
             syncedLyrics: item.syncedLyrics || '',
             plainLyrics: item.plainLyrics || '',
-            script: script,
-            scriptLabel: getScriptLabel(script)
+            script,
+            scriptLabel: getScriptLabel(script, normLang),
+            _score: score
         };
     });
+
+    return mapped.sort((a, b) => b._score - a._score);
 }
 
 async function fetchLyrics(title, artist = '', duration = 0, language = '') {
-    const cacheKey = `${(title || '').toLowerCase()}_${(artist || '').toLowerCase()}`;
+    const normLang = (language || '').toLowerCase().trim();
+    const durSec = Math.round(Number(duration) || 0);
+    const cacheKey = `${(title || '').toLowerCase()}_${(artist || '').toLowerCase()}_${durSec}_${normLang}`;
+
     if (lyricsMemoryCache.has(cacheKey)) {
         return lyricsMemoryCache.get(cacheKey);
     }
@@ -117,29 +157,31 @@ async function fetchLyrics(title, artist = '', duration = 0, language = '') {
     const cTitle = cleanTitle(title);
     const primaryArtist = (artist || '').split(/[,&]/)[0].trim();
 
-    // 1. Direct LRCLIB get
     if (cTitle) {
         let getUrl = `https://lrclib.net/api/get?track_name=${encodeURIComponent(cTitle)}`;
         if (primaryArtist) getUrl += `&artist_name=${encodeURIComponent(primaryArtist)}`;
-        if (duration > 0) getUrl += `&duration=${Math.round(duration)}`;
+        if (durSec > 0) getUrl += `&duration=${durSec}`;
 
         const getRes = await requestJson(getUrl);
         if (getRes.data && (getRes.data.syncedLyrics || getRes.data.plainLyrics)) {
             const d = getRes.data;
-            const resObj = {
-                success: true,
-                syncedLyrics: d.syncedLyrics || '',
-                plainLyrics: d.plainLyrics || '',
-                trackName: d.trackName || title,
-                artistName: d.artistName || artist,
-                hasDual: false
-            };
-            lyricsMemoryCache.set(cacheKey, resObj);
-            return resObj;
+            const script = detectScript(d.syncedLyrics || d.plainLyrics);
+            const isWrongDub = Boolean(normLang && script !== 'english' && script !== 'unknown' && script !== normLang);
+            if (!isWrongDub) {
+                const resObj = {
+                    success: true,
+                    syncedLyrics: d.syncedLyrics || '',
+                    plainLyrics: d.plainLyrics || '',
+                    trackName: d.trackName || title,
+                    artistName: d.artistName || artist,
+                    hasDual: false
+                };
+                setBoundedCache(cacheKey, resObj);
+                return resObj;
+            }
         }
     }
 
-    // 2. Search fallback
     const queries = [
         `${cTitle} ${primaryArtist}`.trim(),
         cTitle,
@@ -147,16 +189,17 @@ async function fetchLyrics(title, artist = '', duration = 0, language = '') {
     ].filter(Boolean);
 
     for (const q of queries) {
-        const candidates = await searchLrclib(q, language);
+        const candidates = await searchLrclib(q, normLang, durSec);
         if (candidates.length > 0) {
-            // Find best synchronized candidate
-            const synced = candidates.find(c => c.syncedLyrics && c.syncedLyrics.length > 20);
-            const best = synced || candidates[0];
+            const validCandidates = candidates.filter(c => !c.scriptLabel.startsWith('⚠️'));
+            const pool = validCandidates.length > 0 ? validCandidates : candidates;
+
+            const synced = pool.find(c => c.syncedLyrics && c.syncedLyrics.length > 20 && (durSec === 0 || c.durationDiff <= 12));
+            const best = synced || pool[0];
 
             if (best && (best.syncedLyrics || best.plainLyrics)) {
-                // Check if we can form dual script (English + Native)
-                const englishCand = candidates.find(c => c.script === 'english' && c.syncedLyrics);
-                const nativeCand = candidates.find(c => c.script !== 'english' && c.syncedLyrics);
+                const englishCand = pool.find(c => c.script === 'english' && c.syncedLyrics && (durSec === 0 || c.durationDiff <= 12));
+                const nativeCand = pool.find(c => c.script === normLang && c.syncedLyrics && (durSec === 0 || c.durationDiff <= 12));
 
                 const hasDual = Boolean(englishCand && nativeCand && englishCand.id !== nativeCand.id);
                 const resObj = {
@@ -165,19 +208,24 @@ async function fetchLyrics(title, artist = '', duration = 0, language = '') {
                     plainLyrics: best.plainLyrics || '',
                     trackName: best.trackName || title,
                     artistName: best.artistName || artist,
-                    hasDual: hasDual,
+                    hasDual,
+                    defaultScript: 'english',
                     english: englishCand ? { syncedLyrics: englishCand.syncedLyrics, plainLyrics: englishCand.plainLyrics } : null,
-                    native: nativeCand ? { syncedLyrics: nativeCand.syncedLyrics, plainLyrics: nativeCand.plainLyrics } : null,
+                    native: nativeCand ? {
+                        syncedLyrics: nativeCand.syncedLyrics,
+                        plainLyrics: nativeCand.plainLyrics,
+                        scriptLabel: nativeCand.scriptLabel
+                    } : null,
                     nativeLabel: nativeCand ? nativeCand.scriptLabel : '🌐 Native'
                 };
-                lyricsMemoryCache.set(cacheKey, resObj);
+                setBoundedCache(cacheKey, resObj);
                 return resObj;
             }
         }
     }
 
     const notFound = { success: false, syncedLyrics: '', plainLyrics: '', hasDual: false };
-    lyricsMemoryCache.set(cacheKey, notFound);
+    setBoundedCache(cacheKey, notFound);
     return notFound;
 }
 
