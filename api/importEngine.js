@@ -74,9 +74,12 @@ function cleanTrackName(title) {
     return title
         .replace(/#\S+/g, '')
         .replace(/^\s*\d+[\.\-\)]\s*/, '')
-        .replace(/\b(Official Video|Official Audio|Music Video|Lyrical Video|Lyrical|Lyric Video|Video Song|Audio Song|4K|8K|60FPS|Full Song|HD|Remastered|Jukebox|Full Album|Audio Jukebox|status|shorts)\b/gi, '')
+        .replace(/[\(\[\{][^\)\]\}]*(?:remaster|official|audio|video|lyrics?|version|4k|8k|hd)[^\)\]\}]*[\)\]\}]/gi, '')
+        .replace(/(Official Video|Official Audio|Music Video|Lyrical Video|Lyrical|Lyric Video|Video Song|Audio Song|4K|8K|60FPS|Full Song|HD|Remastered|Jukebox|Full Album|Audio Jukebox|status|shorts)/gi, '')
         .replace(/\|\s*.*$/, '')
+        .replace(/[\(\[\{]\s*[\)\]\}]/g, '')
         .replace(/[-–—: ]+$/, '')
+        .replace(/\s+/g, ' ')
         .trim();
 }
 

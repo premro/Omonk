@@ -2499,7 +2499,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!url || typeof url !== 'string') return false;
         const clean = url.trim();
         if (clean === '' || clean.includes('undefined') || clean.includes('null')) return false;
-        return clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('blob:') || clean.startsWith('/api/stream') || clean.startsWith('/server/');
+        return clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('blob:') || clean.startsWith('/api/stream') || clean.startsWith('/server/') || clean.startsWith('assets/') || clean.startsWith('/assets/') || clean.startsWith('./');
     }
 
     function extractDownloadUrl(trackPayload) {

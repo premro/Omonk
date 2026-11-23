@@ -741,7 +741,7 @@ ARTISTS_CATALOG = [
         "avatar": "https://image-cdn-ak.spotifycdn.com/image/ab67616d0000b273197d278a26922f72a4d4b080",
         "monthlyListeners": "15.8M",
         "tracks": [
-            {"id": "mc_1", "title": "Beggin'", "artist": "Madcon", "album": "So Dark the Con of Man", "duration": 216, "quality": "FLAC / 320kbps Hi-Fi", "streamUrl": "https://aac.saavncdn.com/525/d6725bd1e03e20c92862dc6b0038d0b3_320.mp4"},
+            {"id": "mc_1", "title": "Beggin'", "artist": "Madcon", "album": "So Dark the Con of Man", "duration": 216, "quality": "FLAC / 320kbps Hi-Fi", "streamUrl": "assets/beggin_madcon.mp3"},
             {"id": "mc_2", "title": "Glow", "artist": "Madcon", "album": "Contraband", "duration": 229, "quality": "FLAC / 320kbps Hi-Fi"},
             {"id": "mc_3", "title": "Don't Worry", "artist": "Madcon, Ray Dalton", "album": "Don't Worry", "duration": 214, "quality": "FLAC / 320kbps Hi-Fi"}
         ]

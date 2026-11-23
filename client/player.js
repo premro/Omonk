@@ -1119,7 +1119,7 @@ class AudioPlayerEngine {
 
         function isValidUrl(s) {
             if (!s || typeof s !== 'string') return false;
-            return s.startsWith('http://') || s.startsWith('https://') || s.startsWith('blob:') || s.startsWith('data:');
+            return s.startsWith('http://') || s.startsWith('https://') || s.startsWith('blob:') || s.startsWith('data:') || s.startsWith('assets/') || s.startsWith('/assets/') || s.startsWith('./');
         }
 
         const prefix = getOmonkApiPrefix();
