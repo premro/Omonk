@@ -74,8 +74,9 @@ function cleanTrackName(title) {
     return title
         .replace(/#\S+/g, '')
         .replace(/^\s*\d+[\.\-\)]\s*/, '')
-        .replace(/[\(\[\{][^\)\]\}]*(?:remaster|official|audio|video|lyrics?|version|4k|8k|hd)[^\)\]\}]*[\)\]\}]/gi, '')
-        .replace(/(Official Video|Official Audio|Music Video|Lyrical Video|Lyrical|Lyric Video|Video Song|Audio Song|4K|8K|60FPS|Full Song|HD|Remastered|Jukebox|Full Album|Audio Jukebox|status|shorts)/gi, '')
+        .replace(/[\(\[\{][^\)\]\}]*(?:remaster|official|audio|video|lyrics?|version|4k|8k|hd|uhd|full)[^\)\]\}]*[\)\]\}]/gi, '')
+        .replace(/\s*[-–—:]\s*(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical\s*song|lyrical|lyrics|music\s*video|official\s*video|official\s*audio|official|jukebox|audio\s*jukebox|remastered|status|shorts)\b.*$/gi, '')
+        .replace(/ (Official Video|Official Audio|Music Video|Lyrical Video|Lyrical|Lyric Video|Video Song|Audio Song|4K|8K|60FPS|Full Song|HD|Remastered|Jukebox|Full Album|Audio Jukebox|status|shorts) /gi, '')
         .replace(/\|\s*.*$/, '')
         .replace(/[\(\[\{]\s*[\)\]\}]/g, '')
         .replace(/[-–—: ]+$/, '')
@@ -83,17 +84,79 @@ function cleanTrackName(title) {
         .trim();
 }
 
+function parseYouTubeTitle(rawTitle, authorName = '') {
+    if (!rawTitle) return { title: 'Unknown Title', artist: authorName || 'Various Artists', album: '' };
+
+    let clean = rawTitle
+        .replace(/#\S+/g, '')
+        .replace(/[\(\[\{][^\)\]\}]*(?:remaster|official|audio|video|lyrics?|version|4k|8k|hd|uhd|full)[^\)\]\}]*[\)\]\}]/gi, ' ')
+        .trim();
+
+    const rawSegments = clean.split(/\s*[|•/]\s*/).map(s => s.trim()).filter(Boolean);
+    const junkRegex = /^(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical\s*song|lyrical|lyrics|music\s*video|official\s*video|official\s*audio|official|jukebox|audio\s*jukebox|remastered|status|shorts)$/i;
+
+    const usefulSegments = [];
+    for (const seg of rawSegments) {
+        let s = seg.replace(/[-–—]\s*(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical|lyrics|official\s*video).*$/i, '').trim();
+        s = s.replace(/^(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical|lyrics|official\s*video).*?[-–—]\s*/i, '').trim();
+        if (!s || junkRegex.test(s)) continue;
+        if (/^[\u0900-\u0D7F\s\p{P}]+$/u.test(s)) continue;
+        usefulSegments.push(s);
+    }
+
+    let title = '';
+    let artist = '';
+    let album = '';
+
+    const knownArtists = [
+        'madcon', 'ed sheeran', 'anirudh', 'anirudh ravichander', 'a.r. rahman', 'ar rahman',
+        'ilayaraja', 'ilayaraaja', 'yuvan', 'yuvan shankar raja', 'harris jayaraj', 'pradeep kumar',
+        'sid sriram', 'spb', 'dhanush', 'the weeknd', 'taylor swift', 'dua lipa', 'justin bieber',
+        's.a. rajkumar', 'sa rajkumar', 'deva', 'vidyasagar', 'immann', 'd. imman', 'santhosh narayanan'
+    ];
+
+    if (usefulSegments.length === 0) {
+        title = rawTitle.replace(/[-–—|].*$/, '').trim();
+        artist = authorName || 'Various Artists';
+    } else if (usefulSegments.length === 1) {
+        const seg = usefulSegments[0];
+        const dashParts = seg.split(/\s*[-–—]\s*/);
+        if (dashParts.length >= 2) {
+            const p0 = dashParts[0].trim();
+            const p1 = dashParts.slice(1).join(' - ').trim();
+            const auth = (authorName || '').toLowerCase().replace(/\s*(?:official|music|vevo|records|channel|- topic).*/g, '').trim();
+            if (knownArtists.some(k => p1.toLowerCase().includes(k)) || /\b(feat|ft|singers?|vocals?|composer)\b/i.test(p1) || (auth && p1.toLowerCase().includes(auth))) {
+                artist = p1;
+                title = p0;
+            } else if (knownArtists.some(k => p0.toLowerCase().includes(k)) || (auth && p0.toLowerCase().includes(auth))) {
+                artist = p0;
+                title = p1;
+            } else {
+                title = p0;
+                artist = p1;
+            }
+        } else {
+            title = seg;
+            artist = authorName || 'Various Artists';
+        }
+    } else {
+        title = usefulSegments[0];
+        album = usefulSegments[1];
+        artist = usefulSegments.length > 2 ? usefulSegments[usefulSegments.length - 1] : usefulSegments[1];
+    }
+
+    return { title, artist, album };
+}
+
 async function importYouTube(inputUrl) {
     if (!inputUrl) return { success: false, error: 'URL is required' };
 
-    // 1. YouTube Playlist check
     const pMatch = inputUrl.match(/list=([a-zA-Z0-9_-]+)/);
     const vMatch = inputUrl.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([a-zA-Z0-9_-]{11})/);
 
     let playlistId = pMatch ? pMatch[1] : null;
     let videoId = vMatch ? vMatch[1] : null;
 
-    // RD mixes (YouTube Mix), LL (Liked Videos), WL (Watch Later) cannot be fetched as public playlists
     if (playlistId && (playlistId.startsWith('RD') || playlistId.startsWith('LL') || playlistId.startsWith('WL') || playlistId.startsWith('LM'))) {
         playlistId = null;
     }
@@ -102,84 +165,46 @@ async function importYouTube(inputUrl) {
         return { success: false, error: 'Invalid or unsupported YouTube URL' };
     }
 
-    // Fast and robust single track extraction via YouTube oEmbed
-    if (videoId && !playlistId) {
-        try {
-            const oembed = await fetchJson(`https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + videoId)}&format=json`);
-            if (oembed && oembed.title) {
-                const rawTitle = oembed.title;
-                const clean = cleanTrackName(rawTitle);
-                const parts = clean.split(/[-–—|:]/).map(s => s.trim()).filter(Boolean);
-                let trackArtist = oembed.author_name || 'YouTube';
-                let trackTitle = clean || rawTitle;
-                if (parts.length >= 2) {
-                    const p0 = parts[0], p1 = parts[1];
-                    const knownArtists = ['madcon', 'ed sheeran', 'anirudh', 'anirudh ravichander', 'a.r. rahman', 'ar rahman', 'ilayaraja', 'ilayaraaja', 'yuvan', 'yuvan shankar raja', 'harris jayaraj', 'pradeep kumar', 'sid sriram', 'spb', 'dhanush', 'the weeknd', 'taylor swift', 'dua lipa', 'justin bieber'];
-                    if (knownArtists.some(k => p1.toLowerCase().includes(k)) || /\b(feat|ft|singers?|vocals?|composer)\b/i.test(p1)) {
-                        trackTitle = p0;
-                        trackArtist = p1;
-                    } else {
-                        trackArtist = p0;
-                        trackTitle = parts.slice(1).join(' - ');
-                    }
-                }
-                const singleTrack = {
-                    id: `yt_${videoId}`,
-                    youtubeId: videoId,
-                    title: trackTitle,
-                    artist: trackArtist,
-                    duration: 210,
-                    artwork: oembed.thumbnail_url || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
-                    quality: 'FLAC / 320kbps Hi-Fi'
-                };
-                return {
-                    success: true,
-                    platform: 'YouTube',
-                    title: trackTitle,
-                    artwork: singleTrack.artwork,
-                    count: 1,
-                    tracks: [singleTrack]
-                };
-            }
-        } catch (e) {
-            console.warn('[YouTube oEmbed Fallback]', e);
-        }
-    }
-
     const targetUrl = playlistId && !videoId
         ? `https://www.youtube.com/playlist?list=${playlistId}`
         : `https://www.youtube.com/watch?v=${videoId}`;
 
-    const body = await fetchText(targetUrl);
-    if (!body) {
-        return { success: false, error: 'Could not fetch YouTube page' };
-    }
-
-    let title = '';
-    const tm = body.match(/<title>(.*?)(?: - YouTube)?<\/title>/i);
-    if (tm) {
-        title = tm[1].replace(/ - YouTube/i, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').trim();
-    }
-
-    const cover = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : '';
-    const tracks = [];
-    let ytData = null;
-
-    const dm = body.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
-    if (dm) {
+    let oembed = null;
+    if (videoId) {
         try {
-            ytData = JSON.parse(dm[1]);
+            oembed = await fetchJson(`https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + videoId)}&format=json`);
         } catch (e) {}
     }
 
-    // Detect primary artist from title
+    const body = await fetchText(targetUrl);
+    if (!body && !oembed) {
+        return { success: false, error: 'Could not fetch YouTube page' };
+    }
+
+    let title = oembed?.title || '';
+    const tm = body ? body.match(/<title>(.*?)(?: - YouTube)?<\/title>/i) : null;
+    if (tm) {
+        title = tm[1].replace(/ - YouTube/i, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').trim();
+    }
+    if (!title && oembed?.title) title = oembed.title;
+
+    const cover = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : (oembed?.thumbnail_url || '');
+    const tracks = [];
+    let ytData = null;
+
+    const dm = body ? body.match(/ytInitialData\s*=\s*({.+?});<\/script>/) : null;
+    if (dm) {
+        try { ytData = JSON.parse(dm[1]); } catch (e) {}
+    }
+
     if (!title || title === 'undefined') {
         title = ytData?.header?.playlistHeaderRenderer?.title?.simpleText ||
                 ytData?.header?.playlistHeaderRenderer?.title?.runs?.[0]?.text ||
                 ytData?.metadata?.playlistMetadataRenderer?.title ||
                 'YouTube Playlist';
     }
-    let primaryArtist = 'Various Artists';
+
+    let primaryArtist = oembed?.author_name || 'Various Artists';
     const artistRegex = /\b(ilayaraja|ilayaraaja|ilaiyaraaja|a\.?\s*r\.?\s*rahman|anirudh|anirudh\s*ravichander|harris\s*jayaraj|yuvan\s*shankar\s*raja|yuvan|spb|s\.\s*p\.\s*balasubrahmanyam|chitra|k\.\s*s\.\s*chithra|janaki|s\.\s*janaki|yesudas|k\.\s*j\.\s*yesudas|vidyasagar|devi\s*sri\s*prasad|dsp|thaman|thaman\s*s|arijit\s*singh|arijit|shreya\s*ghoshal|sid\s*sriram|santhosh\s*narayanan|g\.?\s*v\.?\s*prakash|hiphop\s*tamizha|d\.?\s*imman|taylor\s*swift|billie\s*eilish|bad\s*bunny|the\s*weeknd)\b/i;
     const am = title.match(artistRegex);
     if (am) {
@@ -211,19 +236,22 @@ async function importYouTube(inputUrl) {
             const pvThumb = pv.thumbnail?.thumbnails?.[pv.thumbnail.thumbnails.length - 1]?.url || cover;
             const pvId = pv.videoId || '';
             if (pvTitle && !pvTitle.includes('[Private video]') && !pvTitle.includes('[Deleted video]')) {
+                const parsedSeg = parseYouTubeTitle(pvTitle, pvArtist);
                 tracks.push({
                     id: pvId ? `yt_${pvId}` : undefined,
                     youtubeId: pvId,
-                    title: cleanTrackName(pvTitle),
-                    artist: pvArtist,
+                    title: parsedSeg.title || cleanTrackName(pvTitle),
+                    artist: parsedSeg.artist || pvArtist,
+                    album: parsedSeg.album || '',
                     duration: pvDur,
-                    artwork: pvThumb
+                    artwork: pvThumb,
+                    quality: 'FLAC / 320kbps Hi-Fi'
                 });
             }
         }
     }
 
-    // Strategy 2: Official YouTube Structured Chapters
+    // Strategy 2: Structured Chapters
     if (tracks.length === 0 && ytData) {
         function findMarkers(obj) {
             let markers = [];
@@ -248,24 +276,15 @@ async function importYouTube(inputUrl) {
                 const dur = endMs > 0 ? Math.round((endMs - sec * 1000) / 1000) : 240;
                 const art = m.thumbnail?.thumbnails?.[m.thumbnail.thumbnails.length - 1]?.url || cover;
 
-                let trackTitle = cleanTrackName(cTitle);
-                let trackArtist = primaryArtist;
-
-                if (trackTitle.includes(' - ') || trackTitle.includes(' | ')) {
-                    const parts = trackTitle.split(/\s*[-|]\s*/);
-                    const right = parts[1].trim();
-                    if (!/version|solo|male|female|duet|remix|sad|bit|dialogue|bgm|track|flute|instrumental/i.test(right)) {
-                        trackTitle = parts[0].trim();
-                        trackArtist = right;
-                    }
-                }
-
+                const parsed = parseYouTubeTitle(cTitle, primaryArtist);
                 tracks.push({
-                    title: trackTitle,
-                    artist: trackArtist,
+                    title: parsed.title || cleanTrackName(cTitle),
+                    artist: parsed.artist || primaryArtist,
+                    album: parsed.album || '',
                     duration: dur,
                     artwork: art,
-                    startTime: sec
+                    startTime: sec,
+                    quality: 'FLAC / 320kbps Hi-Fi'
                 });
             }
         }
@@ -285,8 +304,9 @@ async function importYouTube(inputUrl) {
         }
         const desc = findDesc(ytData);
         if (desc) {
-            const lines = desc.split('\n');
-            const timeRegexPrefix = /^(:?track\s*\d+[\.\-\:]\s*)?(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—:\.]*\s*(.+)$/i;
+            const unescapedDesc = desc.replace(/\\n/g, '\n');
+            const lines = unescapedDesc.split(/[\r\n]+/);
+            const timeRegexPrefix = /^(?:track\s*\d+[\.\-\:]\s*)?(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—:\.]*\s*(.+)$/i;
             const timeRegexSuffix = /^(.+?)\s*[-–—:\.]*\s*(\d{1,2}:\d{2}(?::\d{2})?)$/i;
             const parsedTs = [];
 
@@ -307,22 +327,16 @@ async function importYouTube(inputUrl) {
                 }
 
                 if (timeStr && name) {
-                    let cName = cleanTrackName(name);
-                    let trackArtist = primaryArtist;
-                    if (cName.includes(' - ') || cName.includes(' | ')) {
-                        const parts = cName.split(/\s*[-|]\s*/);
-                        const right = parts[1].trim();
-                        if (!/version|solo|male|female|duet|remix|sad|bit|dialogue|bgm|track|flute|instrumental/i.test(right)) {
-                            cName = parts[0].trim();
-                            trackArtist = right;
-                        }
-                    }
-                    if (cName.length >= 2) {
+                    const parsed = parseYouTubeTitle(name, primaryArtist);
+                    const cleanName = parsed.title || cleanTrackName(name);
+                    if (cleanName.length >= 2) {
                         parsedTs.push({
-                            title: cName,
-                            artist: trackArtist,
+                            title: cleanName,
+                            artist: parsed.artist || primaryArtist,
+                            album: parsed.album || '',
                             startTime: parseTimestampToSeconds(timeStr),
-                            artwork: cover
+                            artwork: cover,
+                            quality: 'FLAC / 320kbps Hi-Fi'
                         });
                     }
                 }
@@ -336,8 +350,8 @@ async function importYouTube(inputUrl) {
         }
     }
 
-    // Strategy 4: Video Licensing Cards
-    if (tracks.length === 0 && ytData) {
+    // Strategy 4: Video Licensing Cards (only for actual songs, ignore people/biography cards)
+    if (tracks.length === 0 && ytData && playlistId) {
         function findCards(obj) {
             let cards = [];
             if (obj && typeof obj === 'object') {
@@ -353,41 +367,36 @@ async function importYouTube(inputUrl) {
             const tTitle = c.title || '';
             const tArtist = c.subtitle || primaryArtist || 'Unknown Artist';
             if (tTitle && !tracks.some(t => t.title.toLowerCase() === tTitle.toLowerCase())) {
+                const parsed = parseYouTubeTitle(tTitle, tArtist);
                 tracks.push({
-                    title: cleanTrackName(tTitle),
-                    artist: tArtist,
+                    title: parsed.title || cleanTrackName(tTitle),
+                    artist: parsed.artist || tArtist,
+                    album: parsed.album || '',
                     duration: 210,
-                    artwork: cover
+                    artwork: cover,
+                    quality: 'FLAC / 320kbps Hi-Fi'
                 });
             }
         }
     }
 
-    // Strategy 5: Single track fallback
-    if (tracks.length === 0 && title) {
-        const clean = cleanTrackName(title);
-        const parts = clean.split(/[-–—|:]/).map(s => s.trim()).filter(Boolean);
-        let trackArtist = primaryArtist;
-        let trackTitle = clean || title;
-        if (parts.length >= 2) {
-            const p0 = parts[0], p1 = parts[1];
-            const knownArtists = ['madcon', 'ed sheeran', 'anirudh', 'anirudh ravichander', 'a.r. rahman', 'ar rahman', 'ilayaraja', 'ilayaraaja', 'yuvan', 'yuvan shankar raja', 'harris jayaraj', 'pradeep kumar', 'sid sriram', 'spb', 'dhanush', 'the weeknd', 'taylor swift', 'dua lipa', 'justin bieber'];
-            if (knownArtists.some(k => p1.toLowerCase().includes(k)) || /\b(feat|ft|singers?|vocals?|composer)\b/i.test(p1)) {
-                trackTitle = p0;
-                trackArtist = p1;
-            } else {
-                trackArtist = p0;
-                trackTitle = parts.slice(1).join(' - ');
-            }
-        }
-        tracks.push({
+    // Strategy 5: Single track fallback (Video without chapters/timestamps)
+    if (tracks.length === 0) {
+        const rawTitleToParse = oembed?.title || title;
+        const authorToParse = oembed?.author_name || primaryArtist;
+        const parsed = parseYouTubeTitle(rawTitleToParse, authorToParse);
+        const singleTrack = {
             id: videoId ? `yt_${videoId}` : undefined,
             youtubeId: videoId,
-            title: trackTitle,
-            artist: trackArtist,
+            title: parsed.title || cleanTrackName(rawTitleToParse),
+            artist: parsed.artist || authorToParse,
+            album: parsed.album || '',
             duration: 210,
-            artwork: cover
-        });
+            artwork: oembed?.thumbnail_url || cover,
+            quality: 'FLAC / 320kbps Hi-Fi'
+        };
+        tracks.push(singleTrack);
+        title = singleTrack.title;
     }
 
     return {

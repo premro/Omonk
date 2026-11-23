@@ -153,7 +153,7 @@ function phonetics(str) {
             w = w.replace(/w/g, "v")
                  .replace(/z/g, "s")
                  .replace(/j/g, "s");
-            w = w.replace(/o$/, "u");
+            w = w.replace(/o$/, "u").replace(/(?:ae|ey|ee|ai)$/, "e").replace(/aa$/, "a").replace(/oo$/, "u");
             let collapsed = "";
             for (let i = 0; i < w.length; i++) {
                 if (i === 0 || w[i] !== w[i - 1]) {

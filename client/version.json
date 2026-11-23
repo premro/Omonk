@@ -1,5 +1,5 @@
 {
-  "version": "8.16.0",
-  "releaseDate": "2026-11-23",
-  "description": "v8.16.0 IndexedDB Persistence, Universal Importer & Mobile Lock-Screen Continuous Autoplay: Dynamic stream resolution for custom playlists, IndexedDB liked tracks & offline Blob management, synchronized heart buttons across all views, secondary preloaded audio handoff, and Web Audio non-zero silent anchor for iOS Safari and Android Chrome."
+  "version": "8.17.0",
+  "releaseDate": "2026-11-24",
+  "description": "v8.17.0 YouTube Importer Engine Fixes, Multi-Track Compilation Parsing, Lock-Screen Pause Anchor Persistence, Smooth Pointer Scrubbing, Unique Chart Track IDs, and Tamil Hits Resolution."
 }

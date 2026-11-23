@@ -1159,6 +1159,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
         if (pathname === '/api/resolve' || pathname === '/resolve') {
             const rawTitle = u.searchParams.get('title') || '';
             const rawArtist = u.searchParams.get('artist') || '';
+            const rawAlbum = u.searchParams.get('album') || '';
             
             // Clean title: "Muthumani (From "Dorothy")" -> clean: "Muthumani", film: "Dorothy"
             let cleanTitle = rawTitle.replace(/\s*\(From\s+["'][^"']+["']\)/i, '')
@@ -1197,7 +1198,9 @@ function isSameSongOrReprise(candTitle, seedTitle) {
             }
 
             const queries = [];
+            if (rawAlbum) queries.push(cleanTitle + " " + rawAlbum);
             if (firstArtist) queries.push(cleanTitle + " " + firstArtist);
+            if (rawAlbum && firstArtist) queries.push(cleanTitle + " " + rawAlbum + " " + firstArtist);
             if (firstArtist && secondArtist) queries.push(cleanTitle + " " + firstArtist + " " + secondArtist);
             if (film) queries.push(cleanTitle + " " + film);
             queries.push(cleanTitle);
@@ -1278,10 +1281,11 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     }
 
                     // Film / Album match
-                    if (film) {
-                        const filmPhon = searchEngine.phonetics(film);
-                        if (sAlbPhon.includes(filmPhon) || filmPhon.includes(sAlbPhon)) {
-                            score += 70;
+                    const targetAlbum = rawAlbum || film;
+                    if (targetAlbum) {
+                        const albPhon = searchEngine.phonetics(targetAlbum);
+                        if (sAlbPhon.includes(albPhon) || albPhon.includes(sAlbPhon)) {
+                            score += 140;
                         }
                     }
 

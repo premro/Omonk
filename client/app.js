@@ -4877,25 +4877,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    let isScrubbing = false;
+
     AudioPlayer.onTimeUpdate = (current, total) => {
-        const pct = total > 0 ? (current / total) * 100 : 0;
-        currentTimeEl.textContent = formatTime(current);
-        totalDurationEl.textContent = formatTime(total);
-        progressFill.style.width = `${pct}%`;
+        const curDur = (total && isFinite(total) && total > 0) ? total : (AudioPlayer.getCurrentTrack()?.duration || 0);
+        const pct = curDur > 0 ? (current / curDur) * 100 : 0;
+        if (!isScrubbing) {
+            currentTimeEl.textContent = formatTime(current);
+            totalDurationEl.textContent = formatTime(curDur);
+            progressFill.style.width = `${pct}%`;
+        }
 
         // Side panel elements update
         const sideCur = document.getElementById('sideNpCurTime') || document.getElementById('sideCurrentTime');
         const sideDur = document.getElementById('sideNpDurTime') || document.getElementById('sideTotalDuration');
         const sideFill = document.getElementById('sideNpProgressFill') || document.getElementById('sideProgressFill');
-        if (sideCur) sideCur.textContent = formatTime(current);
-        if (sideDur) sideDur.textContent = formatTime(total);
-        if (sideFill) sideFill.style.width = `${pct}%`;
+        if (sideCur && !isScrubbing) sideCur.textContent = formatTime(current);
+        if (sideDur) sideDur.textContent = formatTime(curDur);
+        if (sideFill && !isScrubbing) sideFill.style.width = `${pct}%`;
 
         Lyrics.updateTime(current);
 
         // Sync with Desktop Miniplayer
         if (typeof Miniplayer !== 'undefined' && Miniplayer.isOpen) {
-            Miniplayer.onTimeUpdate(current, total);
+            Miniplayer.onTimeUpdate(current, curDur);
         }
     };
 
@@ -4903,15 +4908,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast(msg, '🎵');
     };
 
-    progressTrack.addEventListener('click', (e) => {
+    // Smooth Desktop & Mobile Scrubbing / Seeking
+    function handleSeekFromPointer(e) {
         const rect = progressTrack.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const width = rect.width;
-        const duration = AudioPlayer.audio.duration;
-        if (duration) {
-            const seekTime = (clickX / width) * duration;
-            AudioPlayer.seek(seekTime);
+        const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+        const clickX = Math.max(0, Math.min(rect.width, clientX - rect.left));
+        const pct = rect.width > 0 ? clickX / rect.width : 0;
+        const duration = (AudioPlayer.audio.duration && isFinite(AudioPlayer.audio.duration)) ? AudioPlayer.audio.duration : (AudioPlayer.getCurrentTrack()?.duration || 0);
+        if (duration > 0) {
+            const seekTime = pct * duration;
+            progressFill.style.width = `${pct * 100}%`;
+            currentTimeEl.textContent = formatTime(seekTime);
+            return seekTime;
         }
+        return 0;
+    }
+
+    progressTrack.addEventListener('pointerdown', (e) => {
+        isScrubbing = true;
+        try { progressTrack.setPointerCapture(e.pointerId); } catch (err) {}
+        const seekTime = handleSeekFromPointer(e);
+        AudioPlayer.seek(seekTime);
+    });
+
+    progressTrack.addEventListener('pointermove', (e) => {
+        if (!isScrubbing) return;
+        handleSeekFromPointer(e);
+    });
+
+    const endScrubbing = (e) => {
+        if (!isScrubbing) return;
+        isScrubbing = false;
+        const seekTime = handleSeekFromPointer(e);
+        AudioPlayer.seek(seekTime);
+    };
+
+    progressTrack.addEventListener('pointerup', endScrubbing);
+    progressTrack.addEventListener('pointercancel', () => { isScrubbing = false; });
+    progressTrack.addEventListener('click', (e) => {
+        const seekTime = handleSeekFromPointer(e);
+        AudioPlayer.seek(seekTime);
     });
 
     playPauseBtn.addEventListener('click', (e) => {
