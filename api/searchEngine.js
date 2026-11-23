@@ -126,38 +126,43 @@ function normalize(str) {
 }
 
 function phonetics(str) {
-    if (!str || typeof str !== 'string') return '';
+    if (!str || typeof str !== "string") return "";
     return str
         .toLowerCase()
-        .replace(/[^\w\s]/gi, ' ')
+        .replace(/[^\w\s]/gi, " ")
         .split(/\s+/)
         .filter(Boolean)
         .map(w => {
-            w = w.replace(/^y([aeiou])/, '');
-            w = w.replace(/^h([aeiou])/, '');
-            w = w.replace(/sh/g, 's')
-                 .replace(/zh/g, 'l')
-                 .replace(/th/g, 't')
-                 .replace(/dh/g, 'd')
-                 .replace(/bh/g, 'b')
-                 .replace(/gh/g, 'g')
-                 .replace(/kh/g, 'k')
-                 .replace(/ph/g, 'f')
-                 .replace(/ch/g, 'c');
-            w = w.replace(/aa/g, 'a')
-                 .replace(/ee/g, 'i')
-                 .replace(/oo/g, 'u')
-                 .replace(/ai/g, 'e')
-                 .replace(/ei/g, 'i')
-                 .replace(/ou/g, 'u');
-            w = w.replace(/w/g, 'v')
-                 .replace(/z/g, 's')
-                 .replace(/j/g, 's');
-            w = w.replace(/o$/, 'u');
-            w = w.replace(/(.)+/g, '');
-            return w;
+            if (w.startsWith("y") && /^[aeiou]/.test(w.slice(1))) w = w.slice(1);
+            if (w.startsWith("h") && /^[aeiou]/.test(w.slice(1))) w = w.slice(1);
+            w = w.replace(/sh/g, "s")
+                 .replace(/zh/g, "l")
+                 .replace(/th/g, "t")
+                 .replace(/dh/g, "d")
+                 .replace(/bh/g, "b")
+                 .replace(/gh/g, "g")
+                 .replace(/kh/g, "k")
+                 .replace(/ph/g, "f")
+                 .replace(/ch/g, "c");
+            w = w.replace(/aa/g, "a")
+                 .replace(/ee/g, "i")
+                 .replace(/oo/g, "u")
+                 .replace(/ai/g, "e")
+                 .replace(/ei/g, "i")
+                 .replace(/ou/g, "u");
+            w = w.replace(/w/g, "v")
+                 .replace(/z/g, "s")
+                 .replace(/j/g, "s");
+            w = w.replace(/o$/, "u");
+            let collapsed = "";
+            for (let i = 0; i < w.length; i++) {
+                if (i === 0 || w[i] !== w[i - 1]) {
+                    collapsed += w[i];
+                }
+            }
+            return collapsed;
         })
-        .join(' ')
+        .join(" ")
         .trim();
 }
 
