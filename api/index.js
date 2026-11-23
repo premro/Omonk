@@ -686,6 +686,8 @@ module.exports = async (req, res) => {
                                 if (key) existingMap.set(key, e);
                             });
 
+                            const playlistCover = entity?.visualIdentity?.image?.[1]?.url || entity?.visualIdentity?.image?.[0]?.url || 'https://charts-images.scdn.co/assets/locale_en/regional/daily/region_in_default.jpg';
+
                             const fresh = [];
                             for (let idx = 0; idx < list.length; idx++) {
                                 const t = list[idx];
@@ -697,38 +699,24 @@ module.exports = async (req, res) => {
                                     return eNorm && norm && (eNorm.includes(norm) || norm.includes(eNorm));
                                 });
 
-                                const BAD_ART = ['ab67706f00000002', 'charts-images.scdn.co', 'image-cdn-fa.spotifycdn.com'];
+                                const BAD_ART = ['ab67706f00000002', 'charts-images.scdn.co'];
                                 const isBadArt = (url) => !url || BAD_ART.some(p => url.includes(p));
 
-                                let individualArtwork = (matched && !isBadArt(matched.artwork)) ? matched.artwork : '';
+                                let individualArtwork = (matched && !isBadArt(matched.artwork)) ? matched.artwork : playlistCover;
                                 let verifiedStream = (matched && matched.streamUrl) ? matched.streamUrl : '';
                                 let albumName = (matched && matched.album && !matched.album.startsWith('Spotify Hot Hits') && !matched.album.startsWith('Hot Hits'))
                                     ? matched.album
-                                    : rawTitle;
-
-                                if ((!individualArtwork || !verifiedStream) && idx < 30) {
-                                    try {
-                                        const clean = rawTitle.replace(/\s*\(From\s+[^)]+\)/i, '').replace(/\s*-\s*From\s+[^"]+/i, '').trim();
-                                        const artistLead = (t.subtitle || '').split(',')[0].replace(/ /g, ' ').trim();
-                                        const sRes = await searchEngine.searchAll(`${clean} ${artistLead}`.trim(), 3);
-                                        const sSongs = sRes.songs || sRes.results || [];
-                                        const found = sSongs.find(s => s.streamUrl) || sSongs[0];
-                                        if (found) {
-                                            if (!individualArtwork && found.artwork) individualArtwork = found.artwork;
-                                            if (!verifiedStream && found.streamUrl) verifiedStream = found.streamUrl;
-                                            if (found.album) albumName = found.album;
-                                        }
-                                    } catch (resErr) {}
-                                }
+                                    : (entity?.title || 'Daily Top Hits');
 
                                 fresh.push({
                                     id: matched?.id || `sp_${lang}_${idx + 1}`,
+                                    spotifyId: t.uri?.replace('spotify:track:', '') || '',
                                     rank: idx + 1,
                                     title: rawTitle,
                                     artist: (t.subtitle || matched?.artist || 'Unknown Artist').replace(/ /g, ' '),
                                     album: albumName,
                                     duration: Math.round((t.duration || 0) / 1000) || (matched?.duration || 210),
-                                    artwork: individualArtwork || (matched?.artwork || ''),
+                                    artwork: individualArtwork,
                                     streamUrl: verifiedStream,
                                     language: lang,
                                     quality: 'FLAC / 320kbps Hi-Fi',

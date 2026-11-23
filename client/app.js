@@ -1194,15 +1194,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderView('daily-hits');
         });
 
-        // Charts by time listeners
+        // Charts by time listeners - updates dashboard table immediately in-place
         document.querySelectorAll('[data-charts-filter]').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 document.querySelectorAll('[data-charts-filter]').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                const f = btn.getAttribute('data-charts-filter');
-                if (f === 'daily') renderView('daily-hits');
-                else if (f === 'weekly') renderView('weekly-hits');
-                else if (f === 'monthly') renderView('monthly-hits');
+                const f = btn.getAttribute('data-charts-filter') || 'daily';
+                const lang = selectedLanguages[0] || 'tamil';
+                const trackListEl = document.getElementById('homeTrackList');
+                if (trackListEl) {
+                    trackListEl.innerHTML = '<div style="text-align: center; padding: 24px;"><div class="pulse-loader"></div></div>';
+                    try {
+                        const res = await fetch(`${API_PREFIX}/api/charts?type=${f}&lang=${lang}&resolve=false&_t=${Date.now()}`);
+                        const data = await res.json();
+                        const tracks = data.tracks || [];
+                        allLoadedSongs = [...tracks];
+                        window.allLoadedSongs = allLoadedSongs;
+                        window.AllSongPool = allLoadedSongs;
+                        trackListEl.innerHTML = renderTrackRowsHtml(tracks);
+                        bindTrackRowEvents(tracks);
+                    } catch (e) {
+                        trackListEl.innerHTML = renderTrackRowsHtml(dailyTracks);
+                        bindTrackRowEvents(dailyTracks);
+                    }
+                }
             });
         });
 
@@ -2400,8 +2415,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const rank = t.rank || (idx + 1);
             const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
             const raw = (t.artwork && t.artwork.trim()) || (t.image && t.image.trim()) || '';
-            const isPlaylistCover = raw.includes('image-cdn-fa.spotifycdn.com');
-            const artUrl = (!isPlaylistCover && (raw.startsWith('http') || raw.startsWith('data:') || raw.startsWith('/'))) ? raw : fallbackArt;
+            const artUrl = (raw && raw !== 'undefined' && !raw.includes('null') && !raw.includes('image-cdn-fa.spotifycdn.com/playlist')) ? raw : fallbackArt;
             const safeTitle = (t.title || 'Song').replace(/"/g, '&quot;');
 
             return `
@@ -3891,18 +3905,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Album Soundtrack Showcase
+        let topAlbum = null;
+        const topSong = songs[0];
         if (albums.length > 0) {
             const alb = albums[0];
+            const is8DOrRemix = /8D|remix|lofi|tribute/i.test(alb.title || '');
+            const albScore = alb.score !== undefined ? alb.score : 0;
+            const albArtistNorm = (alb.artist || '').toLowerCase();
+            const topSongArtistNorm = (topSong?.artist || '').toLowerCase();
+            const matchesArtist = topSong && albArtistNorm && (
+                albArtistNorm.includes(topSongArtistNorm) || topSongArtistNorm.includes(albArtistNorm)
+            );
+            if (!is8DOrRemix && (albScore >= 70 || matchesArtist)) {
+                topAlbum = alb;
+            }
+        }
+        if (!topAlbum && topSong && topSong.album && !topSong.album.toLowerCase().includes('single') && !topSong.album.toLowerCase().includes('unknown')) {
+            topAlbum = {
+                title: topSong.album,
+                artist: topSong.artist,
+                year: topSong.year || '',
+                artwork: topSong.artwork || topSong.image || 'icon-512.png',
+                tracks: [topSong]
+            };
+        }
+        if (topAlbum) {
             html += `
                 <div style="margin-bottom: 24px;">
                     <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 12px;">Album Soundtrack</h3>
                     <div class="album-showcase-card">
                         <div class="album-showcase-header">
-                            <img class="album-showcase-art" src="${alb.artwork || 'icon-512.png'}" alt="${alb.title}" onerror="this.onerror=null;this.src='icon-512.png';">
+                            <img class="album-showcase-art" src="${topAlbum.artwork || 'icon-512.png'}" alt="${topAlbum.title}" onerror="this.onerror=null;this.src='icon-512.png';">
                             <div class="album-showcase-meta">
                                 <span class="album-badge">🎬 MOVIE / ALBUM SOUNDTRACK</span>
-                                <h2 class="album-showcase-title">${alb.title}</h2>
-                                <div class="album-showcase-info">${alb.artist || 'Soundtrack'} • ${alb.year || ''} • Lossless Hi-Fi</div>
+                                <h2 class="album-showcase-title">${topAlbum.title}</h2>
+                                <div class="album-showcase-info">${topAlbum.artist || 'Soundtrack'} • ${topAlbum.year || ''} • Lossless Hi-Fi</div>
                                 <div class="album-showcase-actions" style="margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap;">
                                     <button class="btn-chip primary" id="playAllAlbumBtn" style="padding: 10px 22px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; background: #00d2ff; color: #000; border: none; border-radius: 20px; cursor: pointer;">
                                         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l11.08-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14z"/></svg>
@@ -6168,7 +6205,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ================= MULTI-DEVICE AUTO-REFRESH & LIVE UPDATE SYNC =================
-    const CURRENT_APP_VERSION = "8.14.0";
+    const CURRENT_APP_VERSION = "8.16.0";
     let latestServerTimestamp = 0;
     let latestRemoteVersion = null;
     let userDismissedUpdateVersion = null;
@@ -6241,14 +6278,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (e) {}
 
-        // 1. Kick off non-blocking serverless sync with strict 2.5s timeout (never hangs)
+        // 1. Kick off live Spotify charts sync (<500ms)
         try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2500);
-            await fetch(`${API_PREFIX}/api/sync-charts?timeframe=all&_t=${Date.now()}`, {
-                signal: controller.signal
-            }).catch(() => {});
-            clearTimeout(timeoutId);
+            const lang = selectedLanguages[0] || 'tamil';
+            await fetch(`${API_PREFIX}/api/sync-charts?lang=${lang}&timeframe=all&_t=${Date.now()}`);
         } catch (e) {}
 
         // 2. Clear all Service Worker caches and notify active workers

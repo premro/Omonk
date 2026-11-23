@@ -230,6 +230,18 @@ function parseQuery(raw) {
         isOriginal = true;
     }
 
+    // Extract parentheses hints like (madcon) or (Love Today)
+    const parenMatch = (raw || '').match(/\(([^)]+)\)/);
+    if (parenMatch) {
+        const insideParen = parenMatch[1].trim();
+        const insideLower = insideParen.toLowerCase();
+        if (INTERNATIONAL_ARTISTS.some(a => insideLower.includes(a)) || /\b(feat|ft|singer|artist|composer|madcon)\b/i.test(insideLower)) {
+            artistHint = insideParen;
+        } else {
+            albumHint = insideParen;
+        }
+    }
+
     const byMatch = clean.match(/^(.*?)\s+by\s+(.*)$/i);
     if (byMatch) {
         albumHint = byMatch[1].trim();
@@ -532,15 +544,23 @@ function calcItemScore(item, parsed) {
     if (item.type === 'album' && /\(from\s+["']/i.test(item.title)) {
         score -= 50;
     } else {
-        const qWords = qNorm.split(' ').filter(Boolean);
+        const qWords = qNorm.split(' ').filter(w => w.length > 1);
+        const qPhonWords = (qPhon || '').split(' ').filter(w => w.length > 1);
+        const tPhonWords = (titlePhon || '').split(' ').filter(w => w.length > 1);
         let matchCount = 0;
         for (const w of qWords) {
-            if (titleNorm.includes(w)) matchCount++;
+            const wPhon = phonetics(w);
+            if (titleNorm.includes(w) || (wPhon && tPhonWords.some(tp => tp.includes(wPhon) || wPhon.includes(tp)))) {
+                matchCount++;
+            }
         }
         if (qWords.length > 0 && matchCount === qWords.length) {
-            score += 45;
+            score += 55;
         } else if (matchCount > 0) {
-            score += (matchCount / qWords.length) * 30;
+            score += (matchCount / qWords.length) * 35;
+            if (qWords.length >= 3 && matchCount <= Math.floor(qWords.length / 2)) {
+                score -= 40;
+            }
         }
     }
 
@@ -604,9 +624,20 @@ function calcItemScore(item, parsed) {
         }
     }
 
+    if (parsed.artistHint) {
+        const aHintNorm = normalize(parsed.artistHint);
+        const aHintPhon = phonetics(parsed.artistHint);
+        const itemArtPhon = phonetics(itemArtist);
+        if (itemArtist.includes(aHintNorm) || (aHintPhon && itemArtPhon.includes(aHintPhon))) {
+            score += 60;
+        } else {
+            score -= 150;
+        }
+    }
+
     const pop = item.popularity || item.playCount || 0;
     if (pop > 0) {
-        const popBoost = Math.min(20.0, Math.log10(pop + 1) * 3);
+        const popBoost = Math.min(50.0, Math.log10(pop + 1) * 7.5);
         score += popBoost;
     }
 
@@ -614,10 +645,14 @@ function calcItemScore(item, parsed) {
     const isSongKaraoke = /karaoke|instrumental|minus\s*one|originally\s*perfomed|originally\s*performed|in the style of|prosource|ameritz|serene\s*songs|party\s*tyme|made\s*pop|backing\s*version|tribute\s*version/i.test(fullItemStr);
     const isSongRemix = /remix|lofi|reprise|unplugged|slowed|sped\s*up/i.test(item.title);
     const isSongCover = /cover|tribute|recreated/i.test(fullItemStr) || /aish|zzang/i.test(itemArtist);
+    const isDevotional = /devotional|bhakti|bakthi|geethangal|ezhupputhal|anjeneyar|stotram|suprabhatam|sahasranamam|ayyappan|vinayagar|murugan|keerthana|gospel|christian songs|bhajan/i.test(fullItemStr);
+    const queryAskedDevo = /devotional|bhakti|geethangal|god|lord|prayer|christian|jesus|ayyappa|vinayaga|muruga|stotram/i.test(parsed.cleanText);
 
     if (isSongKaraoke && !parsed.filters.isKaraoke) score -= 500;
     if (isSongRemix && !parsed.filters.isRemix) score -= 40;
     if (isSongCover && !parsed.filters.isCover) score -= 200;
+    if (isDevotional && !queryAskedDevo) score -= 250;
+    if (item.type === 'album' && /8D|remix|lofi/i.test(item.title) && !/8D|remix|lofi/i.test(parsed.cleanText)) score -= 200;
 
     if (parsed.entityHint === item.type) score += 35;
     if (parsed.artistHint && itemArtist.includes(normalize(parsed.artistHint))) score += 30;
@@ -821,7 +856,9 @@ async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
     // Group multiple versions of the same song
     const groupedSongGroups = new Map();
     for (const song of scoredSongs) {
-        const key = `${normalize(song.title)}::${normalize(song.primaryArtist)}`;
+        const cleanTitle = normalize(song.title.replace(/\s*\(From\s+[^)]+\)/gi, '').replace(/\s*-\s*From\s+[^"']+/gi, ''));
+        const leadArtist = normalize((song.artists?.[0] || song.primaryArtist || song.artist || '').split(/[,&]/)[0]);
+        const key = `${cleanTitle}::${leadArtist}`;
         if (!groupedSongGroups.has(key)) {
             groupedSongGroups.set(key, []);
         }
