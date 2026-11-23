@@ -125,6 +125,42 @@ function normalize(str) {
         .trim();
 }
 
+function phonetics(str) {
+    if (!str || typeof str !== 'string') return '';
+    return str
+        .toLowerCase()
+        .replace(/[^\w\s]/gi, ' ')
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(w => {
+            w = w.replace(/^y([aeiou])/, '');
+            w = w.replace(/^h([aeiou])/, '');
+            w = w.replace(/sh/g, 's')
+                 .replace(/zh/g, 'l')
+                 .replace(/th/g, 't')
+                 .replace(/dh/g, 'd')
+                 .replace(/bh/g, 'b')
+                 .replace(/gh/g, 'g')
+                 .replace(/kh/g, 'k')
+                 .replace(/ph/g, 'f')
+                 .replace(/ch/g, 'c');
+            w = w.replace(/aa/g, 'a')
+                 .replace(/ee/g, 'i')
+                 .replace(/oo/g, 'u')
+                 .replace(/ai/g, 'e')
+                 .replace(/ei/g, 'i')
+                 .replace(/ou/g, 'u');
+            w = w.replace(/w/g, 'v')
+                 .replace(/z/g, 's')
+                 .replace(/j/g, 's');
+            w = w.replace(/o$/, 'u');
+            w = w.replace(/(.)+/g, '');
+            return w;
+        })
+        .join(' ')
+        .trim();
+}
+
 function parseQuery(raw) {
     let clean = (raw || '').replace(/["'`“”‘’()[\]]/g, ' ').replace(/\s+/g, ' ').trim();
     let detectedLang = null;
@@ -250,6 +286,31 @@ function generateVariants(cleanText) {
     } else if (cleanText.length >= 4) {
         variants.push(cleanText + 'an');
     }
+
+    // Phonetic transliteration alternates (e <-> ye, u <-> o at word end)
+    const yeAlt = words.map(w => {
+        if (/^e/i.test(w)) return 'y' + w;
+        if (/^ye/i.test(w)) return w.slice(1);
+        return w;
+    }).join(' ');
+    if (yeAlt !== cleanText && !variants.includes(yeAlt)) variants.push(yeAlt);
+
+    const uoAlt = words.map(w => {
+        if (/u$/i.test(w)) return w.slice(0, -1) + 'o';
+        if (/o$/i.test(w)) return w.slice(0, -1) + 'u';
+        return w;
+    }).join(' ');
+    if (uoAlt !== cleanText && !variants.includes(uoAlt)) variants.push(uoAlt);
+
+    const combo = words.slice(0, 2).map(w => {
+        let cw = w;
+        if (/^e/i.test(cw)) cw = 'y' + cw;
+        else if (/^ye/i.test(cw)) cw = cw.slice(1);
+        if (/u$/i.test(cw)) cw = cw.slice(0, -1) + 'o';
+        else if (/o$/i.test(cw)) cw = cw.slice(0, -1) + 'u';
+        return cw;
+    }).join(' ');
+    if (combo !== cleanText && !variants.includes(combo)) variants.push(combo);
 
     let phon = cleanText
         .replace(/th/g, 't')
@@ -437,6 +498,31 @@ function calcItemScore(item, parsed) {
     } else if (titleNorm.includes(qNorm)) {
         score += 50;
     }
+
+    // Phonetic similarity scoring (transliteration invariant)
+    const qPhon = phonetics(parsed.cleanText);
+    const titlePhon = phonetics(item.title);
+    if (titlePhon && qPhon) {
+        if (titlePhon === qPhon) {
+            score += 105;
+        } else if (titlePhon.startsWith(qPhon) || qPhon.startsWith(titlePhon)) {
+            score += 80;
+        } else if (titlePhon.includes(qPhon) || qPhon.includes(titlePhon)) {
+            score += 60;
+        } else {
+            const qPhonWords = qPhon.split(' ').filter(w => w.length > 1);
+            const tPhonWords = titlePhon.split(' ').filter(w => w.length > 1);
+            let phonMatchCount = 0;
+            for (const pw of qPhonWords) {
+                if (tPhonWords.includes(pw) || tPhonWords.some(tw => tw.startsWith(pw) || pw.startsWith(tw))) phonMatchCount++;
+            }
+            if (qPhonWords.length > 0 && phonMatchCount === qPhonWords.length) {
+                score += 55;
+            } else if (phonMatchCount > 0) {
+                score += (phonMatchCount / qPhonWords.length) * 45;
+            }
+        }
+    }
     // Strongly penalize singles with "(From ...)" posing as the main movie album
     if (item.type === 'album' && /\(from\s+["']/i.test(item.title)) {
         score -= 50;
@@ -460,13 +546,15 @@ function calcItemScore(item, parsed) {
     const qArtistTokens = qNorm.split(/[\s,&+]+/).filter(w => w.length > 2 && !['the', 'song', 'songs', 'track', 'tracks'].includes(w));
     if (qArtistTokens.length > 0) {
         let artistMatches = 0;
+        const itemArtPhon = phonetics(itemArtist);
         for (const token of qArtistTokens) {
-            if (itemArtist.includes(token)) artistMatches++;
+            const tokenPhon = phonetics(token);
+            if (itemArtist.includes(token) || (tokenPhon && itemArtPhon.includes(tokenPhon))) artistMatches++;
         }
         if (artistMatches >= 2) {
             score += Math.min(120, artistMatches * 35);
-        } else if (artistMatches === 1 && qArtistTokens.length <= 2) {
-            score += 40;
+        } else if (artistMatches >= 1) {
+            score += 45;
         }
     }
 
@@ -986,5 +1074,6 @@ module.exports = {
     calcItemScore,
     normalizeSong,
     normalizeAlbum,
-    normalizeArtist
+    normalizeArtist,
+    phonetics
 };

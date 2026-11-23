@@ -1167,7 +1167,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
             return;
         }
 
-        // 6. Dynamic Track Resolution (/api/resolve) with Strict Title Matching
+        // 6. Dynamic Track Resolution (/api/resolve) with Progressive Queries & Phonetic Matching
         if (pathname === '/api/resolve' || pathname === '/resolve') {
             const rawTitle = u.searchParams.get('title') || '';
             const rawArtist = u.searchParams.get('artist') || '';
@@ -1181,61 +1181,116 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                                      .trim();
             const filmMatch = rawTitle.match(/From\s+["']?([^"')]+)["']?/i);
             const film = filmMatch ? filmMatch[1].trim() : '';
-            const firstArtist = rawArtist.split(',')[0].trim();
+            const artistTokens = rawArtist.split(/[,&]+/).map(a => a.trim()).filter(Boolean);
+            const firstArtist = artistTokens[0] || '';
+            const secondArtist = artistTokens[1] || '';
 
-            const query = `${cleanTitle} ${film || firstArtist}`.trim();
-            searchEngine.searchAll(query, 10).then(data => {
-                const songs = data.songs || data.results || [];
-                if (songs.length === 0) {
+            const queries = [];
+            if (film) queries.push(cleanTitle + " " + film);
+            if (firstArtist) queries.push(cleanTitle + " " + film);
+            if (secondArtist) queries.push(cleanTitle + " " + film);
+            queries.push(cleanTitle);
+
+            const titleWords = cleanTitle.split(/\s+/).filter(Boolean);
+            if (titleWords.length > 2) {
+                queries.push(titleWords.slice(0, 2).join(' '));
+            }
+
+            // Phonetic title alternate (e.g. Enna Azhagu -> Yenna Azhago)
+            const phonAlt = titleWords.slice(0, 2).map(w => {
+                let cw = w;
+                if (/^e/i.test(cw)) cw = 'y' + cw;
+                else if (/^ye/i.test(cw)) cw = cw.slice(1);
+                if (/u$/i.test(cw)) cw = cw.slice(0, -1) + 'o';
+                else if (/o$/i.test(cw)) cw = cw.slice(0, -1) + 'u';
+                return cw;
+            }).join(' ');
+            if (phonAlt && phonAlt !== cleanTitle && !queries.includes(phonAlt)) {
+                queries.push(phonAlt);
+            }
+
+            const searchPromises = queries.map(q => searchEngine.searchAll(q, 20));
+            Promise.all(searchPromises).then(results => {
+                const seenIds = new Set();
+                const candidates = [];
+                for (const resData of results) {
+                    const list = resData.songs || resData.results || [];
+                    for (const s of list) {
+                        if (s && s.id && !seenIds.has(s.id) && s.streamUrl) {
+                            seenIds.add(s.id);
+                            candidates.push(s);
+                        }
+                    }
+                }
+
+                if (candidates.length === 0) {
                     res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
                     res.end(JSON.stringify({ success: false, error: 'Track stream not found' }));
                     return;
                 }
 
-                // 1. Multi-stage Canonical and Fuzzy Title Match
-                const normTarget = normalizeCanonicalTitle(cleanTitle) || cleanTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
-                let matched = null;
-                for (const s of songs) {
-                    const normSong = normalizeCanonicalTitle(s.title) || (s.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                    if (normTarget && (normSong === normTarget || normSong.includes(normTarget) || normTarget.includes(normSong))) {
-                        matched = s;
-                        break;
-                    }
-                }
+                const qPhon = searchEngine.phonetics(cleanTitle);
+                const rawArtistPhon = searchEngine.phonetics(rawArtist);
+                const qArtistPhonTokens = rawArtistPhon.split(/[\s,&+]+/).filter(w => w.length > 2 && !['the', 'and', 'feat'].includes(w));
 
-                // 2. Keyword match if no direct substring match
-                if (!matched) {
-                    const words = cleanTitle.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-                    for (const s of songs) {
-                        const st = (s.title || '').toLowerCase();
-                        if (words.some(w => st.includes(w))) {
-                            matched = s;
-                            break;
+                function scoreResolveCandidate(s) {
+                    let score = 0;
+                    const sTitlePhon = searchEngine.phonetics(s.title);
+                    const sArtPhon = searchEngine.phonetics(s.artist || '');
+                    const sAlbPhon = searchEngine.phonetics(s.album || '');
+
+                    // Title phonetic matching
+                    if (sTitlePhon === qPhon) {
+                        score += 150;
+                    } else if (sTitlePhon.startsWith(qPhon) || qPhon.startsWith(sTitlePhon)) {
+                        score += 110;
+                    } else if (sTitlePhon.includes(qPhon) || qPhon.includes(sTitlePhon)) {
+                        score += 85;
+                    } else {
+                        const qWords = qPhon.split(' ').filter(w => w.length > 1);
+                        const sWords = sTitlePhon.split(' ').filter(w => w.length > 1);
+                        const matchCount = qWords.filter(w => sWords.includes(w)).length;
+                        if (matchCount > 0) {
+                            score += (matchCount / qWords.length) * 60;
                         }
                     }
-                }
 
-                // 3. Check swapped title and artist
-                if (!matched && firstArtist) {
-                    const normArt = normalizeCanonicalTitle(firstArtist) || firstArtist.toLowerCase().replace(/[^a-z0-9]/g, '');
-                    for (const s of songs) {
-                        const normSong = normalizeCanonicalTitle(s.title) || (s.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                        if (normArt && (normSong === normArt || normSong.includes(normArt) || normArt.includes(normSong))) {
-                            matched = s;
-                            break;
+                    // Artist multi-token matching
+                    if (qArtistPhonTokens.length > 0) {
+                        let artistMatches = 0;
+                        for (const tok of qArtistPhonTokens) {
+                            if (sArtPhon.includes(tok)) artistMatches++;
+                        }
+                        if (artistMatches >= 2) score += 90;
+                        else if (artistMatches === 1) score += 50;
+                        else score -= 40;
+                    }
+
+                    // Film / Album match
+                    if (film) {
+                        const filmPhon = searchEngine.phonetics(film);
+                        if (sAlbPhon.includes(filmPhon) || filmPhon.includes(sAlbPhon)) {
+                            score += 70;
                         }
                     }
+
+                    // Popularity boost
+                    const pop = s.popularity || s.playCount || 0;
+                    if (pop > 0) {
+                        score += Math.min(25, Math.log10(pop + 1) * 4);
+                    }
+
+                    // Penalize karaoke & cover tracks
+                    const rawLower = (s.title + " " + (s.artist || "") + " " + (s.album || "")).toLowerCase();
+                    if (/karaoke|instrumental|minus\s*one|cover|tribute/i.test(rawLower)) {
+                        score -= 200;
+                    }
+
+                    return score;
                 }
 
-                // 4. Safe fallback: only accept if candidate artist or title shares at least one meaningful token
-                if (!matched) {
-                    const allTargetWords = `${cleanTitle} ${firstArtist}`.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-                    matched = songs.find(s => {
-                        if (!s.streamUrl) return false;
-                        const sStr = `${s.title} ${s.artist || ''}`.toLowerCase();
-                        return allTargetWords.some(w => sStr.includes(w));
-                    });
-                }
+                candidates.sort((a, b) => scoreResolveCandidate(b) - scoreResolveCandidate(a));
+                const matched = candidates[0];
 
                 if (matched && matched.streamUrl) {
                     res.writeHead(200, {
@@ -1253,15 +1308,12 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                             duration: matched.duration,
                             artwork: matched.artwork || matched.image,
                             streamUrl: matched.streamUrl,
-                            qualities: matched.qualities || null
+                            quality: matched.quality || 'FLAC / 320kbps Lossless Hi-Fi'
                         }
                     }));
                 } else {
-                    res.writeHead(404, {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    });
-                    res.end(JSON.stringify({ success: false, error: 'Track stream not found' }));
+                    res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ success: false, error: 'Matching track stream not found' }));
                 }
             }).catch(err => {
                 res.writeHead(500, {

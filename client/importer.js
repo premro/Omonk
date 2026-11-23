@@ -158,6 +158,24 @@ class PlaylistImporter {
             quality: t.quality || 'FLAC / 320kbps Hi-Fi'
         }));
 
+        // If single track import, pre-resolve lossless stream immediately
+        if (tracks.length === 1 && !tracks[0].streamUrl) {
+            try {
+                if (onProgress) onProgress(60, `Resolving lossless stream for "${tracks[0].title}"...`);
+                const prefix = window.API_PREFIX || '';
+                const resStream = await fetch(`${prefix}/api/resolve?title=${encodeURIComponent(tracks[0].title)}&artist=${encodeURIComponent(tracks[0].artist || '')}`);
+                if (resStream.ok) {
+                    const resJson = await resStream.json();
+                    if (resJson.success && resJson.track && resJson.track.streamUrl) {
+                        tracks[0].streamUrl = resJson.track.streamUrl;
+                        if (resJson.track.duration) tracks[0].duration = resJson.track.duration;
+                        if (resJson.track.album) tracks[0].album = resJson.track.album;
+                        if (resJson.track.artwork) tracks[0].artwork = resJson.track.artwork;
+                    }
+                }
+            } catch (e) {}
+        }
+
         const newPlaylist = {
             id: `pl_sp_${Date.now()}`,
             name: data.title || 'Curated Playlist',
@@ -195,6 +213,22 @@ class PlaylistImporter {
             streamUrl: t.streamUrl || '',
             quality: 'FLAC / 320kbps Hi-Fi'
         }));
+
+        if (tracks.length === 1 && !tracks[0].streamUrl) {
+            try {
+                if (onProgress) onProgress(60, `Resolving lossless stream for "${tracks[0].title}"...`);
+                const prefix = window.API_PREFIX || '';
+                const resStream = await fetch(`${prefix}/api/resolve?title=${encodeURIComponent(tracks[0].title)}&artist=${encodeURIComponent(tracks[0].artist || '')}`);
+                if (resStream.ok) {
+                    const resJson = await resStream.json();
+                    if (resJson.success && resJson.track && resJson.track.streamUrl) {
+                        tracks[0].streamUrl = resJson.track.streamUrl;
+                        if (resJson.track.duration) tracks[0].duration = resJson.track.duration;
+                        if (resJson.track.artwork) tracks[0].artwork = resJson.track.artwork;
+                    }
+                }
+            } catch (e) {}
+        }
 
         let plTitle = data.title;
         if (!plTitle || plTitle.toLowerCase() === 'undefined' || plTitle.toLowerCase() === 'youtube') {

@@ -1000,6 +1000,10 @@ class AudioPlayerEngine {
         const isBlobSource = typeof finalUrl === 'string' && finalUrl.startsWith('blob:');
 
         if (!isBlobSource && !isValidUrl(finalUrl)) {
+            // Immediately stop previous audio so it does not continue playing while resolving
+            this.audio.pause();
+            this.isPlaying = false;
+            if (this.onPlaybackStateChange) this.onPlaybackStateChange(false);
             if (this.onStatusMessage) this.onStatusMessage(`Resolving Hi-Res stream for "${track.title}"...`);
             finalUrl = await this.refreshStreamUrlForTrack(track);
         }
@@ -1019,10 +1023,41 @@ class AudioPlayerEngine {
         this.preloadNextTrackStream();
 
         if (!isValidUrl(finalUrl)) {
-            if (this.onStatusMessage) this.onStatusMessage(`Stream unavailable for "${track.title}". Skipping to next track...`);
-            setTimeout(() => this.next(true), 600);
+            // Stop and clear previous audio source so it never keeps playing
+            this.audio.pause();
+            this.audio.removeAttribute('src');
+            this.audio.load();
+            this.isPlaying = false;
+            if (this.onPlaybackStateChange) this.onPlaybackStateChange(false);
+            if (this.onStatusMessage) this.onStatusMessage(`Stream unavailable for "${track.title}".`);
+            if (typeof window !== 'undefined' && window.showToast) window.showToast(`Stream unavailable for "${track.title}".`, '⚠️');
+            if (this.queue && this.queue.length > 1 && this.isSequentialContext) {
+                setTimeout(() => this.next(true), 600);
+            }
             return;
         }
+
+        // Persist valid streamUrl back into imported playlists for instant re-play
+        try {
+            if (typeof window !== 'undefined' && window.Importer && Array.isArray(window.Importer.playlists)) {
+                let updatedAny = false;
+                for (const pl of window.Importer.playlists) {
+                    if (Array.isArray(pl.tracks)) {
+                        for (const pt of pl.tracks) {
+                            if (pt && (pt.id === track.id || (pt.title === track.title && pt.artist === track.artist))) {
+                                pt.streamUrl = finalUrl;
+                                if (track.duration && !pt.duration) pt.duration = track.duration;
+                                if (track.artwork && !pt.artwork) pt.artwork = track.artwork;
+                                updatedAny = true;
+                            }
+                        }
+                    }
+                }
+                if (updatedAny && typeof window.Importer.savePlaylists === 'function') {
+                    window.Importer.savePlaylists();
+                }
+            }
+        } catch (e) {}
 
         this.notifyInstancePlaybackStart();
 

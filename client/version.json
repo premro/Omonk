@@ -1,5 +1,5 @@
 {
-  "version": "8.14.0",
+  "version": "8.15.0",
   "releaseDate": "2026-11-23",
-  "description": "v8.14.0 Dynamic URL & Universal Song Sharing: Spotify-grade dynamic URL synchronization, instant 1-tap song sharing across all track rows, side panel, and player bar, and intelligent deep-link song playback."
+  "description": "v8.15.0 Universal Phonetic Song Discovery & Robust Playlist Importer: Cross-platform Tamil/Indian phonetic transliteration matching, multi-artist token overlap, auto-routed YouTube/Spotify playlist imports, and instant pre-resolved single-song playback."
 }

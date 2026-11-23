@@ -4945,27 +4945,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     executeImportBtn?.addEventListener('click', async () => {
-        const activeTab = document.querySelector('[data-import-tab].active').getAttribute('data-import-tab');
+        const activeTab = document.querySelector('[data-import-tab].active')?.getAttribute('data-import-tab') || 'spotify';
         executeImportBtn.disabled = true;
         importStatus.textContent = 'Connecting to lossless resolver...';
 
         try {
+            const spInput = document.getElementById('spotifyImportUrl')?.value.trim() || '';
+            const ytInput = document.getElementById('youtubeImportUrl')?.value.trim() || '';
+            const txtInput = document.getElementById('textImportContent')?.value.trim() || '';
+
+            let rawInput = (activeTab === 'spotify' ? spInput : (activeTab === 'youtube' ? ytInput : txtInput)) || spInput || ytInput || txtInput;
             let result = null;
-            if (activeTab === 'spotify') {
-                const url = document.getElementById('spotifyImportUrl').value.trim();
-                result = await Importer.importSpotify(url, (pct, msg) => importStatus.textContent = msg);
-            } else if (activeTab === 'youtube') {
-                const url = document.getElementById('youtubeImportUrl').value.trim();
-                result = await Importer.importYouTube(url, (pct, msg) => importStatus.textContent = msg);
-            } else if (activeTab === 'text') {
-                const text = document.getElementById('textImportContent').value.trim();
-                result = await Importer.importText(text, 'Imported Tracklist', (pct, msg) => importStatus.textContent = msg);
+
+            // Platform auto-detection
+            if (/spotify\.com|spotify:/i.test(rawInput)) {
+                result = await Importer.importSpotify(rawInput, (pct, msg) => importStatus.textContent = msg);
+            } else if (/youtube\.com|youtu\.be/i.test(rawInput)) {
+                result = await Importer.importYouTube(rawInput, (pct, msg) => importStatus.textContent = msg);
+            } else if (activeTab === 'text' || (txtInput && !spInput && !ytInput)) {
+                result = await Importer.importText(rawInput, 'Imported Tracklist', (pct, msg) => importStatus.textContent = msg);
+            } else if (activeTab === 'spotify') {
+                result = await Importer.importSpotify(rawInput, (pct, msg) => importStatus.textContent = msg);
+            } else {
+                result = await Importer.importYouTube(rawInput, (pct, msg) => importStatus.textContent = msg);
             }
 
-            if (result) {
-                showToast(`Imported ${result.tracks.length} tracks!`, '🎉');
+            if (result && result.tracks && result.tracks.length > 0) {
+                const count = result.tracks.length;
+                showToast(`Imported ${count} track${count === 1 ? '' : 's'}!`, '🎉');
                 importModal.classList.remove('active');
                 renderView('library');
+                // Immediately play imported single song directly
+                if (count === 1 && window.AudioPlayer) {
+                    await window.AudioPlayer.playTrack(result.tracks[0], result.tracks, 0);
+                }
             }
         } catch (err) {
             importStatus.textContent = `Error: ${err.message}`;

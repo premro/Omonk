@@ -61,24 +61,78 @@ def decrypt_saavn_url(encrypted_url):
         return ""
 
 
+def to_phonetic(s):
+    if not s:
+        return ""
+    s = re.sub(r"[^a-z0-9\s]", " ", s.lower())
+    words = []
+    for w in s.split():
+        w = re.sub(r"^y([aeiou])", r"\1", w)
+        w = re.sub(r"^h([aeiou])", r"\1", w)
+        w = re.sub(r"sh", "s", w)
+        w = re.sub(r"zh", "l", w)
+        w = re.sub(r"th", "t", w)
+        w = re.sub(r"dh", "d", w)
+        w = re.sub(r"bh", "b", w)
+        w = re.sub(r"gh", "g", w)
+        w = re.sub(r"kh", "k", w)
+        w = re.sub(r"ph", "f", w)
+        w = re.sub(r"ch", "c", w)
+        w = re.sub(r"aa", "a", w)
+        w = re.sub(r"ee", "i", w)
+        w = re.sub(r"oo", "u", w)
+        w = re.sub(r"ai", "e", w)
+        w = re.sub(r"ei", "i", w)
+        w = re.sub(r"ou", "u", w)
+        w = re.sub(r"w", "v", w)
+        w = re.sub(r"z", "s", w)
+        w = re.sub(r"j", "s", w)
+        w = re.sub(r"o$", "u", w)
+        w = re.sub(r"(.)\1+", r"\1", w)
+        words.append(w)
+    return " ".join(words)
+
 def generate_phonetic_variants(q):
     """Generates phonetic transliterations for Romanized Tamil & Indian keywords."""
     clean = clean_text(q).lower()
     variants = [clean]
-    if 'th' in clean:
-        variants.append(re.sub(r'th', 't', clean))
-    if 'ee' in clean:
-        variants.append(re.sub(r'ee', 'i', clean))
-    elif 'i' in clean:
-        variants.append(re.sub(r'i', 'ee', clean))
-    if 'oo' in clean:
-        variants.append(re.sub(r'oo', 'u', clean))
-    elif 'u' in clean:
-        variants.append(re.sub(r'u', 'oo', clean))
-    if 'zh' in clean:
-        variants.append(re.sub(r'zh', 'l', clean))
-    if 'dh' in clean:
-        variants.append(re.sub(r'dh', 'd', clean))
+    words = clean.split()
+
+    if len(words) > 2:
+        variants.append(" ".join(words[:2]))
+
+    ye_alt = " ".join([("y" + w if w.startswith("e") else (w[1:] if w.startswith("ye") else w)) for w in words])
+    if ye_alt != clean and ye_alt not in variants:
+        variants.append(ye_alt)
+
+    uo_alt = " ".join([(w[:-1] + "o" if w.endswith("u") else (w[:-1] + "u" if w.endswith("o") else w)) for w in words])
+    if uo_alt != clean and uo_alt not in variants:
+        variants.append(uo_alt)
+
+    if words:
+        combo_w = []
+        for w in words[:2]:
+            cw = "y" + w if w.startswith("e") else (w[1:] if w.startswith("ye") else w)
+            cw = cw[:-1] + "o" if cw.endswith("u") else (cw[:-1] + "u" if cw.endswith("o") else cw)
+            combo_w.append(cw)
+        combo = " ".join(combo_w)
+        if combo != clean and combo not in variants:
+            variants.append(combo)
+
+    if "th" in clean:
+        variants.append(re.sub(r"th", "t", clean))
+    if "ee" in clean:
+        variants.append(re.sub(r"ee", "i", clean))
+    elif "i" in clean:
+        variants.append(re.sub(r"i", "ee", clean))
+    if "oo" in clean:
+        variants.append(re.sub(r"oo", "u", clean))
+    elif "u" in clean:
+        variants.append(re.sub(r"u", "oo", clean))
+    if "zh" in clean:
+        variants.append(re.sub(r"zh", "l", clean))
+    if "dh" in clean:
+        variants.append(re.sub(r"dh", "d", clean))
 
     seen = set()
     result = []
@@ -103,7 +157,7 @@ def _query_saavn(q_str, limit=20):
                 track = {
                     "id": str(r.get('id') or r.get('perma_url') or hash(r.get('song'))),
                     "title": clean_text(r.get('song')),
-                    "artist": clean_text(r.get('singers') or r.get('primary_artists') or "Various Artists"),
+                    "artist": (lambda r: (lambda parts: (lambda seen, res: ", ".join([res.append(a) or seen.add(a.lower()) or a for p in parts if p for a in [s.strip() for s in str(p).split(",")] if a and a.lower() not in seen]))(set(), []))([r.get("primary_artists"), r.get("singers"), r.get("music")]))(r),
                     "album": clean_text(r.get('album') or ""),
                     "year": r.get('year', ''),
                     "duration": int(r.get('duration') or 210),
@@ -308,7 +362,9 @@ def resolve_track_audio(title, artist=""):
 
     clean_t = _normalize_search_title(title) or clean_text(title)
     clean_a = clean_text(artist)
-    primary_art = clean_a.split(',')[0].split('&')[0].strip() if clean_a else ""
+    artist_list = [a.strip() for a in re.split(r"[,&]+", clean_a) if a.strip()]
+    primary_art = artist_list[0] if artist_list else ""
+    second_art = artist_list[1] if len(artist_list) > 1 else ""
 
     # 1. Instant match in verified catalog
     check_catalog_queries = [
@@ -321,84 +377,108 @@ def resolve_track_audio(title, artist=""):
             continue
         cat_matches = _find_catalog_tracks(cq)
         for cm in cat_matches:
-            if cm.get('streamUrl'):
-                cm_norm = _normalize_search_title(cm.get('title', '')).lower()
+            if cm.get("streamUrl"):
+                cm_norm = _normalize_search_title(cm.get("title", "")).lower()
                 target_norm = clean_t.lower()
                 if target_norm in cm_norm or cm_norm in target_norm:
                     return cm
 
-    # 2. Formulate search queries (including swapped artist/title)
+    # 2. Formulate progressive search queries
     queries = []
     if clean_t and primary_art:
         queries.append(f"{clean_t} {primary_art}")
         queries.append(f"{primary_art} {clean_t}")
+    if clean_t and second_art:
+        queries.append(f"{clean_t} {second_art}")
     if title and artist and f"{clean_text(title)} {primary_art}".strip() not in queries:
         queries.append(f"{clean_text(title)} {primary_art}".strip())
     if clean_t and clean_t not in queries:
         queries.append(clean_t)
 
+    t_words = clean_t.split()
+    if len(t_words) > 2:
+        queries.append(" ".join(t_words[:2]))
+
+    # Phonetic title variant query
+    if t_words:
+        cw_list = []
+        for w in t_words[:2]:
+            cw = "y" + w if w.lower().startswith("e") else (w[1:] if w.lower().startswith("ye") else w)
+            cw = cw[:-1] + "o" if cw.lower().endswith("u") else (cw[:-1] + "u" if cw.lower().endswith("o") else cw)
+            cw_list.append(cw)
+        phon_q = " ".join(cw_list)
+        if phon_q != clean_t and phon_q not in queries:
+            queries.append(phon_q)
+
     best_candidate = None
     best_score = -1
 
-    clean_primary = re.sub(r"""['"’`\-_]""", "", primary_art.lower()).strip() if primary_art else ""
     target_t = clean_t.lower()
+    target_phon_t = to_phonetic(clean_t)
+    all_art_phon = to_phonetic(clean_a)
 
+    seen_ids = set()
     for q in queries:
-        tracks = search_tracks(q, limit=10)
+        tracks = search_tracks(q, limit=15)
         for t in tracks:
-            if not t.get('streamUrl'):
+            tid = str(t.get("id", ""))
+            if tid in seen_ids or not t.get("streamUrl"):
                 continue
-            cand_raw_t = t.get('title', '')
+            seen_ids.add(tid)
+
+            cand_raw_t = t.get("title", "")
             cand_t = _normalize_search_title(cand_raw_t).lower()
-            cand_art = (t.get('artist') or '').lower()
-            clean_cand_art = re.sub(r"""['"’`\-_]""", "", cand_art).strip()
+            cand_phon_t = to_phonetic(cand_raw_t)
+            cand_art = (t.get("artist") or "").lower()
+            cand_phon_art = to_phonetic(cand_art)
 
             score = 0
 
-            # Normal order: title matches cand_t, artist matches cand_art
-            title_exact = (cand_t == target_t)
-            title_partial = bool(target_t and (re.search(rf'\b{re.escape(target_t)}\b', cand_t) or re.search(rf'\b{re.escape(cand_t)}\b', target_t)))
-            title_substr = bool(target_t and (target_t in cand_t or cand_t in target_t) and len(target_t) >= 4 and len(cand_t) >= 4)
-
-            # Swapped order: title matches cand_art, artist matches cand_t
-            swapped_title_match = bool(clean_primary and (cand_t == clean_primary or clean_primary in cand_t or cand_t in clean_primary))
-            swapped_art_match = bool(target_t and (target_t in clean_cand_art or any(w in clean_cand_art for w in target_t.split() if len(w) >= 3)))
-
-            artist_matched = False
-            if clean_primary:
-                if clean_primary in clean_cand_art:
-                    artist_matched = True
-                    score += 50
-                elif any(word in clean_cand_art for word in clean_primary.split() if len(word) >= 3):
-                    artist_matched = True
-                    score += 30
-
-            if title_exact:
-                score += 65
-            elif title_partial:
-                score += 45
-            elif title_substr:
-                score += 25
-            elif swapped_title_match and swapped_art_match:
+            # Title matching
+            if cand_t == target_t or cand_phon_t == target_phon_t:
                 score += 85
-                artist_matched = True
+            elif target_phon_t and (target_phon_t.startswith(cand_phon_t) or cand_phon_t.startswith(target_phon_t)):
+                score += 70
+            elif target_t and (re.search(rf"\b{re.escape(target_t)}\b", cand_t) or re.search(rf"\b{re.escape(cand_t)}\b", target_t)):
+                score += 55
+            elif target_phon_t and (target_phon_t in cand_phon_t or cand_phon_t in target_phon_t) and len(cand_phon_t) >= 4:
+                score += 45
+            else:
+                q_words = target_phon_t.split()
+                c_words = cand_phon_t.split()
+                matched_w = sum(1 for w in q_words if w in c_words)
+                if matched_w > 0:
+                    score += int((matched_w / len(q_words)) * 35)
 
-            # If user/source specified an artist, but this candidate has ZERO artist match:
-            # Heavily penalize so we don't return an unrelated song by another artist!
-            if clean_primary and not artist_matched and not swapped_art_match:
-                score -= 80
+            # Artist matching across all tokens
+            artist_matched = False
+            art_matches = 0
+            if all_art_phon:
+                for tok in all_art_phon.split():
+                    if len(tok) >= 3 and tok in cand_phon_art:
+                        art_matches += 1
+                        artist_matched = True
 
-            cand_combined = f"{cand_raw_t} {cand_art} {t.get('album', '')}".lower()
-            if re.search(r'\b(karaoke|tribute|cover version|backing track|in the style of|serene songs|prosource|ameritz)\b', cand_combined):
-                if not re.search(r'\b(karaoke|tribute|cover)\b', f"{title} {artist}".lower()):
-                    score -= 100
+                if art_matches >= 2:
+                    score += 65
+                elif art_matches == 1:
+                    score += 40
+
+            if clean_a and not artist_matched:
+                score -= 40
+
+            # Album / film boost
+            if t.get("album") and len(t.get("album")) > 3:
+                score += 15
+
+            cand_combined = f"{cand_raw_t} {cand_art} " + str(t.get('album', '')).lower()
+            if re.search(r"\b(karaoke|tribute|cover version|backing track|in the style of|serene songs|prosource|ameritz)\b", cand_combined):
+                if not re.search(r"\b(karaoke|tribute|cover)\b", f"{title} {artist}".lower()):
+                    score -= 150
 
             if score > best_score:
                 best_score = score
                 best_candidate = t
-
-        if best_score >= 65 and best_candidate:
-            return best_candidate
 
     if best_score >= 45 and best_candidate:
         return best_candidate
