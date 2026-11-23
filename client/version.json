@@ -1,5 +1,5 @@
 {
-  "version": "8.15.0",
+  "version": "8.16.0",
   "releaseDate": "2026-11-23",
-  "description": "v8.15.0 Universal Phonetic Song Discovery & Robust Playlist Importer: Cross-platform Tamil/Indian phonetic transliteration matching, multi-artist token overlap, auto-routed YouTube/Spotify playlist imports, and instant pre-resolved single-song playback."
+  "description": "v8.16.0 IndexedDB Persistence, Universal Importer & Mobile Lock-Screen Continuous Autoplay: Dynamic stream resolution for custom playlists, IndexedDB liked tracks & offline Blob management, synchronized heart buttons across all views, secondary preloaded audio handoff, and Web Audio non-zero silent anchor for iOS Safari and Android Chrome."
 }

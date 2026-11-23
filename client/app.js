@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             ? window.ProfileManager.getStorageKey('liked_tracks_data') 
             : 'liked_tracks_data';
     }
-    function loadLikedTracks() {
+    async function loadLikedTracks() {
         const key = getLikedKey();
         const dataKey = getLikedDataKey();
         let stored = localStorage.getItem(key) || localStorage.getItem('liked_tracks_ids') || '[]';
@@ -110,13 +110,40 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch(e) {
             likedTracksMap = new Map();
         }
+
+        // IndexedDB sync & migration
+        if (typeof window !== 'undefined' && window.OfflineEngine && typeof window.OfflineEngine.getLikedTracksFromDB === 'function') {
+            try {
+                const dbTracks = await window.OfflineEngine.getLikedTracksFromDB();
+                if (Array.isArray(dbTracks) && dbTracks.length > 0) {
+                    for (const t of dbTracks) {
+                        if (t && t.id) {
+                            likedTrackIds.add(String(t.id));
+                            likedTracksMap.set(String(t.id), t);
+                        }
+                    }
+                }
+                for (const t of likedTracksMap.values()) {
+                    window.OfflineEngine.saveLikedTrackToDB(t).catch(() => {});
+                }
+            } catch (e) {}
+        }
     }
+
     function saveLikedTracks() {
         const key = getLikedKey();
         const dataKey = getLikedDataKey();
-        localStorage.setItem(key, JSON.stringify(Array.from(likedTrackIds)));
-        localStorage.setItem(dataKey, JSON.stringify(Array.from(likedTracksMap.values())));
+        try {
+            localStorage.setItem(key, JSON.stringify(Array.from(likedTrackIds)));
+            const cleanList = Array.from(likedTracksMap.values()).map(t => {
+                const c = { ...t };
+                delete c.streamUrl;
+                return c;
+            });
+            localStorage.setItem(dataKey, JSON.stringify(cleanList));
+        } catch (e) {}
     }
+
     function updateLikeButtonsState(track) {
         if (!track || !track.id) return;
         const tid = String(track.id);
@@ -137,6 +164,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.classList.toggle('liked', isLiked);
         });
     }
+
+    window.addEventListener('likes-updated', (e) => {
+        const { trackId, isLiked } = e.detail || {};
+        if (!trackId) return;
+        const tid = String(trackId);
+        const cur = AudioPlayer.getCurrentTrack();
+        if (cur && String(cur.id) === tid) {
+            if (playerLikeBtn) {
+                playerLikeBtn.textContent = isLiked ? '❤️' : '🤍';
+                playerLikeBtn.classList.toggle('liked', isLiked);
+            }
+            const sideBtn = document.getElementById('sideNowLikeBtn');
+            if (sideBtn) {
+                sideBtn.innerHTML = isLiked ? '❤️' : '🤍';
+                sideBtn.classList.toggle('active', isLiked);
+            }
+        }
+        const rows = document.querySelectorAll(`.track-row[data-track-id="${tid}"] [data-action="like"]`);
+        rows.forEach(btn => {
+            btn.textContent = isLiked ? '❤️' : '🤍';
+            btn.classList.toggle('liked', isLiked);
+        });
+    });
+
     function toggleTrackLiked(track) {
         if (!track || !track.id) return false;
         const tid = String(track.id);
@@ -144,21 +195,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (wasLiked) {
             likedTrackIds.delete(tid);
             likedTracksMap.delete(tid);
+            if (window.OfflineEngine && window.OfflineEngine.removeLikedTrackFromDB) {
+                window.OfflineEngine.removeLikedTrackFromDB(tid).catch(() => {});
+            }
             showToast(`Removed from Liked Songs: ${track.title}`, '🤍');
         } else {
             likedTrackIds.add(tid);
-            likedTracksMap.set(tid, {
+            const cleanTrack = {
                 id: tid,
                 title: track.title || 'Untitled',
-                artist: track.artist || 'Unknown Artist',
+                artist: (track.artist && track.artist !== 'undefined') ? track.artist : (track.primaryArtist || 'Unknown Artist'),
                 album: track.album || '',
                 artwork: track.artwork || track.image || '',
                 image: track.image || track.artwork || '',
                 duration: track.duration || 210,
-                streamUrl: track.streamUrl || '',
+                spotifyId: track.spotifyId || '',
+                youtubeId: track.youtubeId || '',
                 quality: track.quality || 'FLAC / 320kbps Lossless Hi-Fi',
                 likedAt: Date.now()
-            });
+            };
+            likedTracksMap.set(tid, cleanTrack);
+            if (window.OfflineEngine && window.OfflineEngine.saveLikedTrackToDB) {
+                window.OfflineEngine.saveLikedTrackToDB(cleanTrack).catch(() => {});
+            }
             if (window.SpotifyEngine && window.SpotifyEngine.trackLiked) {
                 SpotifyEngine.trackLiked(track);
             }
@@ -166,6 +225,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         saveLikedTracks();
         updateLikeButtonsState(track);
+        window.dispatchEvent(new CustomEvent('likes-updated', {
+            detail: { trackId: tid, track, isLiked: !wasLiked }
+        }));
         return !wasLiked;
     }
     loadLikedTracks();
@@ -270,6 +332,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         if (window.OfflineEngine && window.OfflineEngine.init) {
             await window.OfflineEngine.init();
+            if (window.OfflineEngine.requestPersistentStorage) {
+                await window.OfflineEngine.requestPersistentStorage();
+            }
         }
     } catch (e) {
         console.warn('OfflineEngine init failed:', e);

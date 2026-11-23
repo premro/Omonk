@@ -15,7 +15,7 @@ class PlaylistImporter {
         return 'user_imported_playlists';
     }
 
-    loadPlaylists() {
+    async loadPlaylists() {
         const key = this.getStorageKey();
         const stored = localStorage.getItem(key);
         if (stored) {
@@ -25,12 +25,23 @@ class PlaylistImporter {
                 this.playlists = [];
             }
         } else {
-            // Fallback / migration from legacy key
             const legacy = localStorage.getItem('user_imported_playlists');
             this.playlists = legacy ? JSON.parse(legacy) : [];
         }
 
-        // Auto-clean any corrupt/undefined 0-track playlists from earlier failed imports
+        // Synchronize with IndexedDB (LosslessAudioDB)
+        if (typeof window !== 'undefined' && window.OfflineEngine && typeof window.OfflineEngine.getPlaylistsFromDB === 'function') {
+            try {
+                const dbPlaylists = await window.OfflineEngine.getPlaylistsFromDB();
+                if (Array.isArray(dbPlaylists) && dbPlaylists.length > 0) {
+                    this.playlists = dbPlaylists;
+                } else if (this.playlists.length > 0) {
+                    window.OfflineEngine.savePlaylistsToDB(this.playlists);
+                }
+            } catch (e) {}
+        }
+
+        // Auto-clean any corrupt/undefined 0-track playlists
         if (Array.isArray(this.playlists)) {
             const initialLen = this.playlists.length;
             this.playlists = this.playlists.filter(p => {
@@ -50,7 +61,22 @@ class PlaylistImporter {
 
     savePlaylists() {
         const key = this.getStorageKey();
-        localStorage.setItem(key, JSON.stringify(this.playlists));
+        // Never persist temporary expiring CDN signed stream URLs
+        const sanitized = (this.playlists || []).map(p => ({
+            ...p,
+            tracks: (p.tracks || []).map(t => {
+                const clean = { ...t };
+                delete clean.streamUrl;
+                return clean;
+            })
+        }));
+        try {
+            localStorage.setItem(key, JSON.stringify(sanitized));
+        } catch (e) {}
+
+        if (typeof window !== 'undefined' && window.OfflineEngine && typeof window.OfflineEngine.savePlaylistsToDB === 'function') {
+            window.OfflineEngine.savePlaylistsToDB(sanitized).catch(() => {});
+        }
     }
 
     getPlaylists() {
@@ -106,13 +132,14 @@ class PlaylistImporter {
         const cleanTrack = {
             id: track.id || `tr_${Date.now()}_${Math.floor(Math.random()*1000)}`,
             title: track.title || 'Untitled',
-            artist: track.artist || 'Unknown Artist',
+            artist: (track.artist && track.artist !== 'undefined') ? track.artist : (track.primaryArtist || 'Unknown Artist'),
             album: track.album || '',
             artwork: track.artwork || track.image || '',
             image: track.image || track.artwork || '',
             duration: track.duration || 210,
-            quality: track.quality || 'FLAC / 320kbps Hi-Fi',
-            streamUrl: track.streamUrl || ''
+            spotifyId: track.spotifyId || '',
+            youtubeId: track.youtubeId || '',
+            quality: track.quality || 'FLAC / 320kbps Hi-Fi'
         };
 
         pl.tracks.push(cleanTrack);

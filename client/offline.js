@@ -4,7 +4,7 @@
  */
 
 const DB_NAME = 'LosslessAudioDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let db = null;
 
 function getApiPrefix() {
@@ -54,6 +54,11 @@ async function initOfflineDB() {
             }
             if (!database.objectStoreNames.contains('settings')) {
                 database.createObjectStore('settings', { keyPath: 'key' });
+            }
+            if (!database.objectStoreNames.contains('liked_tracks')) {
+                const likedStore = database.createObjectStore('liked_tracks', { keyPath: 'id' });
+                likedStore.createIndex('title', 'title', { unique: false });
+                likedStore.createIndex('likedAt', 'likedAt', { unique: false });
             }
         };
         request.onsuccess = (e) => {
@@ -364,8 +369,151 @@ async function downloadTrackToOfflineDB(track, onProgress = null) {
     }
 }
 
+
+async function requestPersistentStorage() {
+    if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
+        try {
+            const isPersisted = await navigator.storage.persist();
+            console.log(`[Storage] Persistent storage granted: ${isPersisted}`);
+            return isPersisted;
+        } catch (e) {
+            console.warn('[Storage] Error requesting persistence:', e);
+        }
+    }
+    return false;
+}
+
+async function getLikedTracksFromDB() {
+    if (!db) await initOfflineDB();
+    return new Promise((resolve) => {
+        try {
+            const tx = db.transaction('liked_tracks', 'readonly');
+            const store = tx.objectStore('liked_tracks');
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+        } catch (e) {
+            resolve([]);
+        }
+    });
+}
+
+async function saveLikedTrackToDB(track) {
+    if (!track || !track.id) return null;
+    if (!db) await initOfflineDB();
+    return new Promise((resolve, reject) => {
+        try {
+            const tx = db.transaction('liked_tracks', 'readwrite');
+            const store = tx.objectStore('liked_tracks');
+            const clean = {
+                id: String(track.id),
+                title: track.title || 'Untitled',
+                artist: (track.artist && track.artist !== 'undefined') ? track.artist : (track.primaryArtist || 'Unknown Artist'),
+                album: track.album || '',
+                duration: track.duration || 210,
+                artwork: track.artwork || track.image || '',
+                image: track.image || track.artwork || '',
+                spotifyId: track.spotifyId || '',
+                youtubeId: track.youtubeId || '',
+                quality: track.quality || 'FLAC / 320kbps Lossless Hi-Fi',
+                likedAt: track.likedAt || Date.now()
+            };
+            const req = store.put(clean);
+            req.onsuccess = () => resolve(clean);
+            req.onerror = (e) => reject(e);
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+async function removeLikedTrackFromDB(trackId) {
+    if (!trackId) return false;
+    if (!db) await initOfflineDB();
+    return new Promise((resolve, reject) => {
+        try {
+            const tx = db.transaction('liked_tracks', 'readwrite');
+            const store = tx.objectStore('liked_tracks');
+            const req = store.delete(String(trackId));
+            req.onsuccess = () => resolve(true);
+            req.onerror = (e) => reject(e);
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+async function getPlaylistsFromDB() {
+    if (!db) await initOfflineDB();
+    return new Promise((resolve) => {
+        try {
+            const tx = db.transaction('playlists', 'readonly');
+            const store = tx.objectStore('playlists');
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+        } catch (e) {
+            resolve([]);
+        }
+    });
+}
+
+async function savePlaylistsToDB(playlists) {
+    if (!Array.isArray(playlists)) return false;
+    if (!db) await initOfflineDB();
+    return new Promise((resolve, reject) => {
+        try {
+            const tx = db.transaction('playlists', 'readwrite');
+            const store = tx.objectStore('playlists');
+            const clearReq = store.clear();
+            clearReq.onsuccess = () => {
+                for (const pl of playlists) {
+                    if (!pl || !pl.id) continue;
+                    const cleanTracks = (pl.tracks || []).map(t => ({
+                        id: String(t.id),
+                        title: t.title || 'Untitled',
+                        artist: (t.artist && t.artist !== 'undefined') ? t.artist : (t.primaryArtist || 'Unknown Artist'),
+                        album: t.album || '',
+                        duration: t.duration || 210,
+                        artwork: t.artwork || t.image || '',
+                        image: t.image || t.artwork || '',
+                        spotifyId: t.spotifyId || '',
+                        youtubeId: t.youtubeId || '',
+                        quality: t.quality || 'FLAC / 320kbps Hi-Fi'
+                    }));
+                    store.put({
+                        ...pl,
+                        tracks: cleanTracks
+                    });
+                }
+                resolve(true);
+            };
+            clearReq.onerror = (e) => reject(e);
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+const _activeBlobUrls = new Map();
+
+async function getOfflineTrackBlobUrl(trackId) {
+    if (!trackId) return null;
+    const record = await getOfflineTrack(trackId);
+    if (!record || !record.audioBlob) return null;
+
+    const tid = String(trackId);
+    if (_activeBlobUrls.has(tid)) {
+        try { URL.revokeObjectURL(_activeBlobUrls.get(tid)); } catch (e) {}
+    }
+    const freshBlobUrl = URL.createObjectURL(record.audioBlob);
+    _activeBlobUrls.set(tid, freshBlobUrl);
+    return freshBlobUrl;
+}
+
 window.OfflineEngine = {
     init: initOfflineDB,
+    requestPersistentStorage,
     saveTrackOffline,
     saveSong: downloadTrackToOfflineDB,
     getOfflineTracks,
@@ -376,7 +524,13 @@ window.OfflineEngine = {
     isSongDownloadedSync: isSongDownloadedSync,
     downloadTrackToFile,
     downloadTrackToOfflineDB,
-    encodeAudioBufferToWav24
+    encodeAudioBufferToWav24,
+    getLikedTracksFromDB,
+    saveLikedTrackToDB,
+    removeLikedTrackFromDB,
+    getPlaylistsFromDB,
+    savePlaylistsToDB,
+    getOfflineTrackBlobUrl
 };
 
 window.OfflineManager = window.OfflineEngine;

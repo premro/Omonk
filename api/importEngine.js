@@ -90,8 +90,57 @@ async function importYouTube(inputUrl) {
     let playlistId = pMatch ? pMatch[1] : null;
     let videoId = vMatch ? vMatch[1] : null;
 
+    // RD mixes (YouTube Mix), LL (Liked Videos), WL (Watch Later) cannot be fetched as public playlists
+    if (playlistId && (playlistId.startsWith('RD') || playlistId.startsWith('LL') || playlistId.startsWith('WL') || playlistId.startsWith('LM'))) {
+        playlistId = null;
+    }
+
     if (!playlistId && !videoId) {
         return { success: false, error: 'Invalid or unsupported YouTube URL' };
+    }
+
+    // Fast and robust single track extraction via YouTube oEmbed
+    if (videoId && !playlistId) {
+        try {
+            const oembed = await fetchJson(`https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + videoId)}&format=json`);
+            if (oembed && oembed.title) {
+                const rawTitle = oembed.title;
+                const clean = cleanTrackName(rawTitle);
+                const parts = clean.split(/[-–—|:]/).map(s => s.trim()).filter(Boolean);
+                let trackArtist = oembed.author_name || 'YouTube';
+                let trackTitle = clean || rawTitle;
+                if (parts.length >= 2) {
+                    const p0 = parts[0], p1 = parts[1];
+                    const knownArtists = ['madcon', 'ed sheeran', 'anirudh', 'anirudh ravichander', 'a.r. rahman', 'ar rahman', 'ilayaraja', 'ilayaraaja', 'yuvan', 'yuvan shankar raja', 'harris jayaraj', 'pradeep kumar', 'sid sriram', 'spb', 'dhanush', 'the weeknd', 'taylor swift', 'dua lipa', 'justin bieber'];
+                    if (knownArtists.some(k => p1.toLowerCase().includes(k)) || /\b(feat|ft|singers?|vocals?|composer)\b/i.test(p1)) {
+                        trackTitle = p0;
+                        trackArtist = p1;
+                    } else {
+                        trackArtist = p0;
+                        trackTitle = parts.slice(1).join(' - ');
+                    }
+                }
+                const singleTrack = {
+                    id: `yt_${videoId}`,
+                    youtubeId: videoId,
+                    title: trackTitle,
+                    artist: trackArtist,
+                    duration: 210,
+                    artwork: oembed.thumbnail_url || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+                    quality: 'FLAC / 320kbps Hi-Fi'
+                };
+                return {
+                    success: true,
+                    platform: 'YouTube',
+                    title: trackTitle,
+                    artwork: singleTrack.artwork,
+                    count: 1,
+                    tracks: [singleTrack]
+                };
+            }
+        } catch (e) {
+            console.warn('[YouTube oEmbed Fallback]', e);
+        }
     }
 
     const targetUrl = playlistId && !videoId
@@ -121,12 +170,17 @@ async function importYouTube(inputUrl) {
     }
 
     // Detect primary artist from title
+    if (!title || title === 'undefined') {
+        title = ytData?.header?.playlistHeaderRenderer?.title?.simpleText ||
+                ytData?.header?.playlistHeaderRenderer?.title?.runs?.[0]?.text ||
+                ytData?.metadata?.playlistMetadataRenderer?.title ||
+                'YouTube Playlist';
+    }
     let primaryArtist = 'Various Artists';
     const artistRegex = /\b(ilayaraja|ilayaraaja|ilaiyaraaja|a\.?\s*r\.?\s*rahman|anirudh|anirudh\s*ravichander|harris\s*jayaraj|yuvan\s*shankar\s*raja|yuvan|spb|s\.\s*p\.\s*balasubrahmanyam|chitra|k\.\s*s\.\s*chithra|janaki|s\.\s*janaki|yesudas|k\.\s*j\.\s*yesudas|vidyasagar|devi\s*sri\s*prasad|dsp|thaman|thaman\s*s|arijit\s*singh|arijit|shreya\s*ghoshal|sid\s*sriram|santhosh\s*narayanan|g\.?\s*v\.?\s*prakash|hiphop\s*tamizha|d\.?\s*imman|taylor\s*swift|billie\s*eilish|bad\s*bunny|the\s*weeknd)\b/i;
     const am = title.match(artistRegex);
     if (am) {
         primaryArtist = am[1].trim();
-        // Capitalize properly if needed
         if (/ilaya/i.test(primaryArtist)) primaryArtist = 'Ilayaraaja';
         else if (/rahman/i.test(primaryArtist)) primaryArtist = 'A.R. Rahman';
         else if (/anirudh/i.test(primaryArtist)) primaryArtist = 'Anirudh Ravichander';
@@ -152,8 +206,11 @@ async function importYouTube(inputUrl) {
             const pvArtist = pv.shortBylineText?.runs?.[0]?.text || primaryArtist || 'YouTube';
             const pvDur = parseInt(pv.lengthSeconds || '210', 10);
             const pvThumb = pv.thumbnail?.thumbnails?.[pv.thumbnail.thumbnails.length - 1]?.url || cover;
+            const pvId = pv.videoId || '';
             if (pvTitle && !pvTitle.includes('[Private video]') && !pvTitle.includes('[Deleted video]')) {
                 tracks.push({
+                    id: pvId ? `yt_${pvId}` : undefined,
+                    youtubeId: pvId,
                     title: cleanTrackName(pvTitle),
                     artist: pvArtist,
                     duration: pvDur,
@@ -163,7 +220,7 @@ async function importYouTube(inputUrl) {
         }
     }
 
-    // Strategy 2: Official YouTube Structured Chapters (macroMarkersListItemRenderer / chapterRenderer)
+    // Strategy 2: Official YouTube Structured Chapters
     if (tracks.length === 0 && ytData) {
         function findMarkers(obj) {
             let markers = [];
@@ -226,7 +283,7 @@ async function importYouTube(inputUrl) {
         const desc = findDesc(ytData);
         if (desc) {
             const lines = desc.split('\n');
-            const timeRegexPrefix = /^(?:track\s*\d+[\.\-\:]\s*)?(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—:\.]*\s*(.+)$/i;
+            const timeRegexPrefix = /^(:?track\s*\d+[\.\-\:]\s*)?(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—:\.]*\s*(.+)$/i;
             const timeRegexSuffix = /^(.+?)\s*[-–—:\.]*\s*(\d{1,2}:\d{2}(?::\d{2})?)$/i;
             const parsedTs = [];
 
@@ -321,6 +378,8 @@ async function importYouTube(inputUrl) {
             }
         }
         tracks.push({
+            id: videoId ? `yt_${videoId}` : undefined,
+            youtubeId: videoId,
             title: trackTitle,
             artist: trackArtist,
             duration: 210,
@@ -349,11 +408,13 @@ async function importSpotify(inputUrl) {
         }
     }
 
-    let match = url.match(/(playlist|album|track)\/([a-zA-Z0-9_-]+)/);
+    let match = url.match(/(?:intl-[a-z0-9_-]+\b\/)?(playlist|album|track)\b\/([a-zA-Z0-9_-]+)/i);
+    if (!match) {
+        match = url.match(/(playlist|album|track)\b\/([a-zA-Z0-9_-]+)/i);
+    }
     if (!match && (url.includes('spotify.link') || url.includes('spotify.app.link'))) {
-        // Expand mobile shortlink
         const redirectHtml = await fetchText(url, 3);
-        const mRedirect = redirectHtml.match(/(playlist|album|track)\/([a-zA-Z0-9_-]+)/);
+        const mRedirect = redirectHtml.match(/(?:intl-[a-z0-9_-]+\b\/)?(playlist|album|track)\b\/([a-zA-Z0-9_-]+)/i) || redirectHtml.match(/(playlist|album|track)\b\/([a-zA-Z0-9_-]+)/i);
         if (mRedirect) match = mRedirect;
     }
 
@@ -361,10 +422,35 @@ async function importSpotify(inputUrl) {
         return { success: false, error: 'Invalid Spotify link. Please paste a valid playlist, album, or track URL.' };
     }
 
-    const type = match[1];
+    const type = match[1].toLowerCase();
     const id = match[2];
     const embedUrl = `https://open.spotify.com/embed/${type}/${id}`;
     const body = await fetchText(embedUrl, 3);
+
+    // Immediate fallback to Spotify oEmbed if embed page fetch returned empty
+    if (!body && type === 'track') {
+        try {
+            const oembed = await fetchJson(`https://open.spotify.com/oembed?url=${encodeURIComponent('https://open.spotify.com/track/' + id)}`);
+            if (oembed && oembed.title) {
+                const singleTrack = {
+                    id: `sp_${id}`,
+                    spotifyId: id,
+                    title: cleanTrackName(oembed.title) || oembed.title,
+                    artist: 'Spotify Artist',
+                    duration: 210,
+                    artwork: oembed.thumbnail_url || ''
+                };
+                return {
+                    success: true,
+                    platform: 'Spotify',
+                    title: singleTrack.title,
+                    artwork: singleTrack.artwork,
+                    count: 1,
+                    tracks: [singleTrack]
+                };
+            }
+        } catch (e) {}
+    }
 
     if (!body) {
         return { success: false, error: 'Could not connect to Spotify. Please verify the URL.' };
@@ -376,7 +462,7 @@ async function importSpotify(inputUrl) {
             const data = JSON.parse(jsonMatch[1]);
             const pageProps = data?.props?.pageProps;
             if (pageProps?.status === 404) {
-                return { success: false, error: 'Spotify playlist not found (404). Please ensure the playlist is public and active.' };
+                return { success: false, error: 'Spotify item not found (404). Please ensure the playlist or track is public and active.' };
             }
 
             const entity = pageProps?.state?.data?.entity;
@@ -389,6 +475,8 @@ async function importSpotify(inputUrl) {
                 const artistsList = (entity?.artists || []).map(a => a.name).filter(Boolean);
                 const artistName = artistsList.join(', ') || entity?.subtitle || 'Spotify Artist';
                 const singleTrack = {
+                    id: `sp_${id}`,
+                    spotifyId: id,
                     title: cleanTrackName(entity?.title || title) || title,
                     artist: artistName,
                     duration: Math.round((entity?.duration || 210000) / 1000),
@@ -408,10 +496,12 @@ async function importSpotify(inputUrl) {
                 return { success: false, error: 'No playable tracks found in this playlist. Please ensure it is a public Spotify playlist.' };
             }
 
-            const tracks = trackList.map(t => {
+            const tracks = trackList.map((t, idx) => {
                 const artistsList = (t.artists || []).map(a => a.name).filter(Boolean);
                 const artistName = artistsList.join(', ') || t.subtitle || '';
                 return {
+                    id: `sp_${t.id || id + '_' + idx}`,
+                    spotifyId: t.id || id,
                     title: cleanTrackName(t.title) || t.title,
                     artist: artistName,
                     duration: Math.round((t.duration || 210000) / 1000),
@@ -429,7 +519,55 @@ async function importSpotify(inputUrl) {
             };
         }
     } catch (e) {
+        if (type === 'track') {
+            try {
+                const oembed = await fetchJson(`https://open.spotify.com/oembed?url=${encodeURIComponent('https://open.spotify.com/track/' + id)}`);
+                if (oembed && oembed.title) {
+                    const singleTrack = {
+                        id: `sp_${id}`,
+                        spotifyId: id,
+                        title: cleanTrackName(oembed.title) || oembed.title,
+                        artist: 'Spotify Artist',
+                        duration: 210,
+                        artwork: oembed.thumbnail_url || ''
+                    };
+                    return {
+                        success: true,
+                        platform: 'Spotify',
+                        title: singleTrack.title,
+                        artwork: singleTrack.artwork,
+                        count: 1,
+                        tracks: [singleTrack]
+                    };
+                }
+            } catch (oe) {}
+        }
         return { success: false, error: `Spotify extraction failed: ${e.message}` };
+    }
+
+    // OpenGraph meta tag fallback
+    if (type === 'track') {
+        const ogTitle = body.match(/<meta property="og:title" content="([^"]+)"/i)?.[1];
+        const ogImage = body.match(/<meta property="og:image" content="([^"]+)"/i)?.[1];
+        const ogDesc = body.match(/<meta property="og:description" content="([^"]+)"/i)?.[1];
+        if (ogTitle) {
+            const singleTrack = {
+                id: `sp_${id}`,
+                spotifyId: id,
+                title: cleanTrackName(ogTitle) || ogTitle,
+                artist: ogDesc || 'Spotify Artist',
+                duration: 210,
+                artwork: ogImage || ''
+            };
+            return {
+                success: true,
+                platform: 'Spotify',
+                title: singleTrack.title,
+                artwork: singleTrack.artwork,
+                count: 1,
+                tracks: [singleTrack]
+            };
+        }
     }
 
     return { success: false, error: 'Could not parse Spotify playlist data. Ensure the playlist is public.' };
