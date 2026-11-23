@@ -660,7 +660,7 @@ input:checked + .slider:before {
 
 .track-row {
     display: grid;
-    grid-template-columns: 40px 52px 1fr 180px 80px 110px;
+    grid-template-columns: 40px 52px 1fr 180px 80px 145px;
     align-items: center;
     padding: 8px 14px;
     border-radius: 10px;
@@ -1571,7 +1571,7 @@ input:checked + .slider:before {
     gap: 8px;
     min-width: 0;
 }
-    .track-row { grid-template-columns: 36px 44px 1fr 60px 80px; }
+    .track-row { grid-template-columns: 36px 44px 1fr 60px 115px; }
     .track-album { display: none; }
 }
 
@@ -2683,7 +2683,7 @@ input:checked + .slider:before {
 
     .track-row {
         display: grid !important;
-        grid-template-columns: 22px 42px 1fr 34px 58px !important;
+        grid-template-columns: 22px 42px 1fr 34px 85px !important;
         align-items: center !important;
         padding: 6px 8px !important;
         margin-bottom: 4px !important;
@@ -7220,8 +7220,8 @@ body {
 .player-now-playing {
     display: flex !important;
     align-items: center !important;
-    gap: 12px !important;
-    width: 300px !important;
+    gap: 10px !important;
+    width: 340px !important;
     flex-shrink: 0 !important;
 }
 
@@ -7732,3 +7732,29 @@ body.light-theme .hero-tagline-text {
     transform: scale(1.06);
 }
 
+
+/* Song Share Action Buttons */
+.action-icon-btn[data-action="share"] {
+    color: var(--text-muted);
+}
+.action-icon-btn[data-action="share"]:hover {
+    color: var(--color-primary, #00d2ff);
+    transform: scale(1.1);
+}
+.spotify-song-share-btn {
+    opacity: 0.7;
+    transition: opacity 0.2s, transform 0.2s;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+}
+.spotify-song-row:hover .spotify-song-share-btn,
+.spotify-song-share-btn:hover {
+    opacity: 1;
+    color: #fff;
+    transform: scale(1.1);
+}

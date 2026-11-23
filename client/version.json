@@ -1,5 +1,5 @@
 {
-  "version": "8.10.0",
-  "releaseDate": "2026-11-16",
-  "description": "v8.2.0 Engine: Dual-Audio zero-gap preloader, silent keep-alive session guard, canonical title deduplication, fuzzy track resolver, Spotify-style cluster diversity, and 30-min auto-sync."
+  "version": "8.14.0",
+  "releaseDate": "2026-11-23",
+  "description": "v8.14.0 Dynamic URL & Universal Song Sharing: Spotify-grade dynamic URL synchronization, instant 1-tap song sharing across all track rows, side panel, and player bar, and intelligent deep-link song playback."
 }

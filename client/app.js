@@ -178,6 +178,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const playerArtist = document.getElementById('playerArtist');
     const playerQualityBadge = document.getElementById('playerQualityBadge');
     const playerLikeBtn = document.getElementById('playerLikeBtn');
+    const playerShareBtn = document.getElementById('playerShareBtn');
     const playPauseBtn = document.getElementById('playPauseBtn');
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
@@ -2292,6 +2293,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <button class="action-icon-btn" data-action="playlist" title="Add to Playlist">
                             ➕
                         </button>
+                        <button class="action-icon-btn" data-action="share" title="Share Song" aria-label="Share Song">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="18" cy="5" r="3"></circle>
+                                <circle cx="6" cy="12" r="3"></circle>
+                                <circle cx="18" cy="19" r="3"></circle>
+                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                            </svg>
+                        </button>
                         <button class="action-icon-btn modern-download-btn ${isDownloaded ? 'downloaded' : ''}" data-action="download" title="${isOfflineView ? 'Delete Offline' : (isDownloaded ? 'Downloaded Offline' : 'Download Lossless')}">
                             ${isOfflineView ? '🗑️' : (isDownloaded ? `
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="var(--color-primary, #00d2ff)">
@@ -2479,6 +2489,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             plBtn?.addEventListener('click', (e) => {
                 e.stopPropagation();
                 openAddToPlaylistModal(track);
+            });
+
+            const shareBtn = row.querySelector('[data-action="share"]');
+            shareBtn?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                shareTrack(track);
             });
 
             const dlBtn = row.querySelector('[data-action="download"]');
@@ -3659,9 +3675,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <span class="spotify-type-badge">${badgeLabel}</span>
                                 <span class="spotify-meta-sub">${itemSub}</span>
                             </div>
-                            <button class="spotify-top-result-play" id="playTopResultBtn" title="Play Now">
-                                <svg viewBox="0 0 24 24" width="22" height="22" fill="#000"><path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l11.08-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14z"/></svg>
-                            </button>
+                            <div style="position: absolute; right: 20px; bottom: 20px; display: flex; align-items: center; gap: 8px; z-index: 5;">
+                                ${isSong ? `
+                                    <button class="action-icon-btn" id="shareTopResultBtn" title="Share Song" aria-label="Share Song" style="background: rgba(0,0,0,0.5); width: 38px; height: 38px; border-radius: 50%; color: #fff;">
+                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="18" cy="5" r="3"></circle>
+                                            <circle cx="6" cy="12" r="3"></circle>
+                                            <circle cx="18" cy="19" r="3"></circle>
+                                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                                        </svg>
+                                    </button>
+                                ` : ''}
+                                <button class="spotify-top-result-play" id="playTopResultBtn" title="Play Now">
+                                    <svg viewBox="0 0 24 24" width="22" height="22" fill="#000"><path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l11.08-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14z"/></svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -3685,6 +3714,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                                             <div class="spotify-song-name">${s.title}</div>
                                             <div class="spotify-song-artist">${s.artist}</div>
                                         </div>
+                                        <button class="action-icon-btn spotify-song-share-btn" data-action="share" title="Share Song" aria-label="Share Song" style="margin-right: 8px;">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="18" cy="5" r="3"></circle>
+                                                <circle cx="6" cy="12" r="3"></circle>
+                                                <circle cx="18" cy="19" r="3"></circle>
+                                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                                            </svg>
+                                        </button>
                                         <div class="spotify-song-duration">${formatTime(s.duration || 210)}</div>
                                     </div>
                                 `).join('')}
@@ -3798,11 +3836,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                 e.stopPropagation();
                 handleTopPlay();
             });
+
+            document.getElementById('shareTopResultBtn')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                shareTrack(topResultItem);
+            });
         }
 
         // Bind Spotify Top Songs Row clicks
         container.querySelectorAll('.spotify-song-row').forEach(row => {
-            row.addEventListener('click', () => {
+            row.addEventListener('click', (e) => {
+                if (e.target.closest('[data-action="share"]')) {
+                    e.stopPropagation();
+                    const sId = row.getAttribute('data-song-id');
+                    const song = songs.find(s => String(s.id) === String(sId));
+                    if (song) shareTrack(song);
+                    return;
+                }
                 const sId = row.getAttribute('data-song-id');
                 const song = songs.find(s => String(s.id) === String(sId));
                 if (song) {
@@ -4377,13 +4427,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="side-now-header-row">
                 <div class="side-now-title-row">
                     <div class="side-now-title" title="${escapeHtml(track.title)}">${escapeHtml(track.title)}</div>
-                    <button class="side-add-circle-btn ${isLiked ? 'active' : ''}" id="sideNowAddBtn" title="Save to Your Library or Playlist">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="8" x2="12" y2="16"></line>
-                            <line x1="8" y1="12" x2="16" y2="12"></line>
-                        </svg>
-                    </button>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button class="side-add-circle-btn" id="sideNowShareBtn" title="Share Song" aria-label="Share Song">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="18" cy="5" r="3"></circle>
+                                <circle cx="6" cy="12" r="3"></circle>
+                                <circle cx="18" cy="19" r="3"></circle>
+                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                            </svg>
+                        </button>
+                        <button class="side-add-circle-btn ${isLiked ? 'active' : ''}" id="sideNowAddBtn" title="Save to Your Library or Playlist">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="16"></line>
+                                <line x1="8" y1="12" x2="16" y2="12"></line>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="side-now-artist" title="${escapeHtml(track.artist || track.primaryArtist || '')}">${escapeHtml(track.artist || track.primaryArtist || 'Lossless Artist')}</div>
             </div>
@@ -4456,6 +4517,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('sideNowAddBtn')?.addEventListener('click', () => {
             openAddToPlaylistModal(track);
+        });
+
+        document.getElementById('sideNowShareBtn')?.addEventListener('click', () => {
+            shareTrack(track);
         });
 
         document.getElementById('sideFollowArtistBtn')?.addEventListener('click', (e) => {
@@ -4535,6 +4600,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     AudioPlayer.onTrackChange = (track) => {
+        updateDynamicUrl(track);
         playerTitle.textContent = track.title;
         playerArtist.textContent = (track.artist && track.artist !== "undefined" && track.artist !== "Unknown") ? track.artist : (track.primaryArtist || track.subtitle || "Lossless Artist");
         playerArt.onerror = () => { playerArt.onerror = null; playerArt.src = 'icon-512.png'; };
@@ -4715,6 +4781,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast(`Liked: ${current.title}`, '❤️');
         }
         saveLikedTracks();
+    });
+
+    playerShareBtn?.addEventListener('click', () => {
+        shareTrack(AudioPlayer.getCurrentTrack());
     });
 
 // Handled by modern desktop playerDownloadBtn listener
@@ -5073,8 +5143,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     updateProfileDisplay();
 
-    // --- Restore Currently Playing Song on Refresh ---
+    // --- Restore Currently Playing Song on Refresh (only if not opening a shared track deep link) ---
     setTimeout(() => {
+        const hasDeepLink = new URLSearchParams(window.location.search).has('track') || 
+                            new URLSearchParams(window.location.search).has('title') || 
+                            new URLSearchParams(window.location.search).has('song');
+        if (hasDeepLink) {
+            console.log('[AudioPlayer] Deep link active, skipping previous session playback restore.');
+            return;
+        }
         const restoredTrack = AudioPlayer.restorePlaybackState();
         if (restoredTrack && (restoredTrack.title || (restoredTrack.track && restoredTrack.track.title))) {
             const t = restoredTrack.title ? restoredTrack : restoredTrack.track;
@@ -5082,6 +5159,224 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }, 50);
 
+
+    // ================= DYNAMIC SHAREABLE URL & DEEP LINK ENGINE =================
+    function getShareUrlForTrack(track) {
+        if (!track || !track.title) return window.location.href;
+        const origin = window.location.origin;
+        let pathname = window.location.pathname;
+
+        const url = new URL(origin + pathname);
+        if (track.id) url.searchParams.set('track', String(track.id));
+        if (track.title) url.searchParams.set('title', track.title);
+        if (track.artist && track.artist !== 'undefined' && track.artist !== 'Unknown') {
+            url.searchParams.set('artist', track.artist);
+        }
+        url.searchParams.delete('_v');
+        url.searchParams.delete('_t');
+
+        return url.toString();
+    }
+    window.getShareUrlForTrack = getShareUrlForTrack;
+
+    function updateDynamicUrl(track) {
+        if (!track || !track.title) return;
+        try {
+            const url = new URL(window.location.href);
+            if (track.id) url.searchParams.set('track', String(track.id));
+            if (track.title) url.searchParams.set('title', track.title);
+            if (track.artist && track.artist !== 'undefined' && track.artist !== 'Unknown') {
+                url.searchParams.set('artist', track.artist);
+            } else {
+                url.searchParams.delete('artist');
+            }
+            url.searchParams.delete('_v');
+            url.searchParams.delete('_t');
+
+            window.history.replaceState(
+                { trackId: track.id, title: track.title, artist: track.artist },
+                `${track.title} • Omonk`,
+                url.toString()
+            );
+            document.title = `${track.title} • ${(track.artist && track.artist !== 'undefined') ? track.artist : 'Omonk Lossless'}`;
+        } catch (e) {
+            console.warn('[DynamicURL] Update failed:', e);
+        }
+    }
+    window.updateDynamicUrl = updateDynamicUrl;
+
+    async function shareTrack(track) {
+        if (!track) {
+            track = AudioPlayer.getCurrentTrack();
+        }
+        if (!track || !track.title) {
+            showToast('Select a song to share', 'ℹ️');
+            return;
+        }
+
+        const shareUrl = getShareUrlForTrack(track);
+        const artistName = (track.artist && track.artist !== 'undefined') ? track.artist : 'Lossless Artist';
+        const shareTitle = `${track.title} - ${artistName}`;
+        const shareText = `Listen to "${track.title}" by ${artistName} in Hi-Res Lossless Master on Omonk:`;
+
+        if (navigator.share && typeof navigator.share === 'function') {
+            try {
+                await navigator.share({
+                    title: shareTitle,
+                    text: shareText,
+                    url: shareUrl
+                });
+                showToast('Shared successfully!', '🔗');
+                return;
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    return;
+                }
+            }
+        }
+
+        copyToClipboard(shareUrl, `Link copied: Share "${track.title}" with friends`);
+    }
+    window.shareTrack = shareTrack;
+
+    function copyToClipboard(text, successMsg = 'Link copied to clipboard!') {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(successMsg, '🔗');
+            }).catch(() => {
+                fallbackCopyExec(text, successMsg);
+            });
+        } else {
+            fallbackCopyExec(text, successMsg);
+        }
+    }
+
+    function fallbackCopyExec(text, successMsg) {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            ta.style.top = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            const ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (ok) {
+                showToast(successMsg, '🔗');
+            } else {
+                prompt('Copy share link:', text);
+            }
+        } catch (e) {
+            prompt('Copy share link:', text);
+        }
+    }
+
+    async function handleDeepLinkTrack() {
+        let params = new URLSearchParams(window.location.search);
+        if (!params.has('track') && !params.has('song') && !params.has('title') && window.location.hash.includes('?')) {
+            params = new URLSearchParams(window.location.hash.substring(window.location.hash.indexOf('?')));
+        }
+        const trackId = params.get('track') || params.get('song') || params.get('id');
+        const title = params.get('title') || '';
+        const artist = params.get('artist') || '';
+
+        if (!trackId && !title) return false;
+
+        console.log('[DeepLink] Ingesting shared URL:', { trackId, title, artist });
+        showToast(`Shared song detected: Loading "${title || trackId}"...`, '🔗');
+
+        let targetTrack = null;
+
+        // 1. Try finding in current memory pools
+        if (trackId) {
+            targetTrack = findTrackById(trackId);
+        }
+
+        // 2. Try match by title in AllSongPool
+        if (!targetTrack && title && window.AllSongPool && window.AllSongPool.length > 0) {
+            const cleanT = title.toLowerCase().trim();
+            targetTrack = window.AllSongPool.find(s => s.title && s.title.toLowerCase().trim() === cleanT);
+        }
+
+        // 3. Resolve via /api/resolve
+        if (!targetTrack && title) {
+            try {
+                const res = await fetch(`${API_PREFIX}/api/resolve?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist || '')}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.track) {
+                        targetTrack = data.track;
+                    }
+                }
+            } catch (e) {
+                console.warn('[DeepLink] Resolve API error:', e);
+            }
+        }
+
+        // 4. Fallback search via /api/search
+        if (!targetTrack && (title || trackId)) {
+            try {
+                const q = (title && artist) ? `${title} ${artist}` : (title || trackId);
+                const res = await fetch(`${API_PREFIX}/api/search?q=${encodeURIComponent(q)}&limit=5`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const list = data.results || data.songs || [];
+                    if (list.length > 0) {
+                        targetTrack = list[0];
+                    }
+                }
+            } catch (e) {
+                console.warn('[DeepLink] Search API fallback error:', e);
+            }
+        }
+
+        // 5. Minimal resilient candidate if network was unreachable
+        if (!targetTrack && title) {
+            targetTrack = {
+                id: trackId || `deep_${Date.now()}`,
+                title: title,
+                artist: artist || 'Lossless Artist',
+                album: 'Shared Master',
+                artwork: 'icon-512.png',
+                duration: 210
+            };
+        }
+
+        if (targetTrack) {
+            showToast(`Playing shared song: "${targetTrack.title}"`, '🎵');
+            try {
+                await AudioPlayer.playTrackWithVibeRadio(targetTrack);
+            } catch (err) {
+                console.warn('[DeepLink] Autoplay gesture required by browser:', err);
+                showToast(`Tap anywhere to play "${targetTrack.title}"`, '▶️');
+                const startOnGesture = () => {
+                    document.removeEventListener('click', startOnGesture);
+                    document.removeEventListener('touchend', startOnGesture);
+                    if (AudioPlayer.audio.paused) {
+                        AudioPlayer.audio.play().catch(() => {});
+                    }
+                };
+                document.addEventListener('click', startOnGesture, { once: true });
+                document.addEventListener('touchend', startOnGesture, { once: true });
+            }
+            return true;
+        }
+        return false;
+    }
+    window.handleDeepLinkTrack = handleDeepLinkTrack;
+
+    // Popstate navigation: keep player & document title synchronized on back/forward
+    window.addEventListener('popstate', (e) => {
+        if (e.state && (e.state.trackId || e.state.title)) {
+            const cur = AudioPlayer.getCurrentTrack();
+            if (!cur || (String(cur.id) !== String(e.state.trackId) && cur.title !== e.state.title)) {
+                const track = findTrackById(e.state.trackId) || { id: e.state.trackId, title: e.state.title, artist: e.state.artist };
+                AudioPlayer.playTrackWithVibeRadio(track);
+            }
+        }
+    });
 
     // ================= HELPER & SONG ROW SYNC =================
     function findTrackById(songId) {
@@ -5274,6 +5569,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Event delegation on contentScroll for dynamically rendered song rows & cards
     if (contentScroll) {
         contentScroll.addEventListener('click', (e) => {
+            // Share button clicked anywhere in track rows
+            const rowShare = e.target.closest('[data-action="share"]');
+            if (rowShare) {
+                e.preventDefault();
+                e.stopPropagation();
+                const row = rowShare.closest('.track-row, .spotify-song-row');
+                const songId = row?.getAttribute('data-song-id') || row?.getAttribute('data-track-id');
+                const targetTrack = findTrackById(songId);
+                if (targetTrack) {
+                    shareTrack(targetTrack);
+                }
+                return;
+            }
+
             // Row play/pause button clicked
             const playBtn = e.target.closest('.row-play-btn');
             if (playBtn) {
@@ -5572,6 +5881,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (err) {
             console.error('[Render Home Error]', err);
         }
+
+        try {
+            await handleDeepLinkTrack();
+        } catch (err) {
+            console.warn('[Deep Link Boot Error]', err);
+        }
     }
     await bootApp();
 
@@ -5715,7 +6030,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ================= MULTI-DEVICE AUTO-REFRESH & LIVE UPDATE SYNC =================
-    const CURRENT_APP_VERSION = "8.10.0";
+    const CURRENT_APP_VERSION = "8.14.0";
     let latestServerTimestamp = 0;
     let latestRemoteVersion = null;
     let userDismissedUpdateVersion = null;
