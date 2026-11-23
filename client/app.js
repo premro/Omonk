@@ -74,26 +74,99 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentChartLang = '';
     let currentArtistLang = 'all';
     let likedTrackIds = new Set();
+    let likedTracksMap = new Map();
+
     function getLikedKey() {
         return (window.ProfileManager && window.ProfileManager.getStorageKey) 
             ? window.ProfileManager.getStorageKey('liked_tracks_ids') 
             : 'liked_tracks_ids';
     }
+    function getLikedDataKey() {
+        return (window.ProfileManager && window.ProfileManager.getStorageKey) 
+            ? window.ProfileManager.getStorageKey('liked_tracks_data') 
+            : 'liked_tracks_data';
+    }
     function loadLikedTracks() {
         const key = getLikedKey();
-        let stored = localStorage.getItem(key);
-        if (!stored) {
-            stored = localStorage.getItem('liked_tracks_ids') || '[]';
-        }
+        const dataKey = getLikedDataKey();
+        let stored = localStorage.getItem(key) || localStorage.getItem('liked_tracks_ids') || '[]';
+        let storedData = localStorage.getItem(dataKey) || localStorage.getItem('liked_tracks_data') || '[]';
         try {
             likedTrackIds = new Set(JSON.parse(stored));
         } catch(e) {
             likedTrackIds = new Set();
         }
+        try {
+            const arr = JSON.parse(storedData);
+            likedTracksMap = new Map();
+            if (Array.isArray(arr)) {
+                for (const t of arr) {
+                    if (t && t.id) {
+                        likedTracksMap.set(String(t.id), t);
+                        likedTrackIds.add(String(t.id));
+                    }
+                }
+            }
+        } catch(e) {
+            likedTracksMap = new Map();
+        }
     }
     function saveLikedTracks() {
         const key = getLikedKey();
+        const dataKey = getLikedDataKey();
         localStorage.setItem(key, JSON.stringify(Array.from(likedTrackIds)));
+        localStorage.setItem(dataKey, JSON.stringify(Array.from(likedTracksMap.values())));
+    }
+    function updateLikeButtonsState(track) {
+        if (!track || !track.id) return;
+        const tid = String(track.id);
+        const isLiked = likedTrackIds.has(tid);
+        const cur = AudioPlayer.getCurrentTrack();
+        if (cur && String(cur.id) === tid && playerLikeBtn) {
+            playerLikeBtn.textContent = isLiked ? '❤️' : '🤍';
+            playerLikeBtn.classList.toggle('liked', isLiked);
+        }
+        const sideBtn = document.getElementById('sideNowLikeBtn');
+        if (sideBtn && cur && String(cur.id) === tid) {
+            sideBtn.innerHTML = isLiked ? '❤️' : '🤍';
+            sideBtn.classList.toggle('active', isLiked);
+        }
+        const rows = document.querySelectorAll(`.track-row[data-track-id="${tid}"] [data-action="like"]`);
+        rows.forEach(btn => {
+            btn.textContent = isLiked ? '❤️' : '🤍';
+            btn.classList.toggle('liked', isLiked);
+        });
+    }
+    function toggleTrackLiked(track) {
+        if (!track || !track.id) return false;
+        const tid = String(track.id);
+        const wasLiked = likedTrackIds.has(tid);
+        if (wasLiked) {
+            likedTrackIds.delete(tid);
+            likedTracksMap.delete(tid);
+            showToast(`Removed from Liked Songs: ${track.title}`, '🤍');
+        } else {
+            likedTrackIds.add(tid);
+            likedTracksMap.set(tid, {
+                id: tid,
+                title: track.title || 'Untitled',
+                artist: track.artist || 'Unknown Artist',
+                album: track.album || '',
+                artwork: track.artwork || track.image || '',
+                image: track.image || track.artwork || '',
+                duration: track.duration || 210,
+                streamUrl: track.streamUrl || '',
+                quality: track.quality || 'FLAC / 320kbps Lossless Hi-Fi',
+                likedAt: Date.now()
+            });
+            if (window.SpotifyEngine && window.SpotifyEngine.trackLiked) {
+                SpotifyEngine.trackLiked(track);
+            }
+            showToast(`Added to Liked Songs: ${track.title}`, '❤️');
+        }
+        saveLikedTracks();
+        updateLikeButtonsState(track);
+        return !wasLiked;
     }
     loadLikedTracks();
     let allLoadedSongs = [];
@@ -2203,8 +2276,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 3H. Liked Songs View
     async function renderLikedView() {
-        const likedIds = Array.from(likedTrackIds);
-        const likedTracks = allLoadedSongs.filter(t => likedIds.includes(t.id));
+        const likedTracks = Array.from(likedTracksMap.values()).reverse();
+        // Fallback for any legacy IDs present in allLoadedSongs
+        for (const id of likedTrackIds) {
+            if (!likedTracksMap.has(id)) {
+                const found = allLoadedSongs.find(t => String(t.id) === String(id));
+                if (found) {
+                    likedTracksMap.set(id, found);
+                    likedTracks.unshift(found);
+                }
+            }
+        }
 
         let html = `
             <div class="section-header">
@@ -2471,18 +2553,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const likeBtn = row.querySelector('[data-action="like"]');
             likeBtn?.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (likedTrackIds.has(track.id)) {
-                    likedTrackIds.delete(track.id);
-                    likeBtn.textContent = '🤍';
-                    likeBtn.classList.remove('liked');
-                } else {
-                    likedTrackIds.add(track.id);
-                    likeBtn.textContent = '❤️';
-                    likeBtn.classList.add('liked');
-                    SpotifyEngine.trackLiked(track);
-                    showToast(`Added to Liked Songs: ${track.title}`, '❤️');
-                }
-                saveLikedTracks();
+                toggleTrackLiked(track);
             });
 
             const plBtn = row.querySelector('[data-action="playlist"]');
@@ -4769,18 +4840,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     playerLikeBtn.addEventListener('click', () => {
         const current = AudioPlayer.getCurrentTrack();
         if (!current) return;
-        if (likedTrackIds.has(current.id)) {
-            likedTrackIds.delete(current.id);
-            playerLikeBtn.textContent = '🤍';
-            playerLikeBtn.classList.remove('liked');
-        } else {
-            likedTrackIds.add(current.id);
-            playerLikeBtn.textContent = '❤️';
-            playerLikeBtn.classList.add('liked');
-            SpotifyEngine.trackLiked(current);
-            showToast(`Liked: ${current.title}`, '❤️');
-        }
-        saveLikedTracks();
+        toggleTrackLiked(current);
     });
 
     playerShareBtn?.addEventListener('click', () => {
