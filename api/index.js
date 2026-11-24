@@ -1223,7 +1223,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 queries.push(phonAlt);
             }
 
-            const searchPromises = queries.map(q => searchEngine.searchAll(q, 20));
+            const searchPromises = queries.map(q => searchEngine.searchAll(q, 20, ''));
             Promise.all(searchPromises).then(results => {
                 const seenIds = new Set();
                 const candidates = [];
@@ -1440,7 +1440,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             });
-            res.end(JSON.stringify({ success: true, version: '8.10.0', build: 1792226000000, timestamp: 1792226000000 }));
+            res.end(JSON.stringify({ success: true, version: '8.18.0', build: 1792226000000, timestamp: 1792226000000 }));
             return;
         }
 

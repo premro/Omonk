@@ -687,8 +687,8 @@ function normalizePlaylist(p) {
     };
 }
 
-async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
-    const langKey = (targetLang || 'tamil').toLowerCase();
+async function searchAll(rawQuery, limit = 30, targetLang = '') {
+    const langKey = (targetLang === undefined || targetLang === null) ? '' : String(targetLang).toLowerCase();
     const normKey = `${normalize(rawQuery)}__${langKey}`;
     const now = Date.now();
     const cached = SEARCH_CACHE.get(normKey);
@@ -922,7 +922,7 @@ async function searchAll(rawQuery, limit = 30, targetLang = 'tamil') {
     scoredArtists.sort(sorter);
 
     // If targetLang is Tamil and we have Tamil items, filter strictly for Tamil (unless international/English query)
-    if (effectiveLang === 'tamil') {
+    if (langKey === 'tamil' && effectiveLang === 'tamil') {
         const tamilSongs = dedupedSongs.filter(s => {
             const l = (s.language || '').toLowerCase();
             return l === 'tamil' || l === 'unknown';

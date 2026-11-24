@@ -558,8 +558,25 @@ class AudioPlayerEngine {
         }
     }
 
+    unlockAudioSession() {
+        this.ensureAudioSessionType();
+        if (this.pauseAnchorAudio) {
+            this.pauseAnchorAudio.volume = 0.0001;
+            const p = this.pauseAnchorAudio.play();
+            if (p && typeof p.then === 'function') {
+                p.then(() => this.pauseAnchorAudio.pause()).catch(() => {});
+            }
+        }
+        if (this.secondaryAudio) {
+            const s = this.secondaryAudio.play();
+            if (s && typeof s.then === 'function') {
+                s.then(() => this.secondaryAudio.pause()).catch(() => {});
+            }
+        }
+    }
+
     startLockscreenPauseAnchor() {
-        if (this._isSkipping || this.audio.ended || !this.getCurrentTrack()) return;
+        if (this._isSkipping || !this.getCurrentTrack()) return;
         if (this._pauseAnchorTimer) clearTimeout(this._pauseAnchorTimer);
         try {
             this.pauseAnchorAudio.currentTime = 0;
@@ -711,6 +728,7 @@ class AudioPlayerEngine {
         });
 
         el.addEventListener('ended', () => {
+            this.startLockscreenPauseAnchor();
             const currentTrack = this.getCurrentTrack();
             if (currentTrack && window.SpotifyEngine) {
                 window.SpotifyEngine.trackPlayFeedback(currentTrack, el.duration || 180, el.duration || 180);
@@ -1063,6 +1081,19 @@ class AudioPlayerEngine {
         if (!track) return;
         this.stopLockscreenPauseAnchor();
 
+        // Prime audio elements on user activation
+        try {
+            if (this.pauseAnchorAudio) {
+                this.pauseAnchorAudio.volume = 0.0001;
+                const p = this.pauseAnchorAudio.play();
+                if (p && typeof p.then === 'function') p.then(() => this.pauseAnchorAudio.pause()).catch(() => {});
+            }
+            if (this.secondaryAudio) {
+                const s = this.secondaryAudio.play();
+                if (s && typeof s.then === 'function') s.then(() => this.secondaryAudio.pause()).catch(() => {});
+            }
+        } catch (e) {}
+
         if (typeof isSequential === 'boolean') {
             this.isSequentialContext = isSequential;
         }
@@ -1080,7 +1111,7 @@ class AudioPlayerEngine {
             if (isSequential === null && queue.length > 1) {
                 this.isSequentialContext = true;
             }
-            if (!this.isSequentialContext) {
+            if (!this.isSequentialContext || this.queue.length <= 1) {
                 this.seedVibeQueue(track);
             }
         } else if (!this.queue || this.queue.length === 0) {

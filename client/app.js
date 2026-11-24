@@ -13,6 +13,14 @@ if (typeof window !== 'undefined' && !window.API_PREFIX) {
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
+    const unlockAudioOnce = () => {
+        if (window.AudioPlayer && typeof window.AudioPlayer.unlockAudioSession === 'function') {
+            window.AudioPlayer.unlockAudioSession();
+        }
+    };
+    document.addEventListener('pointerdown', unlockAudioOnce, { once: true });
+    document.addEventListener('touchstart', unlockAudioOnce, { once: true });
+    document.addEventListener('click', unlockAudioOnce, { once: true });
     // State
     let currentView = 'home';
     const isCatalyst = typeof window !== 'undefined' && (
@@ -744,6 +752,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (err) {
                 showToast('Weekly sync completed', '⚡');
             } finally {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistration().then(reg => reg?.update().catch(() => {}));
+                }
                 syncWeeklyBtn.disabled = false;
                 syncWeeklyBtn.innerHTML = '<span>⚡ Live Weekly Sync</span>';
                 if (currentView === 'weekly-hits' || currentView === 'hits' || currentView === 'home' || currentView === 'discovery') {
@@ -1524,6 +1535,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     showToast(`${activeLang.toUpperCase()} ${currentChartType} hits synced live!`, '✨');
                 } else {
                     showToast('Hits synchronized!', '⚡');
+                }
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistration().then(reg => reg?.update().catch(() => {}));
                 }
                 renderHitsView();
             } catch (err) {
@@ -6241,7 +6255,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ================= MULTI-DEVICE AUTO-REFRESH & LIVE UPDATE SYNC =================
-    const CURRENT_APP_VERSION = "8.16.0";
+    const CURRENT_APP_VERSION = "8.18.0";
     let latestServerTimestamp = 0;
     let latestRemoteVersion = null;
     let userDismissedUpdateVersion = null;

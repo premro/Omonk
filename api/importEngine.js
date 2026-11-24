@@ -276,10 +276,11 @@ async function importYouTube(inputUrl) {
                 const dur = endMs > 0 ? Math.round((endMs - sec * 1000) / 1000) : 240;
                 const art = m.thumbnail?.thumbnails?.[m.thumbnail.thumbnails.length - 1]?.url || cover;
 
+                const isCuratorOrChannel = !primaryArtist || /editz|channel|records|music|vevo|status|mix|playlist|t-series|sony|yrf|official|audio|video|lyrics|studio|creations|ent|production|media/i.test(primaryArtist) || /[\uD800-\uDFFF]/.test(primaryArtist);
                 const parsed = parseYouTubeTitle(cTitle, primaryArtist);
                 tracks.push({
                     title: parsed.title || cleanTrackName(cTitle),
-                    artist: parsed.artist || primaryArtist,
+                    artist: (parsed.artist && parsed.artist !== primaryArtist) ? parsed.artist : (isCuratorOrChannel ? '' : primaryArtist),
                     album: parsed.album || '',
                     duration: dur,
                     artwork: art,
@@ -327,12 +328,13 @@ async function importYouTube(inputUrl) {
                 }
 
                 if (timeStr && name) {
+                    const isCuratorOrChannel = !primaryArtist || /editz|channel|records|music|vevo|status|mix|playlist|t-series|sony|yrf|official|audio|video|lyrics|studio|creations|ent|production|media/i.test(primaryArtist) || /[\uD800-\uDFFF]/.test(primaryArtist);
                     const parsed = parseYouTubeTitle(name, primaryArtist);
                     const cleanName = parsed.title || cleanTrackName(name);
                     if (cleanName.length >= 2) {
                         parsedTs.push({
                             title: cleanName,
-                            artist: parsed.artist || primaryArtist,
+                            artist: (parsed.artist && parsed.artist !== primaryArtist) ? parsed.artist : (isCuratorOrChannel ? '' : primaryArtist),
                             album: parsed.album || '',
                             startTime: parseTimestampToSeconds(timeStr),
                             artwork: cover,
@@ -397,6 +399,27 @@ async function importYouTube(inputUrl) {
         };
         tracks.push(singleTrack);
         title = singleTrack.title;
+    }
+
+    if (tracks.length === 1 && !tracks[0].streamUrl) {
+        try {
+            const searchEngine = require('./searchEngine');
+            const queries = [];
+            if (tracks[0].album) queries.push(tracks[0].title + ' ' + tracks[0].album);
+            if (tracks[0].artist) queries.push(tracks[0].title + ' ' + tracks[0].artist);
+            queries.push(tracks[0].title);
+            for (const q of queries) {
+                const sRes = await searchEngine.searchAll(q, 5, '');
+                const cand = (sRes.songs || []).find(s => s && s.streamUrl);
+                if (cand && cand.streamUrl) {
+                    tracks[0].streamUrl = cand.streamUrl;
+                    if (cand.artwork) tracks[0].artwork = cand.artwork;
+                    if (cand.duration) tracks[0].duration = cand.duration;
+                    if (cand.album) tracks[0].album = cand.album;
+                    break;
+                }
+            }
+        } catch (e) {}
     }
 
     return {
