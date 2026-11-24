@@ -825,7 +825,7 @@ def extract_youtube_tracks(video_or_playlist_url):
                         if known.lower() in raw_title.lower():
                             video_artist = known
                             break
-                    if video_artist == "Various Artists" and author and not any(k in author.lower() for k in ["music", "vevo", "records", "entertainment", "channel"]):
+                    if video_artist == "Various Artists" and author and not any(k in author.lower() for k in ["music", "vevo", "records", "entertainment", "channel", "editz", "status", "creation", "production", "media", "lyrics", "mix", "playlist", "official", "studio"]) and not any(ord(c) > 10000 for c in author):
                         video_artist = author
 
                     for i, (t_str, title) in enumerate(unique_chapters):
@@ -850,7 +850,7 @@ def extract_youtube_tracks(video_or_playlist_url):
                         
                         tracks.append({
                             "title": track_title or clean or title,
-                            "artist": track_artist or video_artist,
+                            "artist": (track_artist if (track_artist and track_artist != video_artist) else (video_artist if video_artist != "Various Artists" else "")),
                             "duration": dur,
                             "artwork": thumb
                         })
