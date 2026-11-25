@@ -1,5 +1,5 @@
 {
-  "version": "8.18.0",
+  "version": "8.19.0",
   "releaseDate": "2026-11-25",
-  "description": "v8.18.0 Universal YouTube / Spotify Importer Resolution, Mixtape Multi-Track Parsing, Lock-Screen Pause Anchor Audio Session Keep-Alive, and Live Chart Sync."
+  "description": "v8.19.0 Innertube YouTube Import (Compilations & Playlists without Captcha Blocks), iOS Lockscreen HTTP Keepalive, and 2026 Charts Priority Sync."
 }

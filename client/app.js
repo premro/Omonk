@@ -2541,7 +2541,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let streamUrl = extractDownloadUrl(track);
         if (!streamUrl && track.id) {
             try {
-                const res = await fetch(`${API_PREFIX}/api/resolve?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}`);
+                const res = await fetch(`${API_PREFIX}/api/resolve?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}&album=${encodeURIComponent(track.album || '')}`);
                 const data = await res.json();
                 if (data.success && data.track && data.track.streamUrl) {
                     streamUrl = data.track.streamUrl;
@@ -2549,6 +2549,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     track.image = track.image || data.track.image;
                     track.artwork = track.artwork || data.track.artwork;
                     track.duration = track.duration || data.track.duration;
+                    if (data.track.album) track.album = data.track.album;
                 }
             } catch (err) {
                 console.warn('[Stream Resolution Error]:', err);
@@ -6255,7 +6256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ================= MULTI-DEVICE AUTO-REFRESH & LIVE UPDATE SYNC =================
-    const CURRENT_APP_VERSION = "8.18.0";
+    const CURRENT_APP_VERSION = "8.19.0";
     let latestServerTimestamp = 0;
     let latestRemoteVersion = null;
     let userDismissedUpdateVersion = null;
@@ -6343,8 +6344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if ('serviceWorker' in navigator) {
                 const regs = await navigator.serviceWorker.getRegistrations();
                 for (const reg of regs) {
-                    await reg.update().catch(() => {});
-                    if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    await reg.unregister().catch(() => {});
                 }
             }
         } catch (e) {}

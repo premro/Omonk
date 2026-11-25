@@ -491,6 +491,29 @@ def get_hits(chart_type="daily", language="tamil", limit=None):
     tracks = []
     seen_titles = set()
     
+    # 0. Priority: Verified 2026 hits from chartsData.json
+    for c_path in [
+        os.path.join(os.path.dirname(__file__), "chartsData.json"),
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "api", "chartsData.json")
+    ]:
+        if os.path.exists(c_path):
+            try:
+                with open(c_path, 'r', encoding='utf-8') as f:
+                    cdata = json.load(f)
+                    charts_root = cdata.get("charts", cdata)
+                    lang_data = charts_root.get(language, {})
+                    c_tracks = lang_data.get(chart_type, [])
+                    if c_tracks:
+                        for ct in c_tracks:
+                            tl = ct.get("title", "").lower()
+                            if tl and tl not in seen_titles:
+                                seen_titles.add(tl)
+                                tracks.append(ct)
+                        if tracks:
+                            break
+            except Exception as e:
+                pass
+
     # 1. First priority: Actively synced real-time tracks for this chart_type and language
     try:
         import weekly_sync

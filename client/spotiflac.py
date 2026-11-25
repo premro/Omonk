@@ -88,6 +88,7 @@ def to_phonetic(s):
         w = re.sub(r"z", "s", w)
         w = re.sub(r"j", "s", w)
         w = re.sub(r"o$", "u", w)
+        w = re.sub(r"(?:ae|ey|ee|ai)$", "e", w)
         w = re.sub(r"(.)\1+", r"\1", w)
         words.append(w)
     return " ".join(words)
@@ -355,7 +356,7 @@ def _normalize_search_title(title):
     t = re.sub(r"['\"\u2019`]", "", t)
     return re.sub(r'\s+', ' ', t).strip()
 
-def resolve_track_audio(title, artist=""):
+def resolve_track_audio(title, artist="", album=""):
     """Multi-stage fuzzy resolver for Spotify, YouTube, iTunes, and JioSaavn tracks."""
     if not title:
         return None
@@ -403,6 +404,10 @@ def resolve_track_audio(title, artist=""):
 
     # 2. Formulate progressive search queries
     queries = []
+    if clean_t and album:
+        queries.append(f"{clean_t} {clean_text(album)}")
+        if primary_art:
+            queries.append(f"{clean_t} {clean_text(album)} {primary_art}")
     if clean_t and primary_art:
         queries.append(f"{clean_t} {primary_art}")
         queries.append(f"{primary_art} {clean_t}")
@@ -449,6 +454,8 @@ def resolve_track_audio(title, artist=""):
             cand_phon_t = to_phonetic(cand_raw_t)
             cand_art = (t.get("artist") or "").lower()
             cand_phon_art = to_phonetic(cand_art)
+            cand_alb = (t.get("album") or "").lower()
+            target_alb = (album or "").lower()
 
             score = 0
 
@@ -642,20 +649,99 @@ def clean_track_name(title):
     clean = re.sub(r'\|\s*.*$', '', clean).strip().rstrip('-–—: ').strip()
     return clean or title
 
+def fetch_innertube(endpoint, payload):
+    try:
+        data = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(
+            f"https://www.youtube.com/youtubei/v1/{endpoint}?prettyPrint=false",
+            data=data,
+            headers={
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+            }
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode('utf-8'))
+    except Exception:
+        return None
+
+def parse_youtube_title(raw_title, author_name=""):
+    if not raw_title:
+        return {"title": "Unknown Title", "artist": author_name or "Various Artists", "album": ""}
+
+    clean = re.sub(r'#\S+', '', raw_title)
+    clean = re.sub(r'[\(\[\{][^\)\]\}]*(?:remaster|official|audio|video|lyrics?|version|4k|8k|hd|uhd|full)[^\)\]\}]*[\)\]\}]', ' ', clean, flags=re.I).strip()
+
+    raw_segments = [s.strip() for s in re.split(r'\s*[|•/]\s*', clean) if s.strip()]
+    junk_regex = re.compile(r'^(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical\s*song|lyrical|lyrics|music\s*video|official\s*video|official\s*audio|official|jukebox|audio\s*jukebox|remastered|status|shorts)$', re.I)
+
+    useful_segments = []
+    for seg in raw_segments:
+        s = re.sub(r'[-–—]\s*(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical|lyrics|official\s*video).*$', '', seg, flags=re.I).strip()
+        s = re.sub(r'^(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical|lyrics|official\s*video).*?[-–—]\s*', '', s, flags=re.I).strip()
+        if not s or junk_regex.match(s):
+            continue
+        if re.match(r'^[ऀ-ൿ\s\W]+$', s):
+            continue
+        useful_segments.append(s)
+
+    title = ""
+    artist = ""
+    album = ""
+
+    known_artists = [
+        'madcon', 'ed sheeran', 'anirudh', 'anirudh ravichander', 'a.r. rahman', 'ar rahman',
+        'ilayaraja', 'ilayaraaja', 'yuvan', 'yuvan shankar raja', 'harris jayaraj', 'pradeep kumar',
+        'sid sriram', 'spb', 'dhanush', 'the weeknd', 'taylor swift', 'dua lipa', 'justin bieber',
+        's.a. rajkumar', 'sa rajkumar', 'deva', 'vidyasagar', 'immann', 'd. imman', 'santhosh narayanan'
+    ]
+
+    if len(useful_segments) == 0:
+        title = re.sub(r'[-–—|].*$', '', raw_title).strip()
+        artist = author_name or "Various Artists"
+    elif len(useful_segments) == 1:
+        seg = useful_segments[0]
+        dash_parts = [p.strip() for p in re.split(r'\s*[-–—]\s*', seg) if p.strip()]
+        if len(dash_parts) >= 2:
+            p0, p1 = dash_parts[0], dash_parts[1]
+            auth = re.sub(r'\s*(?:official|music|vevo|records|channel|- topic).*', '', author_name or '', flags=re.I).strip().lower()
+            if any(k in p1.lower() for k in known_artists) or re.search(r'(feat|ft|singers?|vocals?|composer)', p1, re.I) or (auth and auth in p1.lower()):
+                artist = p1
+                title = p0
+            elif any(k in p0.lower() for k in known_artists) or (auth and auth in p0.lower()):
+                artist = p0
+                title = p1
+            else:
+                title = p0
+                artist = p1
+        else:
+            title = seg
+            artist = author_name or "Various Artists"
+    else:
+        title = useful_segments[0]
+        album = useful_segments[1]
+        artist = useful_segments[-1] if len(useful_segments) > 2 else useful_segments[1]
+
+    return {"title": title, "artist": artist, "album": album}
+
 def extract_youtube_tracks(video_or_playlist_url):
     """Extracts tracks from YouTube playlist, single video, or Audio Jukebox/Chapters."""
     # 1. Playlist check
     p_match = re.search(r'list=([a-zA-Z0-9_-]+)', video_or_playlist_url)
     if p_match and not ("watch?v=" in video_or_playlist_url and "&list=" in video_or_playlist_url and "index=" not in video_or_playlist_url):
         p_id = p_match.group(1)
+        browse_data = fetch_innertube('browse', {
+            'context': {'client': {'clientName': 'WEB', 'clientVersion': '2.20240101.00.00'}},
+            'browseId': 'VL' + p_id
+        })
         yt_url = f"https://www.youtube.com/playlist?list={p_id}"
         req = urllib.request.Request(yt_url, headers=HEADERS)
         try:
             with urllib.request.urlopen(req, timeout=12) as resp:
                 body = resp.read().decode('utf-8', errors='ignore')
                 dm = re.search(r'ytInitialData\s*=\s*({.+?});</script>', body)
-                if dm:
-                    data = json.loads(dm.group(1))
+                data = json.loads(dm.group(1)) if dm else (browse_data or {})
+                if data:
                     
                     # Extract playlist title
                     pl_title = "YouTube Playlist"
@@ -746,6 +832,14 @@ def extract_youtube_tracks(video_or_playlist_url):
         raw_title = ""
         author = ""
         thumb = f"https://i.ytimg.com/vi/{v_id}/hqdefault.jpg"
+        p_data = fetch_innertube('player', {
+            'context': {'client': {'clientName': 'WEB', 'clientVersion': '2.20240101.00.00'}},
+            'videoId': v_id
+        })
+        if p_data and 'videoDetails' in p_data:
+            vd = p_data['videoDetails']
+            if vd.get('title'): raw_title = vd['title']
+            if vd.get('author'): author = vd['author']
         try:
             oe_url = f"https://www.youtube.com/oembed?url={urllib.parse.quote('https://www.youtube.com/watch?v=' + v_id)}&format=json"
             oe_req = urllib.request.Request(oe_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -774,7 +868,9 @@ def extract_youtube_tracks(video_or_playlist_url):
                     author = author_m.group(1) if author_m else ""
                 
                 dm = re.search(r'ytInitialData\s*=\s*({.+?});</script>', body)
-                data = json.loads(dm.group(1)) if dm else {}
+                data = json.loads(dm.group(1)) if dm else (p_data or {})
+                if p_data and 'videoDetails' in p_data and 'shortDescription' in p_data['videoDetails']:
+                    body = body + "\n" + p_data['videoDetails']['shortDescription']
                 
                 # Check for chapters in macroMarkersListItemRenderer or chapterRenderer
                 chapters = []
@@ -863,30 +959,24 @@ def extract_youtube_tracks(video_or_playlist_url):
                         "tracks": tracks
                     }
 
-                # Otherwise SINGLE SONG (fallback to oEmbed or parsed title)
-                clean = clean_track_name(raw_title)
-                clean_author = author
-                if clean_author.lower().endswith(" - topic"): clean_author = clean_author[:-8].strip()
-                elif clean_author.lower().startswith("oficial"): clean_author = clean_author[7:].strip()
-                elif clean_author.lower().endswith("vevo"): clean_author = clean_author[:-4].strip()
-                parts = [p.strip() for p in re.split(r'[-–—|:]', clean) if p.strip()]
-                artist = clean_author
-                track_title = clean
-                if len(parts) >= 2:
-                    p0, p1 = parts[0], parts[1]
-                    known_artists = [
-                        'madcon', 'ed sheeran', 'anirudh', 'anirudh ravichander', 'a.r. rahman', 'ar rahman',
-                        'ilayaraja', 'ilayaraaja', 'yuvan', 'yuvan shankar raja', 'harris jayaraj', 'pradeep kumar',
-                        'sid sriram', 'spb', 'dhanush', 'the weeknd', 'taylor swift', 'dua lipa', 'justin bieber'
-                    ]
-                    if any(k in p1.lower() for k in known_artists) or re.search(r'\b(feat|ft|singers?|vocals?|composer)\b', p1, re.I):
-                        track_title = p0
-                        artist = p1
-                    else:
-                        artist = p0
-                        track_title = p1
-                
-                resolved = resolve_track_audio(track_title, artist) or resolve_track_audio(artist, track_title) or resolve_track_audio(clean, author)
+                # Otherwise SINGLE SONG (multi-segment parsed with album & artist)
+                pyt = parse_youtube_title(raw_title, author)
+                track_title = pyt.get('title') or clean_track_name(raw_title)
+                track_artist = pyt.get('artist') or author
+                track_album = pyt.get('album') or ''
+
+                q_cands = []
+                if track_album:
+                    q_cands.append(f"{track_title} {track_album}")
+                if track_artist and track_artist != "Various Artists":
+                    q_cands.append(f"{track_title} {track_artist}")
+                q_cands.append(track_title)
+
+                resolved = None
+                for qc in q_cands:
+                    resolved = resolve_track_audio(track_title, track_artist, track_album) or resolve_track_audio(qc)
+                    if resolved and resolved.get('streamUrl'):
+                        break
                 single_track = {
                     "title": (resolved.get('title') if resolved else (track_title or clean or raw_title)),
                     "artist": (resolved.get('artist') if resolved else (artist or author)),

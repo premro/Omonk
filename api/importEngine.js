@@ -69,6 +69,34 @@ function fetchText(url, maxRedirects = 5) {
     });
 }
 
+function fetchInnertube(endpoint, payload) {
+    return new Promise((resolve) => {
+        try {
+            const data = JSON.stringify(payload);
+            const req = https.request(`https://www.youtube.com/youtubei/v1/${endpoint}?prettyPrint=false`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Content-Length': Buffer.byteLength(data)
+                }
+            }, (res) => {
+                let body = '';
+                res.on('data', chunk => body += chunk);
+                res.on('end', () => {
+                    try { resolve(JSON.parse(body)); } catch (e) { resolve(null); }
+                });
+            });
+            req.on('error', () => resolve(null));
+            req.setTimeout(8000, () => { req.destroy(); resolve(null); });
+            req.write(data);
+            req.end();
+        } catch (e) {
+            resolve(null);
+        }
+    });
+}
+
 function cleanTrackName(title) {
     if (!title) return '';
     return title
@@ -165,46 +193,96 @@ async function importYouTube(inputUrl) {
         return { success: false, error: 'Invalid or unsupported YouTube URL' };
     }
 
-    const targetUrl = playlistId && !videoId
-        ? `https://www.youtube.com/playlist?list=${playlistId}`
-        : `https://www.youtube.com/watch?v=${videoId}`;
+    const cover = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : '';
+    let title = '';
+    let primaryArtist = 'Various Artists';
+    const tracks = [];
+    let ytData = null;
+    let descText = '';
 
-    let oembed = null;
+    // 1. Innertube direct query (Never blocked by Google 302 captcha)
     if (videoId) {
         try {
-            oembed = await fetchJson(`https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + videoId)}&format=json`);
+            const pData = await fetchInnertube('player', {
+                context: { client: { clientName: 'WEB', clientVersion: '2.20240101.00.00' } },
+                videoId
+            });
+            if (pData?.videoDetails) {
+                ytData = pData;
+                title = pData.videoDetails.title || '';
+                primaryArtist = pData.videoDetails.author || primaryArtist;
+                descText = pData.videoDetails.shortDescription || '';
+            }
+        } catch (e) {}
+
+        if (!descText) {
+            try {
+                const nextData = await fetchInnertube('next', {
+                    context: { client: { clientName: 'WEB', clientVersion: '2.20240101.00.00' } },
+                    videoId
+                });
+                if (nextData) {
+                    if (!ytData) ytData = nextData;
+                    function findNextDesc(obj) {
+                        if (!obj || typeof obj !== 'object') return '';
+                        if (obj.attributedDescription?.content) return obj.attributedDescription.content;
+                        if (typeof obj.description?.simpleText === 'string') return obj.description.simpleText;
+                        for (const k of Object.keys(obj)) {
+                            const r = findNextDesc(obj[k]);
+                            if (r) return r;
+                        }
+                        return '';
+                    }
+                    const nDesc = findNextDesc(nextData);
+                    if (nDesc) descText = nDesc;
+                }
+            } catch (e) {}
+        }
+    }
+
+    if (playlistId) {
+        try {
+            const browseData = await fetchInnertube('browse', {
+                context: { client: { clientName: 'WEB', clientVersion: '2.20240101.00.00' } },
+                browseId: 'VL' + playlistId
+            });
+            if (browseData) {
+                ytData = browseData;
+                title = browseData.header?.playlistHeaderRenderer?.title?.simpleText ||
+                        browseData.header?.playlistHeaderRenderer?.title?.runs?.[0]?.text ||
+                        browseData.metadata?.playlistMetadataRenderer?.title ||
+                        title || 'YouTube Playlist';
+            }
         } catch (e) {}
     }
 
-    const body = await fetchText(targetUrl);
-    if (!body && !oembed) {
-        return { success: false, error: 'Could not fetch YouTube page' };
+    // 2. Fallback to HTML/oEmbed if Innertube did not populate title
+    let oembed = null;
+    if (videoId && (!title || !descText)) {
+        try {
+            oembed = await fetchJson(`https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + videoId)}&format=json`);
+            if (oembed?.title && !title) title = oembed.title;
+            if (oembed?.author_name && primaryArtist === 'Various Artists') primaryArtist = oembed.author_name;
+        } catch (e) {}
     }
 
-    let title = oembed?.title || '';
-    const tm = body ? body.match(/<title>(.*?)(?: - YouTube)?<\/title>/i) : null;
-    if (tm) {
-        title = tm[1].replace(/ - YouTube/i, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').trim();
-    }
-    if (!title && oembed?.title) title = oembed.title;
-
-    const cover = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : (oembed?.thumbnail_url || '');
-    const tracks = [];
-    let ytData = null;
-
-    const dm = body ? body.match(/ytInitialData\s*=\s*({.+?});<\/script>/) : null;
-    if (dm) {
-        try { ytData = JSON.parse(dm[1]); } catch (e) {}
-    }
-
-    if (!title || title === 'undefined') {
-        title = ytData?.header?.playlistHeaderRenderer?.title?.simpleText ||
-                ytData?.header?.playlistHeaderRenderer?.title?.runs?.[0]?.text ||
-                ytData?.metadata?.playlistMetadataRenderer?.title ||
-                'YouTube Playlist';
+    if (!title && !ytData) {
+        const targetUrl = playlistId && !videoId
+            ? `https://www.youtube.com/playlist?list=${playlistId}`
+            : `https://www.youtube.com/watch?v=${videoId}`;
+        const body = await fetchText(targetUrl);
+        if (body) {
+            const tm = body.match(/<title>(.*?)(?: - YouTube)?<\/title>/i);
+            if (tm) title = tm[1].replace(/ - YouTube/i, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').trim();
+            const dm = body.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
+            if (dm) {
+                try { ytData = JSON.parse(dm[1]); } catch (e) {}
+            }
+        }
     }
 
-    let primaryArtist = oembed?.author_name || 'Various Artists';
+    if (!title) title = 'YouTube Playlist';
+
     const artistRegex = /\b(ilayaraja|ilayaraaja|ilaiyaraaja|a\.?\s*r\.?\s*rahman|anirudh|anirudh\s*ravichander|harris\s*jayaraj|yuvan\s*shankar\s*raja|yuvan|spb|s\.\s*p\.\s*balasubrahmanyam|chitra|k\.\s*s\.\s*chithra|janaki|s\.\s*janaki|yesudas|k\.\s*j\.\s*yesudas|vidyasagar|devi\s*sri\s*prasad|dsp|thaman|thaman\s*s|arijit\s*singh|arijit|shreya\s*ghoshal|sid\s*sriram|santhosh\s*narayanan|g\.?\s*v\.?\s*prakash|hiphop\s*tamizha|d\.?\s*imman|taylor\s*swift|billie\s*eilish|bad\s*bunny|the\s*weeknd)\b/i;
     const am = title.match(artistRegex);
     if (am) {
@@ -216,12 +294,13 @@ async function importYouTube(inputUrl) {
         else if (/yuvan/i.test(primaryArtist)) primaryArtist = 'Yuvan Shankar Raja';
     }
 
-    // Strategy 1: Playlist Items
+    // Strategy 1: Playlist Items (Supports both playlistVideoRenderer and lockupViewModel)
     if (playlistId && ytData) {
         function findPlaylistVideos(obj) {
             let list = [];
             if (obj && typeof obj === 'object') {
                 if (obj.playlistVideoRenderer) list.push(obj.playlistVideoRenderer);
+                if (obj.lockupViewModel) list.push({ lockup: obj.lockupViewModel });
                 for (const k of Object.keys(obj)) {
                     list = list.concat(findPlaylistVideos(obj[k]));
                 }
@@ -229,29 +308,58 @@ async function importYouTube(inputUrl) {
             return list;
         }
         const plVideos = findPlaylistVideos(ytData);
-        for (const pv of plVideos) {
-            const pvTitle = pv.title?.simpleText || pv.title?.runs?.[0]?.text;
-            const pvArtist = pv.shortBylineText?.runs?.[0]?.text || primaryArtist || 'YouTube';
-            const pvDur = parseInt(pv.lengthSeconds || '210', 10);
-            const pvThumb = pv.thumbnail?.thumbnails?.[pv.thumbnail.thumbnails.length - 1]?.url || cover;
-            const pvId = pv.videoId || '';
-            if (pvTitle && !pvTitle.includes('[Private video]') && !pvTitle.includes('[Deleted video]')) {
-                const parsedSeg = parseYouTubeTitle(pvTitle, pvArtist);
-                tracks.push({
-                    id: pvId ? `yt_${pvId}` : undefined,
-                    youtubeId: pvId,
-                    title: parsedSeg.title || cleanTrackName(pvTitle),
-                    artist: parsedSeg.artist || pvArtist,
-                    album: parsedSeg.album || '',
-                    duration: pvDur,
-                    artwork: pvThumb,
-                    quality: 'FLAC / 320kbps Hi-Fi'
-                });
+        for (const item of plVideos) {
+            if (item.lockup) {
+                const lvm = item.lockup;
+                const meta = lvm.metadata?.lockupMetadataViewModel;
+                const pvTitle = meta?.title?.content;
+                const rows = meta?.metadata?.contentMetadataViewModel?.metadataRows || [];
+                const pvArtist = rows[0]?.metadataParts?.[0]?.text?.content || primaryArtist || 'YouTube';
+                const sources = lvm.contentImage?.thumbnailViewModel?.image?.sources || [];
+                const pvThumb = sources.length > 0 ? sources[sources.length - 1].url : cover;
+                let pvId = lvm.contentId || '';
+                if (!pvId && pvThumb) {
+                    const idM = pvThumb.match(/\/vi\/([a-zA-Z0-9_-]{11})\//);
+                    if (idM) pvId = idM[1];
+                }
+                if (pvTitle && !pvTitle.includes('[Private video]') && !pvTitle.includes('[Deleted video]')) {
+                    const parsedSeg = parseYouTubeTitle(pvTitle, pvArtist);
+                    tracks.push({
+                        id: pvId ? `yt_${pvId}` : undefined,
+                        youtubeId: pvId,
+                        title: parsedSeg.title || cleanTrackName(pvTitle),
+                        artist: parsedSeg.artist || pvArtist,
+                        album: parsedSeg.album || '',
+                        duration: 210,
+                        artwork: pvThumb,
+                        quality: 'FLAC / 320kbps Hi-Fi'
+                    });
+                }
+            } else {
+                const pv = item;
+                const pvTitle = pv.title?.simpleText || pv.title?.runs?.[0]?.text;
+                const pvArtist = pv.shortBylineText?.runs?.[0]?.text || primaryArtist || 'YouTube';
+                const pvDur = parseInt(pv.lengthSeconds || '210', 10);
+                const pvThumb = pv.thumbnail?.thumbnails?.[pv.thumbnail.thumbnails.length - 1]?.url || cover;
+                const pvId = pv.videoId || '';
+                if (pvTitle && !pvTitle.includes('[Private video]') && !pvTitle.includes('[Deleted video]')) {
+                    const parsedSeg = parseYouTubeTitle(pvTitle, pvArtist);
+                    tracks.push({
+                        id: pvId ? `yt_${pvId}` : undefined,
+                        youtubeId: pvId,
+                        title: parsedSeg.title || cleanTrackName(pvTitle),
+                        artist: parsedSeg.artist || pvArtist,
+                        album: parsedSeg.album || '',
+                        duration: pvDur,
+                        artwork: pvThumb,
+                        quality: 'FLAC / 320kbps Hi-Fi'
+                    });
+                }
             }
         }
     }
 
-    // Strategy 2: Structured Chapters
+    // Strategy 2: Structured Chapters in ytData
     if (tracks.length === 0 && ytData) {
         function findMarkers(obj) {
             let markers = [];
@@ -291,21 +399,24 @@ async function importYouTube(inputUrl) {
         }
     }
 
-    // Strategy 3: Description Timestamp Parsing
-    if (tracks.length === 0 && ytData) {
-        function findDesc(obj) {
-            if (!obj || typeof obj !== 'object') return '';
-            if (obj.attributedDescription?.content) return obj.attributedDescription.content;
-            if (typeof obj.description?.simpleText === 'string') return obj.description.simpleText;
-            for (const k of Object.keys(obj)) {
-                const r = findDesc(obj[k]);
-                if (r) return r;
+    // Strategy 3: Description Timestamp Parsing (e.g. Mixtape Compilations like 1xXW9U_O7Rs)
+    if (tracks.length === 0) {
+        if (!descText && ytData) {
+            function findDesc(obj) {
+                if (!obj || typeof obj !== 'object') return '';
+                if (obj.attributedDescription?.content) return obj.attributedDescription.content;
+                if (typeof obj.description?.simpleText === 'string') return obj.description.simpleText;
+                for (const k of Object.keys(obj)) {
+                    const r = findDesc(obj[k]);
+                    if (r) return r;
+                }
+                return '';
             }
-            return '';
+            descText = findDesc(ytData);
         }
-        const desc = findDesc(ytData);
-        if (desc) {
-            const unescapedDesc = desc.replace(/\\n/g, '\n');
+
+        if (descText) {
+            const unescapedDesc = descText.replace(/\\n/g, '\n');
             const lines = unescapedDesc.split(/[\r\n]+/);
             const timeRegexPrefix = /^(?:track\s*\d+[\.\-\:]\s*)?(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—:\.]*\s*(.+)$/i;
             const timeRegexSuffix = /^(.+?)\s*[-–—:\.]*\s*(\d{1,2}:\d{2}(?::\d{2})?)$/i;
@@ -401,12 +512,13 @@ async function importYouTube(inputUrl) {
         title = singleTrack.title;
     }
 
+    // Pre-resolve 320kbps stream URL for single track import
     if (tracks.length === 1 && !tracks[0].streamUrl) {
         try {
             const searchEngine = require('./searchEngine');
             const queries = [];
             if (tracks[0].album) queries.push(tracks[0].title + ' ' + tracks[0].album);
-            if (tracks[0].artist) queries.push(tracks[0].title + ' ' + tracks[0].artist);
+            if (tracks[0].artist && tracks[0].artist !== 'Various Artists') queries.push(tracks[0].title + ' ' + tracks[0].artist);
             queries.push(tracks[0].title);
             for (const q of queries) {
                 const sRes = await searchEngine.searchAll(q, 5, '');
@@ -473,7 +585,8 @@ async function importSpotify(inputUrl) {
                     title: cleanTrackName(oembed.title) || oembed.title,
                     artist: 'Spotify Artist',
                     duration: 210,
-                    artwork: oembed.thumbnail_url || ''
+                    artwork: oembed.thumbnail_url || '',
+                    quality: 'FLAC / 320kbps Hi-Fi'
                 };
                 return {
                     success: true,
@@ -515,7 +628,8 @@ async function importSpotify(inputUrl) {
                     title: cleanTrackName(entity?.title || title) || title,
                     artist: artistName,
                     duration: Math.round((entity?.duration || 210000) / 1000),
-                    artwork: cover
+                    artwork: cover,
+                    quality: 'FLAC / 320kbps Hi-Fi'
                 };
                 return {
                     success: true,
@@ -540,7 +654,8 @@ async function importSpotify(inputUrl) {
                     title: cleanTrackName(t.title) || t.title,
                     artist: artistName,
                     duration: Math.round((t.duration || 210000) / 1000),
-                    artwork: cover
+                    artwork: cover,
+                    quality: 'FLAC / 320kbps Hi-Fi'
                 };
             });
 
@@ -564,7 +679,8 @@ async function importSpotify(inputUrl) {
                         title: cleanTrackName(oembed.title) || oembed.title,
                         artist: 'Spotify Artist',
                         duration: 210,
-                        artwork: oembed.thumbnail_url || ''
+                        artwork: oembed.thumbnail_url || '',
+                        quality: 'FLAC / 320kbps Hi-Fi'
                     };
                     return {
                         success: true,
@@ -592,7 +708,8 @@ async function importSpotify(inputUrl) {
                 title: cleanTrackName(ogTitle) || ogTitle,
                 artist: ogDesc || 'Spotify Artist',
                 duration: 210,
-                artwork: ogImage || ''
+                artwork: ogImage || '',
+                quality: 'FLAC / 320kbps Hi-Fi'
             };
             return {
                 success: true,

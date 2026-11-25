@@ -190,7 +190,7 @@ class PlaylistImporter {
             try {
                 if (onProgress) onProgress(60, `Resolving lossless stream for "${tracks[0].title}"...`);
                 const prefix = window.API_PREFIX || '';
-                const resStream = await fetch(`${prefix}/api/resolve?title=${encodeURIComponent(tracks[0].title)}&artist=${encodeURIComponent(tracks[0].artist || '')}`);
+                const resStream = await fetch(`${prefix}/api/resolve?title=${encodeURIComponent(tracks[0].title)}&artist=${encodeURIComponent(tracks[0].artist || '')}&album=${encodeURIComponent(tracks[0].album || '')}`);
                 if (resStream.ok) {
                     const resJson = await resStream.json();
                     if (resJson.success && resJson.track && resJson.track.streamUrl) {
@@ -232,9 +232,11 @@ class PlaylistImporter {
 
         const rawTracks = data.tracks || [];
         const tracks = rawTracks.map((t, idx) => ({
-            id: `yt_tr_${Date.now()}_${idx}`,
+            id: t.id || `yt_tr_${Date.now()}_${idx}`,
+            youtubeId: t.youtubeId || '',
             title: t.title,
             artist: t.artist,
+            album: t.album || '',
             duration: t.duration || 210,
             artwork: t.artwork || data.artwork || '',
             streamUrl: t.streamUrl || '',
@@ -245,13 +247,14 @@ class PlaylistImporter {
             try {
                 if (onProgress) onProgress(60, `Resolving lossless stream for "${tracks[0].title}"...`);
                 const prefix = window.API_PREFIX || '';
-                const resStream = await fetch(`${prefix}/api/resolve?title=${encodeURIComponent(tracks[0].title)}&artist=${encodeURIComponent(tracks[0].artist || '')}`);
+                const resStream = await fetch(`${prefix}/api/resolve?title=${encodeURIComponent(tracks[0].title)}&artist=${encodeURIComponent(tracks[0].artist || '')}&album=${encodeURIComponent(tracks[0].album || '')}`);
                 if (resStream.ok) {
                     const resJson = await resStream.json();
                     if (resJson.success && resJson.track && resJson.track.streamUrl) {
                         tracks[0].streamUrl = resJson.track.streamUrl;
                         if (resJson.track.duration) tracks[0].duration = resJson.track.duration;
                         if (resJson.track.artwork) tracks[0].artwork = resJson.track.artwork;
+                        if (resJson.track.album) tracks[0].album = resJson.track.album;
                     }
                 }
             } catch (e) {}

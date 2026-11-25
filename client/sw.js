@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lossless-studio-v8.18.0';
+const CACHE_NAME = 'lossless-studio-v8.19.0';
 const ASSETS = [
   './',
   './index.html',
@@ -18,6 +18,8 @@ const ASSETS = [
   './app-icon.png',
   './favicon.png',
   './favicon.ico',
+  './assets/silence.mp3',
+  './assets/silence.m4a',
   './assets/beggin_madcon.jpg',
   './assets/omonk_logo.png',
   './assets/omonk_logo.jpg',
