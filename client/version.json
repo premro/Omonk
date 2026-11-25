@@ -1,5 +1,5 @@
 {
-  "version": "8.19.4",
+  "version": "8.19.5",
   "releaseDate": "2026-11-25",
-  "description": "v8.19.4: Comprehensive backend & frontend bug-fix release (dynamic artist fallback, phonetic resolver, recent history view, queue/mute/playback stability)."
+  "description": "v8.19.5: Precision YouTube/Spotify import metadata extraction, description credit parsing, strict /api/resolve confidence gate & duration verification."
 }

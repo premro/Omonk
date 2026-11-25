@@ -495,6 +495,9 @@ class AudioPlayerEngine {
             let resolveUrl = `${prefix}/api/resolve?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}`;
             if (track.album) resolveUrl += `&album=${encodeURIComponent(track.album)}`;
             if (track.language || track.lang) resolveUrl += `&lang=${encodeURIComponent(track.language || track.lang)}`;
+            if (track.duration && Number(track.duration) > 15) resolveUrl += `&duration=${encodeURIComponent(Math.round(track.duration))}`;
+            if (track.youtubeId) resolveUrl += `&youtubeId=${encodeURIComponent(track.youtubeId)}`;
+            if (track.spotifyId) resolveUrl += `&spotifyId=${encodeURIComponent(track.spotifyId)}`;
             const res = await fetch(resolveUrl, { signal: controller.signal });
             clearTimeout(timer);
             if (!res.ok) return null;

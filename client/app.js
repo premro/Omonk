@@ -2070,7 +2070,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Auto-split single jukebox track if detected on view open
-        if (tracks.length === 1 && (playlist.source === 'YouTube' || /jukebox|hour|best of/i.test(playlist.name)) && !playlist._autoSplitAttempted) {
+        if (tracks.length === 1 && (/jukebox|hour|full\s*album|mashup|medley|non.?stop/i.test(playlist.name) || (tracks[0]?.duration > 480)) && !playlist._autoSplitAttempted) {
             playlist._autoSplitAttempted = true;
             Importer.splitJukeboxPlaylist(playlist.id).then(updated => {
                 if (updated && updated.tracks.length > 1) {
@@ -6424,7 +6424,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ================= MULTI-DEVICE AUTO-REFRESH & LIVE UPDATE SYNC =================
-    const CURRENT_APP_VERSION = "8.19.4";
+    const CURRENT_APP_VERSION = "8.19.5";
     let latestServerTimestamp = 0;
     let latestRemoteVersion = null;
     let userDismissedUpdateVersion = null;

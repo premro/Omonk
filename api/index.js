@@ -2,6 +2,7 @@ const pianoEngine = require('./pianoEngine');
 const podcastsEngine = require('./podcastsEngine');
 const lyricsEngine = require('./lyricsEngine');
 const importEngine = require('./importEngine');
+const resolveEngine = require('./resolveEngine');
 'use strict';
 
 const https = require('https');
@@ -1275,224 +1276,22 @@ function isSameSongOrReprise(candTitle, seedTitle) {
             return;
         }
 
-        // 6. Dynamic Track Resolution (/api/resolve) with Progressive Queries & Phonetic Matching
+        // 6. Dynamic Track Resolution (/api/resolve) with Shared Strict Scoring & Confidence Gate
         if (pathname === '/api/resolve' || pathname === '/resolve') {
             const rawTitle = u.searchParams.get('title') || '';
             const rawArtist = u.searchParams.get('artist') || '';
             const rawAlbum = u.searchParams.get('album') || '';
             const rawLang = u.searchParams.get('lang') || '';
+            const rawDuration = u.searchParams.get('duration') || '0';
 
-            // 1. Clean Title & Extract Film/Movie
-            let film = '';
-            const filmMatch = rawTitle.match(/(?:from|\(from|\[from)\s+["']?([^"')\]]+)["']?/i);
-            if (filmMatch) {
-                film = filmMatch[1].trim();
-            }
-
-            let cleanTitle = rawTitle
-                .replace(/\s*\(From\s+["'][^"']+["']\)/gi, '')
-                .replace(/\s*-\s*From\s+["'][^"']+["']/gi, '')
-                .replace(/\s*\(From\s+[^)]+\)/gi, '')
-                .replace(/\s*\[[^\]]+\]/g, '')
-                .replace(/\s*\((?:feat\.|with|ft\.|remastered|re-mastered|remaster|radio edit|original mix|single version|deluxe|version|audio|video song|video|lyrical video|lyrical song|lyrical|lyrics|visualizer|slowed|reverb)[^)]*\)/gi, '')
-                .replace(/\s*[-–—:]\s*(?:remastered|re-mastered|remaster|radio edit|single version|video song|video|audio song|audio|lyrical video|lyrical song|lyrical|lyrics|telugu|tamil|hindi|kannada|malayalam|punjabi|original soundtrack|ost)\b.*$/gi, '')
-                .replace(/\|\s*.*$/, '')
-                .replace(/\s*[-–—]\s*(?:telugu|tamil|hindi|kannada|malayalam|punjabi|english)\s*$/gi, '')
-                .replace(/\s+/g, ' ')
-                .trim();
-
-            if (!cleanTitle) cleanTitle = rawTitle.trim();
-
-            // Instant match for Beggin' by Madcon
-            if (/beggin/i.test(cleanTitle) && (/madcon/i.test(rawArtist) || !rawArtist)) {
-                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                res.end(JSON.stringify({
-                    success: true,
-                    track: {
-                        id: "madcon_beggin_official",
-                        title: "Beggin'",
-                        artist: "Madcon",
-                        album: "So Dark the Con of Man",
-                        duration: 216,
-                        artwork: "assets/beggin_madcon.jpg",
-                        image: "assets/beggin_madcon.jpg",
-                        streamUrl: "assets/beggin_madcon.mp3",
-                        quality: "FLAC / 320kbps Hi-Fi",
-                        bitrate: "Lossless Studio 24-bit/48kHz",
-                        source: "Official Top Charts",
-                        hasLyrics: true
-                    }
-                }));
-                return;
-            }
-
-            // 2. Clean Artist (filter channel/record label noise)
-            let validArtist = rawArtist.replace(/\s*-\s*Topic/gi, '').trim();
-            const junkLabels = [
-                'youtube', 'various artists', 'spotify artist', 'sony music south', 'sony music',
-                't-series', 'tseries', 'sun tv', 'sun pictures', 'think music', 'think music india',
-                'saregama', 'saregama tamil', 'zee music', 'zee music south', 'lahari music',
-                'aditya music', 'speed audio', 'muzik247', 'tips', 'yrf', 'eros now', 'vevo'
-            ];
-            for (const jl of junkLabels) {
-                if (validArtist.toLowerCase() === jl || validArtist.toLowerCase().startsWith(jl)) {
-                    validArtist = '';
-                    break;
-                }
-            }
-
-            // 3. Detect Language
-            const haystack = `${cleanTitle} ${rawTitle} ${validArtist} ${rawAlbum} ${film}`.toLowerCase();
-            let detectedLang = rawLang && rawLang !== 'unknown' ? rawLang.toLowerCase().trim() : '';
-            if (!detectedLang) {
-                if (/[\u0B80-\u0BFF]/.test(haystack)) detectedLang = 'tamil';
-                else if (/[\u0C00-\u0C7F]/.test(haystack)) detectedLang = 'telugu';
-                else if (/[\u0900-\u097F]/.test(haystack)) detectedLang = 'hindi';
-                else if (/[\u0D00-\u0D7F]/.test(haystack)) detectedLang = 'malayalam';
-                else if (/[\u0A80-\u0AFF]/.test(haystack)) detectedLang = 'punjabi';
-                else if (/telugu|devi sri prasad|dsp|thaman/i.test(haystack)) detectedLang = 'telugu';
-                else if (/anirudh|yuvan|harris|ilayaraja|ilaiyaraaja|gv prakash|santhosh narayanan|pradeep kumar|dhanush|sid sriram|d\.?\s*imman/i.test(haystack)) detectedLang = 'tamil';
-                else if (/arijit|shreya|badshah|pritam|atif|kumar sanu|lata|kishore|sonu nigam/i.test(haystack)) detectedLang = 'hindi';
-                else if (/diljit|karan aujla|sidhu/i.test(haystack)) detectedLang = 'punjabi';
-                else if (/sushin|sushin shyam|heshem/i.test(haystack)) detectedLang = 'malayalam';
-                else if (/the weeknd|taylor swift|billie eilish|ed sheeran|drake|post malone|dua lipa|coldplay|bruno mars/i.test(haystack)) detectedLang = 'english';
-            }
-
-            // 4. Form Focused Queries in Strict Priority Order
-            const targetAlbum = (film || rawAlbum || '').trim();
-            const queries = [];
-            const primaryArt = validArtist.split(/[,&]/)[0].trim();
-
-            if (targetAlbum && primaryArt) {
-                queries.push(`${cleanTitle} ${targetAlbum} ${primaryArt}`);
-            }
-            if (targetAlbum) {
-                queries.push(`${cleanTitle} ${targetAlbum}`);
-            }
-            if (primaryArt) {
-                queries.push(`${cleanTitle} ${primaryArt}`);
-            }
-            queries.push(cleanTitle);
-            if (detectedLang && detectedLang !== 'english') {
-                queries.push(`${cleanTitle} ${detectedLang}`);
-            }
-
-            const searchPromises = queries.map(q => searchEngine.searchAll(q, 15, detectedLang));
-            Promise.all(searchPromises).then(results => {
-                const seenIds = new Set();
-                const candidates = [];
-                for (const resData of results) {
-                    const list = resData.songs || resData.results || [];
-                    for (const s of list) {
-                        if (s && s.id && !seenIds.has(s.id) && s.streamUrl) {
-                            seenIds.add(s.id);
-                            candidates.push(s);
-                        }
-                    }
-                }
-
-                if (candidates.length === 0) {
-                    res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                    res.end(JSON.stringify({ success: false, error: 'Track stream not found' }));
-                    return;
-                }
-
-                function scoreResolveCandidate(s) {
-                    let score = 0;
-                    const sTitle = (s.title || '').toLowerCase().trim();
-                    const qTitle = cleanTitle.toLowerCase().trim();
-                    const sCanon = normalizeCanonicalTitle(s.title);
-                    const qCanon = normalizeCanonicalTitle(cleanTitle);
-
-                    // Title Match (literal + canonical + phonetic transliteration)
-                    const sTitlePhon = searchEngine.phonetics(s.title || '');
-                    const qPhon = searchEngine.phonetics(cleanTitle || '');
-                    if (sTitle === qTitle) {
-                        score += 500;
-                    } else if (sCanon && qCanon && sCanon === qCanon) {
-                        score += 420;
-                    } else if (sTitlePhon && qPhon && sTitlePhon === qPhon) {
-                        score += 360;
-                    } else if (sCanon && qCanon && (sCanon.startsWith(qCanon) || qCanon.startsWith(sCanon))) {
-                        score += 260;
-                    } else if (sTitlePhon && qPhon && (sTitlePhon.startsWith(qPhon) || qPhon.startsWith(sTitlePhon))) {
-                        score += 240;
-                    } else if (sCanon && qCanon && (sCanon.includes(qCanon) || qCanon.includes(sCanon))) {
-                        score += 180;
-                    } else if (sTitlePhon && qPhon && (sTitlePhon.includes(qPhon) || qPhon.includes(sTitlePhon))) {
-                        score += 150;
-                    }
-
-                    // Album / Movie Match
-                    const candAlb = (s.album || '').toLowerCase().trim();
-                    const targetAlb = targetAlbum.toLowerCase().trim();
-                    if (targetAlb && candAlb) {
-                        const tCanon = normalizeCanonicalTitle(targetAlb);
-                        const cCanon = normalizeCanonicalTitle(candAlb);
-                        if (candAlb === targetAlb) {
-                            score += 350;
-                        } else if (tCanon && cCanon && (tCanon === cCanon || tCanon.includes(cCanon) || cCanon.includes(tCanon))) {
-                            score += 300;
-                        } else if (candAlb.includes(targetAlb) || targetAlb.includes(candAlb)) {
-                            score += 220;
-                        }
-                    }
-
-                    // Artist Match (across all artist names, literal + phonetic word match)
-                    if (validArtist) {
-                        const sArt = (s.artist || s.primaryArtist || '').toLowerCase();
-                        const sArtPhonWords = searchEngine.phonetics(sArt).split(/\s+/).filter(Boolean);
-                        const artTokens = validArtist.toLowerCase().split(/[\s,.&]+/).filter(w => w.length > 2);
-                        let artMatches = 0;
-                        const matchedTokens = new Set();
-                        for (const tok of artTokens) {
-                            const tokPhon = searchEngine.phonetics(tok);
-                            const litHit = sArt.includes(tok);
-                            const phonHit = tokPhon.length >= 3 && sArtPhonWords.some(pw => pw === tokPhon || (pw.length >= 4 && pw.startsWith(tokPhon)));
-                            if ((litHit || phonHit) && !matchedTokens.has(tokPhon || tok)) {
-                                matchedTokens.add(tokPhon || tok);
-                                artMatches++;
-                            }
-                        }
-                        if (artMatches >= 2) score += 240;
-                        else if (artMatches === 1) score += 160;
-                        else if (artTokens.length > 0) score -= 150;
-                    }
-
-                    // Language Match
-                    if (detectedLang) {
-                        const sLang = (s.language || '').toLowerCase().trim();
-                        if (sLang === detectedLang) score += 140;
-                        else if (sLang && sLang !== 'unknown' && sLang !== detectedLang) score -= 350;
-                    }
-
-                    // Popularity boost
-                    const pop = s.popularity || s.playCount || 0;
-                    if (pop > 0) score += Math.min(50, Math.log10(pop + 1) * 7);
-
-                    // Heavy Penalty for unwanted versions (Remix, Karaoke, Cover, Lofi)
-                    const sLower = `${s.title} ${s.artist || ''} ${s.album || ''}`.toLowerCase();
-                    const qLower = `${rawTitle} ${rawArtist} ${rawAlbum}`.toLowerCase();
-                    const isRequested = (term) => qLower.includes(term);
-
-                    const penaltyTerms = [
-                        'remix', 'karaoke', 'instrumental', 'minus one', 'cover', 'tribute',
-                        'lofi', 'lo-fi', 'slowed', 'reverb', '8d', 'dialogue', 'teaser',
-                        'trailer', 'female version', 'male version', 'short', 'status'
-                    ];
-                    for (const pt of penaltyTerms) {
-                        if (sLower.includes(pt) && !isRequested(pt)) {
-                            score -= 450;
-                        }
-                    }
-
-                    return score;
-                }
-
-                candidates.sort((a, b) => scoreResolveCandidate(b) - scoreResolveCandidate(a));
-                const matched = candidates[0];
-
-                if (matched && matched.streamUrl) {
+            resolveEngine.resolveTrackMatch({
+                title: rawTitle,
+                artist: rawArtist,
+                album: rawAlbum,
+                lang: rawLang,
+                duration: parseFloat(rawDuration) || 0
+            }).then(resolved => {
+                if (resolved && resolved.success && resolved.track && resolved.track.streamUrl) {
                     res.writeHead(200, {
                         'Content-Type': 'application/json',
                         'Access-Control-Allow-Origin': '*',
@@ -1500,20 +1299,14 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     });
                     res.end(JSON.stringify({
                         success: true,
-                        track: {
-                            id: matched.id,
-                            title: matched.title,
-                            artist: matched.artist || matched.primaryArtist || rawArtist,
-                            album: matched.album,
-                            duration: matched.duration,
-                            artwork: matched.artwork || matched.image,
-                            streamUrl: matched.streamUrl,
-                            quality: matched.quality || 'FLAC / 320kbps Lossless Hi-Fi'
-                        }
+                        track: resolved.track
                     }));
                 } else {
                     res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                    res.end(JSON.stringify({ success: false, error: 'Matching track stream not found' }));
+                    res.end(JSON.stringify({
+                        success: false,
+                        error: resolved?.error || 'Matching track stream not found'
+                    }));
                 }
             }).catch(err => {
                 res.writeHead(500, {
@@ -1631,7 +1424,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             });
-            res.end(JSON.stringify({ success: true, version: '8.19.4', build: 1795695000000, timestamp: 1795695000000 }));
+            res.end(JSON.stringify({ success: true, version: '8.19.5', build: 1795697000000, timestamp: 1795697000000 }));
             return;
         }
 

@@ -41,17 +41,26 @@ class PlaylistImporter {
             } catch (e) {}
         }
 
-        // Auto-clean any corrupt/undefined 0-track playlists
+        // Auto-clean any corrupt/undefined 0-track playlists and sanitize poisoned playlist-name albums
         if (Array.isArray(this.playlists)) {
             const initialLen = this.playlists.length;
+            let fixedPoisonedAlbum = false;
             this.playlists = this.playlists.filter(p => {
                 if (!p) return false;
                 if ((!p.name || p.name === 'undefined') && (!p.tracks || p.tracks.length === 0)) {
                     return false;
                 }
+                if (p.id && String(p.id).startsWith('pl_sp_') && Array.isArray(p.tracks) && p.tracks.length > 1) {
+                    for (const tr of p.tracks) {
+                        if (tr && tr.album && tr.album === p.name) {
+                            tr.album = '';
+                            fixedPoisonedAlbum = true;
+                        }
+                    }
+                }
                 return true;
             });
-            if (this.playlists.length !== initialLen) {
+            if (this.playlists.length !== initialLen || fixedPoisonedAlbum) {
                 this.savePlaylists();
             }
         } else {
@@ -176,9 +185,11 @@ class PlaylistImporter {
         }
         const tracks = rawTracks.map((t, idx) => ({
             id: t.id || `sp_tr_${Date.now()}_${idx}`,
+            spotifyId: t.spotifyId || '',
             title: t.title,
             artist: t.artist,
-            album: t.album || data.title || '',
+            album: t.album || (data.type === 'album' ? data.title : '') || '',
+            language: t.language || '',
             duration: t.duration || 210,
             artwork: t.artwork || data.artwork || '',
             streamUrl: t.streamUrl || '',
@@ -190,14 +201,14 @@ class PlaylistImporter {
             try {
                 if (onProgress) onProgress(60, `Resolving lossless stream for "${tracks[0].title}"...`);
                 const prefix = window.API_PREFIX || '';
-                const resStream = await fetch(`${prefix}/api/resolve?title=${encodeURIComponent(tracks[0].title)}&artist=${encodeURIComponent(tracks[0].artist || '')}&album=${encodeURIComponent(tracks[0].album || '')}`);
+                const resStream = await fetch(`${prefix}/api/resolve?title=${encodeURIComponent(tracks[0].title)}&artist=${encodeURIComponent(tracks[0].artist || '')}&album=${encodeURIComponent(tracks[0].album || '')}&duration=${encodeURIComponent(tracks[0].duration || 0)}&spotifyId=${encodeURIComponent(tracks[0].spotifyId || '')}`);
                 if (resStream.ok) {
                     const resJson = await resStream.json();
                     if (resJson.success && resJson.track && resJson.track.streamUrl) {
                         tracks[0].streamUrl = resJson.track.streamUrl;
                         if (resJson.track.duration) tracks[0].duration = resJson.track.duration;
-                        if (resJson.track.album) tracks[0].album = resJson.track.album;
-                        if (resJson.track.artwork) tracks[0].artwork = resJson.track.artwork;
+                        if (!tracks[0].album && resJson.track.album) tracks[0].album = resJson.track.album;
+                        if (resJson.track.artwork && !resJson.track.artwork.includes('default_')) tracks[0].artwork = resJson.track.artwork;
                     }
                 }
             } catch (e) {}
@@ -237,6 +248,7 @@ class PlaylistImporter {
             title: t.title,
             artist: t.artist,
             album: t.album || '',
+            language: t.language || '',
             duration: t.duration || 210,
             artwork: t.artwork || data.artwork || '',
             streamUrl: t.streamUrl || '',
@@ -247,14 +259,14 @@ class PlaylistImporter {
             try {
                 if (onProgress) onProgress(60, `Resolving lossless stream for "${tracks[0].title}"...`);
                 const prefix = window.API_PREFIX || '';
-                const resStream = await fetch(`${prefix}/api/resolve?title=${encodeURIComponent(tracks[0].title)}&artist=${encodeURIComponent(tracks[0].artist || '')}&album=${encodeURIComponent(tracks[0].album || '')}`);
+                const resStream = await fetch(`${prefix}/api/resolve?title=${encodeURIComponent(tracks[0].title)}&artist=${encodeURIComponent(tracks[0].artist || '')}&album=${encodeURIComponent(tracks[0].album || '')}&duration=${encodeURIComponent(tracks[0].duration || 0)}&youtubeId=${encodeURIComponent(tracks[0].youtubeId || '')}`);
                 if (resStream.ok) {
                     const resJson = await resStream.json();
                     if (resJson.success && resJson.track && resJson.track.streamUrl) {
                         tracks[0].streamUrl = resJson.track.streamUrl;
                         if (resJson.track.duration) tracks[0].duration = resJson.track.duration;
-                        if (resJson.track.artwork) tracks[0].artwork = resJson.track.artwork;
-                        if (resJson.track.album) tracks[0].album = resJson.track.album;
+                        if (resJson.track.artwork && !resJson.track.artwork.includes('default_')) tracks[0].artwork = resJson.track.artwork;
+                        if (!tracks[0].album && resJson.track.album) tracks[0].album = resJson.track.album;
                     }
                 }
             } catch (e) {}

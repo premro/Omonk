@@ -1,5 +1,6 @@
 const https = require('https');
 const http = require('http');
+const resolveEngine = require('./resolveEngine');
 
 function parseTimestampToSeconds(ts) {
     if (!ts) return 0;
@@ -44,7 +45,7 @@ function fetchJson(url, maxRedirects = 4) {
     });
 }
 
-function fetchText(url, maxRedirects = 5) {
+function fetchText(url, maxRedirects = 5, customHeaders = {}) {
     return new Promise((resolve) => {
         if (!url || maxRedirects < 0) return resolve('');
         try {
@@ -54,7 +55,8 @@ function fetchText(url, maxRedirects = 5) {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.9'
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    ...customHeaders
                 }
             }, (res) => {
                 if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
@@ -63,7 +65,7 @@ function fetchText(url, maxRedirects = 5) {
                     if (!nextUrl.startsWith('http')) {
                         nextUrl = new URL(nextUrl, url).href;
                     }
-                    return resolve(fetchText(nextUrl, maxRedirects - 1));
+                    return resolve(fetchText(nextUrl, maxRedirects - 1, customHeaders));
                 }
                 let data = '';
                 res.on('data', chunk => data += chunk);
@@ -105,37 +107,187 @@ function fetchInnertube(endpoint, payload) {
     });
 }
 
+function normAlphaNum(str) {
+    if (!str) return '';
+    return String(str).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+const KNOWN_ARTIST_PATTERNS = [
+    { key: 'a.r. rahman', norm: 'arrahman', display: 'A.R. Rahman' },
+    { key: 'anirudh ravichander', norm: 'anirudh', display: 'Anirudh Ravichander' },
+    { key: 'ilaiyaraaja', norm: 'ilayara', display: 'Ilayaraaja' },
+    { key: 'yuvan shankar raja', norm: 'yuvanshankar', display: 'Yuvan Shankar Raja' },
+    { key: 'yuvan', norm: 'yuvan', exactWord: true, display: 'Yuvan Shankar Raja' },
+    { key: 'harris jayaraj', norm: 'harrisjayaraj', display: 'Harris Jayaraj' },
+    { key: 'pradeep kumar', norm: 'pradeepkumar', display: 'Pradeep Kumar' },
+    { key: 'sid sriram', norm: 'sidsriram', display: 'Sid Sriram' },
+    { key: 's.p. balasubrahmanyam', norm: 'spbalasubrahmanyam', display: 'S.P. Balasubrahmanyam' },
+    { key: 'spb', norm: 'spb', exactWord: true, display: 'S.P. Balasubrahmanyam' },
+    { key: 'dhanush', norm: 'dhanush', exactWord: true },
+    { key: 'the weeknd', norm: 'theweeknd' },
+    { key: 'taylor swift', norm: 'taylorswift' },
+    { key: 'dua lipa', norm: 'dualipa' },
+    { key: 'justin bieber', norm: 'justinbieber' },
+    { key: 'ed sheeran', norm: 'edsheeran' },
+    { key: 'billie eilish', norm: 'billieeilish' },
+    { key: 'bad bunny', norm: 'badbunny' },
+    { key: 'luis fonsi', norm: 'luisfonsi' },
+    { key: 'daddy yankee', norm: 'daddyyankee' },
+    { key: 's.a. rajkumar', norm: 'sarajkumar' },
+    { key: 'deva', norm: 'deva', exactWord: true },
+    { key: 'vidyasagar', norm: 'vidyasagar' },
+    { key: 'd. imman', norm: 'dimman' },
+    { key: 'imman', norm: 'imman', exactWord: true },
+    { key: 'santhosh narayanan', norm: 'santhoshnarayanan' },
+    { key: 'sushin shyam', norm: 'sushinshyam' },
+    { key: 'devi sri prasad', norm: 'devisriprasad' },
+    { key: 'dsp', norm: 'dsp', exactWord: true },
+    { key: 'thaman', norm: 'thaman', exactWord: true },
+    { key: 'g.v. prakash', norm: 'gvprakash' },
+    { key: 'hiphop tamizha', norm: 'hiphoptamizha' },
+    { key: 'shreya ghoshal', norm: 'shreyaghoshal' },
+    { key: 'arijit singh', norm: 'arijitsingh' },
+    { key: 'arijit', norm: 'arijit', exactWord: true },
+    { key: 'karan aujla', norm: 'karanaujla' },
+    { key: 'diljit dosanjh', norm: 'diljitdosanjh' },
+    { key: 'badshah', norm: 'badshah', exactWord: true },
+    { key: 'pritam', norm: 'pritam', exactWord: true },
+    { key: 'neha kakkar', norm: 'nehakakkar' },
+    { key: 'atif aslam', norm: 'atifaslam' },
+    { key: 's. janaki', norm: 'sjanaki' },
+    { key: 'k.s. chithra', norm: 'kschithra' },
+    { key: 'chithra', norm: 'chithra', exactWord: true },
+    { key: 'k.j. yesudas', norm: 'kjyesudas' },
+    { key: 'hariharan', norm: 'hariharan', exactWord: true },
+    { key: 'shankar mahadevan', norm: 'shankarmahadevan' },
+    { key: 'vijay antony', norm: 'vijayantony' },
+    { key: 'sai abhyankkar', norm: 'saiabhyankkar' },
+    { key: 'sam c.s.', norm: 'samcs' },
+    { key: 'sabrina carpenter', norm: 'sabrinacarpenter' },
+    { key: 'bruno mars', norm: 'brunomars' },
+    { key: 'post malone', norm: 'postmalone' },
+    { key: 'drake', norm: 'drake', exactWord: true },
+    { key: 'coldplay', norm: 'coldplay', exactWord: true },
+    { key: 'madcon', norm: 'madcon', exactWord: true },
+    { key: 'tame impala', norm: 'tameimpala' },
+    { key: 'olivia rodrigo', norm: 'oliviarodrigo' },
+    { key: 'ariana grande', norm: 'arianagrande' },
+    { key: 'camila cabello', norm: 'camilacabello' },
+    { key: 'shawn mendes', norm: 'shawnmendes' },
+    { key: 'karol g', norm: 'karolg' },
+    { key: 'tate mcrae', norm: 'tatemcrae' },
+    { key: 'harry styles', norm: 'harrystyles' },
+    { key: 'vaishali samant', norm: 'vaishalisamant' },
+    { key: 'sharanya srinivas', norm: 'sharanyasrinivas' }
+];
+
+function matchKnownArtist(segment) {
+    if (!segment) return '';
+    const low = segment.toLowerCase().trim();
+    const norm = normAlphaNum(segment);
+    if (!norm) return '';
+    for (const ka of KNOWN_ARTIST_PATTERNS) {
+        if (ka.exactWord) {
+            const re = new RegExp(`\\b${ka.key}\\b`, 'i');
+            if (re.test(low)) return ka.display || segment.trim();
+        } else {
+            if (low.includes(ka.key) || norm.includes(ka.norm)) {
+                return ka.display || segment.trim();
+            }
+        }
+    }
+    return '';
+}
+
+const JUNK_CHANNEL_LABELS = [
+    'sun tv', 'sun pictures', 'sony music south', 'sony music', 'think music', 'think music india',
+    't-series', 'tseries', 'zee music company', 'zee music south', 'zee music', 'saregama', 'saregama tamil',
+    'lahari music', 'aditya music', 'speed audio', 'muzik247', 'tips official', 'tips', 'yrf', 'eros now',
+    'rajshri', 'speed records', 'white hill music', 'geetha arts', 'lyca productions', 'red giant movies',
+    'svf', 'sathya movies', 'ag entertainment', 'prk audio', 'anand audio', 'vevo', 'youtube', 'various artists'
+];
+
+const NON_ARTIST_CREW_NORMS = [
+    'maniratnam', 'lokeshkanagaraj', 'atlee', 'nelson', 'vetrimaaran', 'gauthamvasudevmenon',
+    'shankar', 'subaskaran', 'vijaysethupathi', 'saipallavi', 'rajinikanth', 'kamalhaasan',
+    'suriya', 'ajithkumar', 'sivakarthikeyan', 'thalapathyvijay', 'vikram', 'karthi', 'trisha',
+    'nayanthara', 'samantha', 'rashmika', 'poojahegde', 'rajamouli', 'ssrajamouli', 'sukumar',
+    'prashanthneel', 'trivikram', 'kalyanshankarr', 'kalpathisaghoram', 'udhay', 'lyca', 'madrasTalkies'
+].map(s => s.toLowerCase());
+
+function isJunkLabel(str) {
+    if (!str) return true;
+    const low = String(str).toLowerCase().trim();
+    const norm = normAlphaNum(low);
+    if (JUNK_CHANNEL_LABELS.some(jl => low === jl || low.startsWith(jl) || (norm && norm === normAlphaNum(jl)))) return true;
+    if (/\b(vevo|records|record label|official channel|topic|channel|studios|productions|entertainment|music company)\b/i.test(low)) return true;
+    if (/\b(directed by|director|producer|starring|choreography|cinematography|dop|presents)\b/i.test(low)) return true;
+    return false;
+}
+
+function isCrewOrActorCredit(str) {
+    if (!str) return false;
+    const norm = normAlphaNum(str);
+    return NON_ARTIST_CREW_NORMS.some(n => norm === n);
+}
+
+function normalizeAuthorBase(authorName) {
+    if (!authorName) return '';
+    return normAlphaNum(
+        String(authorName)
+            .replace(/\s*-\s*topic\b/gi, '')
+            .replace(/vevo$/i, '')
+            .replace(/\b(official|music|records|channel|audio)\b/gi, '')
+    );
+}
+
 function cleanTrackName(title) {
     if (!title) return '';
-    return title
+    let t = String(title)
         .replace(/#\S+/g, '')
         .replace(/^\s*\d+[\.\-\)]\s*/, '')
-        .replace(/[\(\[\{][^\)\]\}]*(?:remaster|official|audio|video|lyrics?|version|4k|8k|hd|uhd|full)[^\)\]\}]*[\)\]\}]/gi, '')
-        .replace(/\s*[-–—:]\s*(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical\s*song|lyrical|lyrics|music\s*video|official\s*video|official\s*audio|official|jukebox|audio\s*jukebox|remastered|status|shorts)\b.*$/gi, '')
-        .replace(/\s+(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical\s*song|lyrical|lyrics|music\s*video|official\s*video|official\s*audio|official|jukebox|full\s*song)\s*$/gi, '')
-        .replace(/ (Official Video|Official Audio|Music Video|Lyrical Video|Lyrical|Lyric Video|Video Song|Audio Song|4K|8K|60FPS|Full Song|HD|Remastered|Jukebox|Full Album|Audio Jukebox|status|shorts) /gi, '')
+        .replace(/[\(\[\{][^\)\]\}]*(?:remaster|official|audio|video|lyrics?|lyrical|version|4k|8k|hd|uhd|full|jukebox)[^\)\]\}]*[\)\]\}]/gi, '')
+        .replace(/\s*[-–—:]\s*(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)*(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical\s*song|lyric\s*video|lyric\s*song|lyrical|lyrics?|music\s*video|official\s*video|official\s*audio|official|jukebox|audio\s*jukebox|remastered|status|shorts)\b.*$/gi, '')
         .replace(/\|\s*.*$/, '')
         .replace(/[\(\[\{]\s*[\)\]\}]/g, '')
-        .replace(/[-–—: ]+$/, '')
         .replace(/\s+/g, ' ')
         .trim();
+
+    let prev = '';
+    while (t !== prev) {
+        prev = t;
+        t = t.replace(/\s+(?:(?:hd|4k|8k|60fps|uhd|full)\s+)*(?:official\s+)?(?:video\s*song|audio\s*song|lyric\s*video|lyric\s*song|lyrical\s*video|lyrical\s*song|lyrical|lyrics|lyric|music\s*video|official\s*video|official\s*audio|full\s*video|full\s*audio|full\s*song|video|audio|jukebox)\s*$/i, '')
+             .replace(/[-–—: ]+$/, '')
+             .trim();
+    }
+    return t;
+}
+
+function extractFeaturedFromTitle(text) {
+    if (!text) return { clean: '', featured: '' };
+    const m = text.match(/^(.*?)\s+(?:ft\.?|feat\.?|featuring)\s+(.+)$/i);
+    if (m && m[1].trim() && m[2].trim()) {
+        return { clean: m[1].trim(), featured: m[2].replace(/[\(\)\[\]]/g, '').trim() };
+    }
+    return { clean: text.trim(), featured: '' };
 }
 
 function parseYouTubeTitle(rawTitle, authorName = '') {
-    if (!rawTitle) return { title: 'Unknown Title', artist: authorName || 'Various Artists', album: '' };
+    const cleanAuthor = !isJunkLabel(authorName) ? String(authorName).replace(/\s*-\s*topic\b/gi, '').trim() : '';
+    if (!rawTitle) return { title: 'Unknown Title', artist: cleanAuthor || 'Various Artists', album: '' };
 
-    let clean = rawTitle
+    let clean = String(rawTitle)
         .replace(/#\S+/g, '')
-        .replace(/[\(\[\{][^\)\]\}]*(?:remaster|official|audio|video|lyrics?|version|4k|8k|hd|uhd|full)[^\)\]\}]*[\)\]\}]/gi, ' ')
+        .replace(/[\(\[\{][^\)\]\}]*(?:remaster|official|audio|video|lyrics?|lyrical|version|4k|8k|hd|uhd|full)[^\)\]\}]*[\)\]\}]/gi, ' ')
         .trim();
 
-    const rawSegments = clean.split(/\s*[|•/]\s*/).map(s => s.trim()).filter(Boolean);
-    const junkRegex = /^(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical\s*song|lyrical|lyrics|music\s*video|official\s*video|official\s*audio|official|jukebox|audio\s*jukebox|remastered|status|shorts)$/i;
+    const rawSegments = clean.split(/\s*[|•\/]\s*/).map(s => s.trim()).filter(Boolean);
+    const junkRegex = /^(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)*(?:official\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical\s*song|lyric\s*video|lyric\s*song|lyrical|lyrics?|music\s*video|official\s*video|official\s*audio|official|jukebox|audio\s*jukebox|remastered|status|shorts)$/i;
 
     const usefulSegments = [];
     for (const seg of rawSegments) {
-        let s = seg.replace(/[-–—]\s*(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical|lyrics|official\s*video).*$/i, '').trim();
-        s = s.replace(/^(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical|lyrics|official\s*video).*?[-–—]\s*/i, '').trim();
+        let s = seg.replace(/[-–—]\s*(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)*(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyric\s*video|lyrical|lyrics?|official\s*video).*$/i, '').trim();
+        s = s.replace(/^(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)*(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyric\s*video|lyrical|lyrics?|official\s*video).*?[-–—]\s*/i, '').trim();
         if (!s || junkRegex.test(s)) continue;
         if (/^[\u0900-\u0D7F\s\p{P}]+$/u.test(s)) continue;
         usefulSegments.push(s);
@@ -144,84 +296,81 @@ function parseYouTubeTitle(rawTitle, authorName = '') {
     let title = '';
     let artist = '';
     let album = '';
-
-    const knownArtists = [
-        'anirudh', 'anirudh ravichander', 'a.r. rahman', 'ar rahman', 'ilayaraja', 'ilayaraaja', 'ilaiyaraaja',
-        'yuvan', 'yuvan shankar raja', 'harris jayaraj', 'pradeep kumar', 'sid sriram', 'spb', 's.p. balasubrahmanyam',
-        'dhanush', 'the weeknd', 'taylor swift', 'dua lipa', 'justin bieber', 'ed sheeran', 'billie eilish', 'bad bunny',
-        's.a. rajkumar', 'sa rajkumar', 'deva', 'vidyasagar', 'd. imman', 'imman', 'immann', 'santhosh narayanan',
-        'sushin shyam', 'sushin', 'devi sri prasad', 'dsp', 'thaman', 'thaman s', 'g.v. prakash', 'gv prakash',
-        'hiphop tamizha', 'shreya ghoshal', 'arijit singh', 'arijit', 'karan aujla', 'diljit dosanjh', 'diljit',
-        'badshah', 'pritam', 'neha kakkar', 'atif aslam', 's. janaki', 'k.s. chithra', 'chithra', 'k.j. yesudas',
-        'yesudas', 'hariharan', 'shankar mahadevan', 'vijay antony', 'sai abhyankkar', 'sam c.s.', 'sam cs',
-        'stephen sanchez', 'sabrina carpenter', 'bruno mars', 'post malone', 'drake', 'coldplay', 'madcon'
-    ];
-
-    const junkChannelLabels = [
-        'sun tv', 'sun pictures', 'sony music south', 'sony music', 'think music', 'think music india',
-        't-series', 'tseries', 'zee music company', 'zee music south', 'zee music', 'saregama', 'saregama tamil',
-        'lahari music', 'aditya music', 'speed audio', 'muzik247', 'tips official', 'tips', 'yrf', 'eros now',
-        'rajshri', 'speed records', 'white hill music', 'geetha arts', 'lyca productions', 'red giant movies',
-        'svf', 'sathya movies', 'ag entertainment', 'prk audio', 'anand audio', 'vevo'
-    ];
-
-    const isJunkLabel = (str) => {
-        if (!str) return true;
-        const low = str.toLowerCase().trim();
-        if (junkChannelLabels.some(jl => low === jl || low.startsWith(jl))) return true;
-        if (/\b(vevo|records|record label|official channel|topic|channel|studios|productions|entertainment|music company)\b/i.test(low)) return true;
-        if (/\b(directed by|director|producer|starring|choreography|cinematography|dop)\b/i.test(low)) return true;
-        return false;
-    };
+    const authBase = normalizeAuthorBase(authorName);
 
     if (usefulSegments.length === 0) {
-        title = rawTitle.replace(/[-–—|].*$/, '').trim();
-        artist = !isJunkLabel(authorName) ? authorName : 'Various Artists';
+        title = cleanTrackName(rawTitle.replace(/[-–—|].*$/, '').trim()) || rawTitle.trim();
+        artist = cleanAuthor || 'Various Artists';
     } else if (usefulSegments.length === 1) {
         const seg = usefulSegments[0];
         const dashParts = seg.split(/\s*[-–—]\s*/);
         if (dashParts.length >= 2) {
             const p0 = dashParts[0].trim();
             const p1 = dashParts.slice(1).join(' - ').trim();
-            const auth = (authorName || '').toLowerCase().replace(/\s*(?:official|music|vevo|records|channel|- topic).*/g, '').trim();
-            if (knownArtists.some(k => p1.toLowerCase().includes(k)) || /\b(feat|ft|singers?|vocals?|composer)\b/i.test(p1) || (auth && p1.toLowerCase().includes(auth))) {
-                artist = p1;
+            const p0Norm = normAlphaNum(p0);
+            const p1Norm = normAlphaNum(p1);
+
+            const p0AuthMatch = authBase && p0Norm && (p0Norm === authBase || authBase.includes(p0Norm) || p0Norm.includes(authBase));
+            const p1AuthMatch = authBase && p1Norm && (p1Norm === authBase || authBase.includes(p1Norm) || p1Norm.includes(authBase));
+            const p0Known = matchKnownArtist(p0);
+            const p1Known = matchKnownArtist(p1);
+
+            if (p0AuthMatch || (p0Known && !p1AuthMatch && !p1Known)) {
+                const feat = extractFeaturedFromTitle(p1);
+                title = feat.clean;
+                artist = feat.featured ? `${p0Known || p0}, ${feat.featured}` : (p0Known || p0);
+            } else if (p1AuthMatch || p1Known || /^\s*(?:feat|ft|featuring|singers?|vocals?|composer)\b/i.test(p1)) {
                 title = p0;
-            } else if (knownArtists.some(k => p0.toLowerCase().includes(k)) || (auth && p0.toLowerCase().includes(auth))) {
-                artist = p0;
-                title = p1;
+                artist = p1Known || p1;
+            } else if (/\S+\s+(?:feat\.?|ft\.?|featuring)\s+/i.test(p1)) {
+                // "Artist - Song Title ft. Guest"
+                const feat = extractFeaturedFromTitle(p1);
+                title = feat.clean;
+                artist = feat.featured ? `${p0}, ${feat.featured}` : p0;
             } else {
+                // Default "Song - Artist" unless p1 was cleaned
                 title = p0;
                 artist = p1;
             }
         } else {
-            title = seg;
-            artist = !isJunkLabel(authorName) ? authorName : 'Various Artists';
+            const feat = extractFeaturedFromTitle(seg);
+            title = feat.clean;
+            artist = cleanAuthor
+                ? (feat.featured ? `${cleanAuthor}, ${feat.featured}` : cleanAuthor)
+                : (feat.featured || 'Various Artists');
         }
     } else {
         title = usefulSegments[0];
         const dashInSeg0 = title.split(/\s*[-–—]\s*/);
         if (dashInSeg0.length >= 2) {
-            if (knownArtists.some(k => dashInSeg0[0].toLowerCase().includes(k))) {
-                artist = dashInSeg0[0].trim();
+            const d0Known = matchKnownArtist(dashInSeg0[0]);
+            if (d0Known) {
+                artist = d0Known;
                 title = dashInSeg0.slice(1).join(' - ').trim();
-            } else if (/video|audio|lyrical|song|full/i.test(dashInSeg0[1])) {
+            } else if (/video|audio|lyric|lyrical|song|full/i.test(dashInSeg0[1])) {
                 title = dashInSeg0[0].trim();
             }
         }
 
         const otherSegments = usefulSegments.slice(1);
+        const foundArtists = artist ? [artist] : [];
         for (const seg of otherSegments) {
-            if (knownArtists.some(k => seg.toLowerCase().includes(k)) || /\b(singers?|vocals?|composer|music by)\b/i.test(seg)) {
-                if (!artist) artist = seg;
-            } else if (!album && !isJunkLabel(seg) && !/\b(directed|starring|dop|producer)\b/i.test(seg)) {
+            const matchedArt = matchKnownArtist(seg);
+            if (matchedArt || /\b(singers?|vocals?|composer|music\s*by)\b/i.test(seg)) {
+                const artVal = (matchedArt || seg).replace(/^(?:singers?|vocals?|composer|music\s*by)\s*[:\-–—]?\s*/i, '').trim();
+                if (artVal && !foundArtists.some(a => normAlphaNum(a) === normAlphaNum(artVal))) {
+                    foundArtists.push(artVal);
+                }
+            } else if (!album && !isJunkLabel(seg) && !isCrewOrActorCredit(seg) && !/\b(directed|starring|dop|producer)\b/i.test(seg)) {
                 album = seg;
             }
         }
 
-        if (!artist) {
+        if (foundArtists.length > 0) {
+            artist = foundArtists.join(', ');
+        } else {
             for (const seg of otherSegments) {
-                if (seg !== album && !isJunkLabel(seg)) {
+                if (seg !== album && !isJunkLabel(seg) && !isCrewOrActorCredit(seg)) {
                     artist = seg;
                     break;
                 }
@@ -229,15 +378,106 @@ function parseYouTubeTitle(rawTitle, authorName = '') {
         }
 
         if (!artist) {
-            artist = !isJunkLabel(authorName) ? authorName : 'Various Artists';
+            artist = cleanAuthor || 'Various Artists';
         }
-        if (!album && otherSegments.length > 0 && !isJunkLabel(otherSegments[0])) {
-            album = otherSegments[0];
+        if (!album && otherSegments.length > 0 && !isJunkLabel(otherSegments[0]) && !isCrewOrActorCredit(otherSegments[0])) {
+            const seg0IsArtist = foundArtists.some(a => normAlphaNum(a) === normAlphaNum(otherSegments[0]));
+            if (!seg0IsArtist) {
+                album = otherSegments[0];
+            }
         }
     }
 
-    title = cleanTrackName(title) || title;
+    title = cleanTrackName(title) || cleanTrackName(rawTitle) || title;
     return { title, artist, album };
+}
+
+function cleanCreditValue(val) {
+    if (!val) return '';
+    return String(val)
+        .replace(/[\u00a0]/g, ' ')
+        .replace(/\s*\|\s*.*$/, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function normalizeComposerName(name) {
+    if (!name) return '';
+    const known = matchKnownArtist(name);
+    if (known) return known;
+    return name.trim();
+}
+
+function extractCreditsFromDescription(descText) {
+    const credits = { song: '', album: '', artist: '', composer: '', singers: '', language: '' };
+    if (!descText || typeof descText !== 'string') return credits;
+
+    const text = descText.replace(/\\n/g, '\n');
+    const lines = text.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
+
+    // Format 1: Auto-generated "Provided to YouTube by ..." Topic descriptions
+    if (/provided to youtube by/i.test(text)) {
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.includes(' · ')) {
+                const parts = line.split(/\s*·\s*/).map(p => p.trim()).filter(Boolean);
+                if (parts.length >= 2) {
+                    credits.song = cleanTrackName(parts[0]) || parts[0];
+                    credits.artist = parts.slice(1).join(', ');
+                    for (let j = i + 1; j < Math.min(lines.length, i + 4); j++) {
+                        const nxt = lines[j];
+                        if (!/^(?:auto-generated|℗|©|released\s+on|lyricist|composer|producer|music\s+publisher|http)/i.test(nxt)) {
+                            credits.album = cleanCreditValue(nxt);
+                            break;
+                        }
+                    }
+                    return credits;
+                }
+            }
+        }
+    }
+
+    // Format 2: Structured Label Credits ("Movie:", "Song:", "Music:", "Singers:")
+    for (const line of lines) {
+        if (line.length > 140 || /https?:\/\//i.test(line)) continue;
+        let m;
+        if (!credits.song && (m = line.match(/^(?:song|track|title|song\s*title|track\s*name|single)\s*(?:\([^)]*\))?\s*[:\-–—]\s*(.+)$/i))) {
+            credits.song = cleanTrackName(cleanCreditValue(m[1])) || cleanCreditValue(m[1]);
+        } else if (!credits.album && (m = line.match(/^(?:movie|film|album|movie\s*name|album\s*name|soundtrack|ost)\s*(?:\([^)]*\))?\s*[:\-–—]\s*(.+)$/i))) {
+            credits.album = cleanCreditValue(m[1]);
+        } else if (!credits.composer && (m = line.match(/^(?:music|music\s*director|music\s*by|composer|composed\s*by)\s*(?:\([^)]*\))?\s*[:\-–—]\s*(.+)$/i))) {
+            const rawComp = cleanCreditValue(m[1]);
+            if (rawComp && !isJunkLabel(rawComp)) {
+                credits.composer = normalizeComposerName(rawComp);
+            }
+        } else if (!credits.singers && (m = line.match(/^(?:singers?|vocals?|sung\s*by|artists?|performed\s*by|vocals?\s*&\s*music)\s*(?:\([^)]*\))?\s*[:\-–—]\s*(.+)$/i))) {
+            const rawSing = cleanCreditValue(m[1]);
+            if (rawSing && !isJunkLabel(rawSing)) {
+                credits.singers = rawSing;
+            }
+        } else if (!credits.language && (m = line.match(/^language\s*[:\-–—]\s*(.+)$/i))) {
+            credits.language = cleanCreditValue(m[1]).toLowerCase();
+        }
+    }
+
+    const mergedArtists = [];
+    const seenArtNorm = new Set();
+    const addArtistChunk = (str) => {
+        if (!str) return;
+        for (const piece of str.split(/\s*[,&\/]\s*/)) {
+            const cleaned = normalizeComposerName(piece);
+            const norm = normAlphaNum(cleaned);
+            if (cleaned && norm && !seenArtNorm.has(norm) && !isJunkLabel(cleaned)) {
+                seenArtNorm.add(norm);
+                mergedArtists.push(cleaned);
+            }
+        }
+    };
+    addArtistChunk(credits.composer);
+    addArtistChunk(credits.singers);
+    credits.artist = mergedArtists.join(', ');
+
+    return credits;
 }
 
 async function importYouTube(inputUrl) {
@@ -260,11 +500,13 @@ async function importYouTube(inputUrl) {
     const cover = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : '';
     let title = '';
     let primaryArtist = 'Various Artists';
+    let rawAuthorName = '';
+    let videoDuration = 0;
     const tracks = [];
     let ytData = null;
     let descText = '';
 
-    // 1. Innertube direct query (Never blocked by Google 302 captcha)
+    // 1. Innertube direct query
     if (videoId) {
         try {
             const pData = await fetchInnertube('player', {
@@ -274,8 +516,11 @@ async function importYouTube(inputUrl) {
             if (pData?.videoDetails) {
                 ytData = pData;
                 title = pData.videoDetails.title || '';
-                primaryArtist = pData.videoDetails.author || primaryArtist;
+                rawAuthorName = pData.videoDetails.author || '';
+                primaryArtist = rawAuthorName || primaryArtist;
                 descText = pData.videoDetails.shortDescription || '';
+                const lenSec = parseInt(pData.videoDetails.lengthSeconds || '0', 10);
+                if (lenSec > 0) videoDuration = lenSec;
             }
         } catch (e) {}
 
@@ -320,42 +565,78 @@ async function importYouTube(inputUrl) {
         } catch (e) {}
     }
 
-    // 2. Fallback to HTML/oEmbed if Innertube did not populate title
-    let oembed = null;
-    if (videoId && (!title || !descText)) {
+    // 2. Fallback to watch HTML (extracts ytInitialPlayerResponse + shortDescription + lengthSeconds) & oEmbed
+    if (videoId && (!title || !descText || !videoDuration)) {
         try {
-            oembed = await fetchJson(`https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + videoId)}&format=json`);
-            if (oembed?.title && !title) title = oembed.title;
-            if (oembed?.author_name && primaryArtist === 'Various Artists') primaryArtist = oembed.author_name;
+            const body = await fetchText(`https://www.youtube.com/watch?v=${videoId}`);
+            if (body) {
+                const prM = body.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});\s*(?:var |<\/script>)/);
+                if (prM) {
+                    try {
+                        const pr = JSON.parse(prM[1]);
+                        const vd = pr?.videoDetails;
+                        if (vd) {
+                            if (!title && vd.title) title = vd.title;
+                            if (!rawAuthorName && vd.author) {
+                                rawAuthorName = vd.author;
+                                primaryArtist = vd.author;
+                            }
+                            if (!descText && vd.shortDescription) descText = vd.shortDescription;
+                            if (!videoDuration && vd.lengthSeconds) {
+                                const lenSec = parseInt(vd.lengthSeconds, 10);
+                                if (lenSec > 0) videoDuration = lenSec;
+                            }
+                        }
+                    } catch (e) {}
+                }
+                if (!title) {
+                    const tm = body.match(/<title>(.*?)(?: - YouTube)?<\/title>/i);
+                    if (tm) {
+                        const candidateTitle = tm[1].replace(/ - YouTube/i, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').trim();
+                        if (candidateTitle && candidateTitle.toLowerCase() !== 'youtube') title = candidateTitle;
+                    }
+                }
+                if (!ytData) {
+                    const dm = body.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
+                    if (dm) {
+                        try { ytData = JSON.parse(dm[1]); } catch (e) {}
+                    }
+                }
+            }
         } catch (e) {}
     }
 
-    if (!title && !ytData) {
-        const targetUrl = playlistId && !videoId
-            ? `https://www.youtube.com/playlist?list=${playlistId}`
-            : `https://www.youtube.com/watch?v=${videoId}`;
-        const body = await fetchText(targetUrl);
-        if (body) {
-            const tm = body.match(/<title>(.*?)(?: - YouTube)?<\/title>/i);
-            if (tm) title = tm[1].replace(/ - YouTube/i, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').trim();
-            const dm = body.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
-            if (dm) {
-                try { ytData = JSON.parse(dm[1]); } catch (e) {}
+    if (playlistId && !ytData) {
+        try {
+            const body = await fetchText(`https://www.youtube.com/playlist?list=${playlistId}`);
+            if (body) {
+                if (!title) {
+                    const tm = body.match(/<title>(.*?)(?: - YouTube)?<\/title>/i);
+                    if (tm) title = tm[1].replace(/ - YouTube/i, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').trim();
+                }
+                const dm = body.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
+                if (dm) {
+                    try { ytData = JSON.parse(dm[1]); } catch (e) {}
+                }
             }
-        }
+        } catch (e) {}
     }
 
-    if (!title) title = 'YouTube Playlist';
+    let oembed = null;
+    if (videoId && !title) {
+        try {
+            oembed = await fetchJson(`https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + videoId)}&format=json`);
+            if (oembed?.title) title = oembed.title;
+            if (oembed?.author_name && !rawAuthorName) {
+                rawAuthorName = oembed.author_name;
+                if (primaryArtist === 'Various Artists') primaryArtist = oembed.author_name;
+            }
+        } catch (e) {}
+    }
 
-    const artistRegex = /\b(ilayaraja|ilayaraaja|ilaiyaraaja|a\.?\s*r\.?\s*rahman|anirudh|anirudh\s*ravichander|harris\s*jayaraj|yuvan\s*shankar\s*raja|yuvan|spb|s\.\s*p\.\s*balasubrahmanyam|chitra|k\.\s*s\.\s*chithra|janaki|s\.\s*janaki|yesudas|k\.\s*j\.\s*yesudas|vidyasagar|devi\s*sri\s*prasad|dsp|thaman|thaman\s*s|arijit\s*singh|arijit|shreya\s*ghoshal|sid\s*sriram|santhosh\s*narayanan|g\.?\s*v\.?\s*prakash|hiphop\s*tamizha|d\.?\s*imman|taylor\s*swift|billie\s*eilish|bad\s*bunny|the\s*weeknd)\b/i;
-    const am = title.match(artistRegex);
-    if (am) {
-        primaryArtist = am[1].trim();
-        if (/ilaya/i.test(primaryArtist)) primaryArtist = 'Ilayaraaja';
-        else if (/rahman/i.test(primaryArtist)) primaryArtist = 'A.R. Rahman';
-        else if (/anirudh/i.test(primaryArtist)) primaryArtist = 'Anirudh Ravichander';
-        else if (/harris/i.test(primaryArtist)) primaryArtist = 'Harris Jayaraj';
-        else if (/yuvan/i.test(primaryArtist)) primaryArtist = 'Yuvan Shankar Raja';
+    const detectedTitleArtist = matchKnownArtist(title);
+    if (detectedTitleArtist) {
+        primaryArtist = detectedTitleArtist;
     }
 
     // Strategy 1: Playlist Items (Supports both playlistVideoRenderer and lockupViewModel)
@@ -378,7 +659,7 @@ async function importYouTube(inputUrl) {
                 const meta = lvm.metadata?.lockupMetadataViewModel;
                 const pvTitle = meta?.title?.content;
                 const rows = meta?.metadata?.contentMetadataViewModel?.metadataRows || [];
-                const pvArtist = rows[0]?.metadataParts?.[0]?.text?.content || primaryArtist || 'YouTube';
+                const pvArtist = rows[0]?.metadataParts?.[0]?.text?.content || primaryArtist || 'Various Artists';
                 const sources = lvm.contentImage?.thumbnailViewModel?.image?.sources || [];
                 const pvThumb = sources.length > 0 ? sources[sources.length - 1].url : cover;
                 let pvId = lvm.contentId || '';
@@ -402,7 +683,7 @@ async function importYouTube(inputUrl) {
             } else {
                 const pv = item;
                 const pvTitle = pv.title?.simpleText || pv.title?.runs?.[0]?.text;
-                const pvArtist = pv.shortBylineText?.runs?.[0]?.text || primaryArtist || 'YouTube';
+                const pvArtist = pv.shortBylineText?.runs?.[0]?.text || primaryArtist || 'Various Artists';
                 const pvDur = parseInt(pv.lengthSeconds || '210', 10);
                 const pvThumb = pv.thumbnail?.thumbnails?.[pv.thumbnail.thumbnails.length - 1]?.url || cover;
                 const pvId = pv.videoId || '';
@@ -424,7 +705,7 @@ async function importYouTube(inputUrl) {
     }
 
     // Strategy 2: Structured Chapters in ytData
-    if (tracks.length === 0 && ytData) {
+    if (tracks.length === 0 && ytData && (playlistId || videoDuration > 480)) {
         function findMarkers(obj) {
             let markers = [];
             if (obj && typeof obj === 'object') {
@@ -438,6 +719,7 @@ async function importYouTube(inputUrl) {
         }
         const markers = findMarkers(ytData);
         const seenChapters = new Set();
+        const chapterTracks = [];
         for (const m of markers) {
             const cTitle = m.title?.simpleText || m.title?.runs?.[0]?.text;
             if (cTitle && !seenChapters.has(cTitle.toLowerCase().trim())) {
@@ -448,9 +730,9 @@ async function importYouTube(inputUrl) {
                 const dur = endMs > 0 ? Math.round((endMs - sec * 1000) / 1000) : 240;
                 const art = m.thumbnail?.thumbnails?.[m.thumbnail.thumbnails.length - 1]?.url || cover;
 
-                const isCuratorOrChannel = !primaryArtist || /editz|channel|records|music|vevo|status|mix|playlist|t-series|sony|yrf|official|audio|video|lyrics|studio|creations|ent|production|media/i.test(primaryArtist) || /[\uD800-\uDFFF]/.test(primaryArtist);
+                const isCuratorOrChannel = !primaryArtist || isJunkLabel(primaryArtist) || /editz|channel|records|music|vevo|status|mix|playlist|official|audio|video|lyrics|studio|creations|ent|production|media/i.test(primaryArtist) || /[\uD800-\uDFFF]/.test(primaryArtist);
                 const parsed = parseYouTubeTitle(cTitle, primaryArtist);
-                tracks.push({
+                chapterTracks.push({
                     title: parsed.title || cleanTrackName(cTitle),
                     artist: (parsed.artist && parsed.artist !== primaryArtist) ? parsed.artist : (isCuratorOrChannel ? '' : primaryArtist),
                     album: parsed.album || '',
@@ -461,9 +743,12 @@ async function importYouTube(inputUrl) {
                 });
             }
         }
+        if (chapterTracks.length >= 2) {
+            tracks.push(...chapterTracks);
+        }
     }
 
-    // Strategy 3: Description Timestamp Parsing (e.g. Mixtape Compilations like 1xXW9U_O7Rs)
+    // Strategy 3: Description Timestamp Parsing (e.g. Mixtape Compilations with >= 2 timestamps)
     if (tracks.length === 0) {
         if (!descText && ytData) {
             function findDesc(obj) {
@@ -503,7 +788,7 @@ async function importYouTube(inputUrl) {
                 }
 
                 if (timeStr && name) {
-                    const isCuratorOrChannel = !primaryArtist || /editz|channel|records|music|vevo|status|mix|playlist|t-series|sony|yrf|official|audio|video|lyrics|studio|creations|ent|production|media/i.test(primaryArtist) || /[\uD800-\uDFFF]/.test(primaryArtist);
+                    const isCuratorOrChannel = !primaryArtist || isJunkLabel(primaryArtist) || /editz|channel|records|music|vevo|status|mix|playlist|official|audio|video|lyrics|studio|creations|ent|production|media/i.test(primaryArtist) || /[\uD800-\uDFFF]/.test(primaryArtist);
                     const parsed = parseYouTubeTitle(name, primaryArtist);
                     const cleanName = parsed.title || cleanTrackName(name);
                     if (cleanName.length >= 2) {
@@ -519,15 +804,17 @@ async function importYouTube(inputUrl) {
                 }
             }
 
-            for (let i = 0; i < parsedTs.length; i++) {
-                const dur = (i < parsedTs.length - 1) ? Math.max(30, parsedTs[i+1].startTime - parsedTs[i].startTime) : 240;
-                parsedTs[i].duration = dur;
-                tracks.push(parsedTs[i]);
+            if (parsedTs.length >= 2) {
+                for (let i = 0; i < parsedTs.length; i++) {
+                    const dur = (i < parsedTs.length - 1) ? Math.max(30, parsedTs[i + 1].startTime - parsedTs[i].startTime) : 240;
+                    parsedTs[i].duration = dur;
+                    tracks.push(parsedTs[i]);
+                }
             }
         }
     }
 
-    // Strategy 4: Video Licensing Cards (only for actual songs, ignore people/biography cards)
+    // Strategy 4: Video Licensing Cards (only for playlists)
     if (tracks.length === 0 && ytData && playlistId) {
         function findCards(obj) {
             let cards = [];
@@ -557,18 +844,29 @@ async function importYouTube(inputUrl) {
         }
     }
 
-    // Strategy 5: Single track fallback (Video without chapters/timestamps)
+    // Strategy 5: Single track fallback (using structured description credits + parsed title)
     if (tracks.length === 0) {
-        const rawTitleToParse = oembed?.title || title;
-        const authorToParse = oembed?.author_name || primaryArtist;
-        const parsed = parseYouTubeTitle(rawTitleToParse, authorToParse);
+        const rawTitleToParse = title || oembed?.title || '';
+        if (!rawTitleToParse || rawTitleToParse === 'YouTube Playlist' || rawTitleToParse.toLowerCase() === 'youtube') {
+            return { success: false, error: 'Could not extract video details from YouTube. Please verify the link is public.' };
+        }
+
+        const credits = extractCreditsFromDescription(descText);
+        const authorForParser = rawAuthorName || oembed?.author_name || primaryArtist;
+        const parsed = parseYouTubeTitle(rawTitleToParse, authorForParser);
+
+        const resolvedTitle = credits.song || parsed.title || cleanTrackName(rawTitleToParse) || rawTitleToParse;
+        const resolvedArtist = credits.artist || (!isJunkLabel(parsed.artist) && !isCrewOrActorCredit(parsed.artist) ? parsed.artist : '') || (!isJunkLabel(primaryArtist) ? primaryArtist : 'Various Artists');
+        const resolvedAlbum = credits.album || parsed.album || '';
+
         const singleTrack = {
             id: videoId ? `yt_${videoId}` : undefined,
             youtubeId: videoId,
-            title: parsed.title || cleanTrackName(rawTitleToParse),
-            artist: parsed.artist || authorToParse,
-            album: parsed.album || '',
-            duration: 210,
+            title: resolvedTitle,
+            artist: resolvedArtist,
+            album: resolvedAlbum,
+            language: credits.language || '',
+            duration: videoDuration > 0 ? videoDuration : 210,
             artwork: oembed?.thumbnail_url || cover,
             quality: 'FLAC / 320kbps Hi-Fi'
         };
@@ -576,24 +874,23 @@ async function importYouTube(inputUrl) {
         title = singleTrack.title;
     }
 
-    // Pre-resolve 320kbps stream URL for single track import
+    // Pre-resolve high-confidence 320kbps stream URL for single track import using shared strict resolver
     if (tracks.length === 1 && !tracks[0].streamUrl) {
         try {
-            const searchEngine = require('./searchEngine');
-            const queries = [];
-            if (tracks[0].album) queries.push(tracks[0].title + ' ' + tracks[0].album);
-            if (tracks[0].artist && tracks[0].artist !== 'Various Artists') queries.push(tracks[0].title + ' ' + tracks[0].artist);
-            queries.push(tracks[0].title);
-            for (const q of queries) {
-                const sRes = await searchEngine.searchAll(q, 5, '');
-                const cand = (sRes.songs || []).find(s => s && s.streamUrl);
-                if (cand && cand.streamUrl) {
-                    tracks[0].streamUrl = cand.streamUrl;
-                    if (cand.artwork) tracks[0].artwork = cand.artwork;
-                    if (cand.duration) tracks[0].duration = cand.duration;
-                    if (cand.album) tracks[0].album = cand.album;
-                    break;
+            const resolved = await resolveEngine.resolveTrackMatch({
+                title: tracks[0].title,
+                artist: tracks[0].artist,
+                album: tracks[0].album,
+                lang: tracks[0].language || '',
+                duration: tracks[0].duration
+            });
+            if (resolved && resolved.success && resolved.track && resolved.track.streamUrl) {
+                tracks[0].streamUrl = resolved.track.streamUrl;
+                if (resolved.track.artwork && !resolved.track.artwork.includes('default_')) {
+                    tracks[0].artwork = resolved.track.artwork;
                 }
+                if (resolved.track.duration) tracks[0].duration = resolved.track.duration;
+                if (!tracks[0].album && resolved.track.album) tracks[0].album = resolved.track.album;
             }
         } catch (e) {}
     }
@@ -606,6 +903,41 @@ async function importYouTube(inputUrl) {
         count: tracks.length,
         tracks
     };
+}
+
+async function resolveSpotifyOpenGraphFallback(id) {
+    try {
+        const html = await fetchText(`https://open.spotify.com/track/${id}`, 3, {
+            'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
+        });
+        if (!html) return null;
+        const ogTitle = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)?.[1];
+        const ogDesc = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i)?.[1];
+        const ogImage = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1];
+        if (!ogTitle) return null;
+
+        let artist = '';
+        let album = '';
+        if (ogDesc) {
+            // Spotify OG description format: "Artist · Album · Song · Year" or "Listen to X on Spotify. Artist · Song · Year."
+            const cleanedDesc = ogDesc.replace(/^Listen to\s+.*?on Spotify\.\s*/i, '').trim();
+            const parts = cleanedDesc.split(/\s*[·•]\s*/).map(s => s.trim()).filter(Boolean);
+            if (parts.length >= 2) {
+                artist = parts[0];
+                if (parts.length >= 3 && !/^\d{4}$/.test(parts[1]) && parts[1].toLowerCase() !== 'song') {
+                    album = parts[1];
+                }
+            }
+        }
+        return {
+            title: cleanTrackName(ogTitle) || ogTitle,
+            artist: artist || 'Spotify Artist',
+            album,
+            artwork: ogImage || ''
+        };
+    } catch (e) {
+        return null;
+    }
 }
 
 async function importSpotify(inputUrl) {
@@ -640,8 +972,29 @@ async function importSpotify(inputUrl) {
     const embedUrl = `https://open.spotify.com/embed/${type}/${id}`;
     const body = await fetchText(embedUrl, 3);
 
-    // Immediate fallback to Spotify oEmbed if embed page fetch returned empty
     if (!body && type === 'track') {
+        const ogData = await resolveSpotifyOpenGraphFallback(id);
+        if (ogData && ogData.title) {
+            const singleTrack = {
+                id: `sp_${id}`,
+                spotifyId: id,
+                title: ogData.title,
+                artist: ogData.artist,
+                album: ogData.album || '',
+                duration: 210,
+                artwork: ogData.artwork || '',
+                quality: 'FLAC / 320kbps Hi-Fi'
+            };
+            return {
+                success: true,
+                platform: 'Spotify',
+                type: 'track',
+                title: singleTrack.title,
+                artwork: singleTrack.artwork,
+                count: 1,
+                tracks: [singleTrack]
+            };
+        }
         try {
             const oembed = await fetchJson(`https://open.spotify.com/oembed?url=${encodeURIComponent('https://open.spotify.com/track/' + id)}`);
             if (oembed && oembed.title) {
@@ -650,6 +1003,7 @@ async function importSpotify(inputUrl) {
                     spotifyId: id,
                     title: cleanTrackName(oembed.title) || oembed.title,
                     artist: 'Spotify Artist',
+                    album: '',
                     duration: 210,
                     artwork: oembed.thumbnail_url || '',
                     quality: 'FLAC / 320kbps Hi-Fi'
@@ -657,6 +1011,7 @@ async function importSpotify(inputUrl) {
                 return {
                     success: true,
                     platform: 'Spotify',
+                    type: 'track',
                     title: singleTrack.title,
                     artwork: singleTrack.artwork,
                     count: 1,
@@ -684,16 +1039,23 @@ async function importSpotify(inputUrl) {
             const cover = entity?.visualIdentity?.image?.[1]?.url || entity?.visualIdentity?.image?.[0]?.url || '';
             const trackList = entity?.trackList || [];
 
-            // If it is a single track
+            // Single track
             if (type === 'track') {
                 const artistsList = (entity?.artists || []).map(a => a.name).filter(Boolean);
-                const artistName = artistsList.join(', ') || entity?.subtitle || 'Spotify Artist';
-                const albumName = entity?.album?.name || (type === 'album' ? title : '');
+                let artistName = (artistsList.join(', ') || entity?.subtitle || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+                let albumName = (entity?.album?.name || '').replace(/\u00a0/g, ' ').trim();
+                if (!artistName) {
+                    const ogData = await resolveSpotifyOpenGraphFallback(id);
+                    if (ogData) {
+                        artistName = ogData.artist;
+                        if (!albumName && ogData.album) albumName = ogData.album;
+                    }
+                }
                 const singleTrack = {
                     id: `sp_${id}`,
                     spotifyId: id,
                     title: cleanTrackName(entity?.title || title) || title,
-                    artist: artistName,
+                    artist: artistName || 'Spotify Artist',
                     album: albumName,
                     duration: Math.round((entity?.duration || 210000) / 1000),
                     artwork: cover,
@@ -702,6 +1064,7 @@ async function importSpotify(inputUrl) {
                 return {
                     success: true,
                     platform: 'Spotify',
+                    type: 'track',
                     title: singleTrack.title,
                     artwork: cover,
                     count: 1,
@@ -715,11 +1078,14 @@ async function importSpotify(inputUrl) {
 
             const tracks = trackList.map((t, idx) => {
                 const artistsList = (t.artists || []).map(a => a.name).filter(Boolean);
-                const artistName = artistsList.join(', ') || t.subtitle || '';
-                const albumName = (t.album?.name || t.album || (type === 'album' ? title : '') || '');
+                const artistName = (artistsList.join(', ') || t.subtitle || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+                const rawTrackAlbum = typeof t.album === 'string' ? t.album : (t.album?.name || '');
+                const albumName = (rawTrackAlbum || (type === 'album' ? title : '') || '').replace(/\u00a0/g, ' ').trim();
+                const uriMatch = (t.uri || '').match(/spotify:track:([a-zA-Z0-9]+)/i);
+                const spTrackId = t.id || (uriMatch ? uriMatch[1] : '') || id;
                 return {
-                    id: `sp_${t.id || id + '_' + idx}`,
-                    spotifyId: t.id || id,
+                    id: `sp_${spTrackId || (id + '_' + idx)}`,
+                    spotifyId: spTrackId,
                     title: cleanTrackName(t.title) || t.title,
                     artist: artistName,
                     album: albumName,
@@ -732,6 +1098,7 @@ async function importSpotify(inputUrl) {
             return {
                 success: true,
                 platform: 'Spotify',
+                type,
                 title,
                 artwork: cover,
                 count: tracks.length,
@@ -740,33 +1107,33 @@ async function importSpotify(inputUrl) {
         }
     } catch (e) {
         if (type === 'track') {
-            try {
-                const oembed = await fetchJson(`https://open.spotify.com/oembed?url=${encodeURIComponent('https://open.spotify.com/track/' + id)}`);
-                if (oembed && oembed.title) {
-                    const singleTrack = {
-                        id: `sp_${id}`,
-                        spotifyId: id,
-                        title: cleanTrackName(oembed.title) || oembed.title,
-                        artist: 'Spotify Artist',
-                        duration: 210,
-                        artwork: oembed.thumbnail_url || '',
-                        quality: 'FLAC / 320kbps Hi-Fi'
-                    };
-                    return {
-                        success: true,
-                        platform: 'Spotify',
-                        title: singleTrack.title,
-                        artwork: singleTrack.artwork,
-                        count: 1,
-                        tracks: [singleTrack]
-                    };
-                }
-            } catch (oe) {}
+            const ogData = await resolveSpotifyOpenGraphFallback(id);
+            if (ogData && ogData.title) {
+                const singleTrack = {
+                    id: `sp_${id}`,
+                    spotifyId: id,
+                    title: ogData.title,
+                    artist: ogData.artist,
+                    album: ogData.album || '',
+                    duration: 210,
+                    artwork: ogData.artwork || '',
+                    quality: 'FLAC / 320kbps Hi-Fi'
+                };
+                return {
+                    success: true,
+                    platform: 'Spotify',
+                    type: 'track',
+                    title: singleTrack.title,
+                    artwork: singleTrack.artwork,
+                    count: 1,
+                    tracks: [singleTrack]
+                };
+            }
         }
         return { success: false, error: `Spotify extraction failed: ${e.message}` };
     }
 
-    // OpenGraph meta tag fallback
+    // OpenGraph meta tag fallback from embed body
     if (type === 'track') {
         const ogTitle = body.match(/<meta property="og:title" content="([^"]+)"/i)?.[1];
         const ogImage = body.match(/<meta property="og:image" content="([^"]+)"/i)?.[1];
@@ -777,6 +1144,7 @@ async function importSpotify(inputUrl) {
                 spotifyId: id,
                 title: cleanTrackName(ogTitle) || ogTitle,
                 artist: ogDesc || 'Spotify Artist',
+                album: '',
                 duration: 210,
                 artwork: ogImage || '',
                 quality: 'FLAC / 320kbps Hi-Fi'
@@ -784,6 +1152,7 @@ async function importSpotify(inputUrl) {
             return {
                 success: true,
                 platform: 'Spotify',
+                type: 'track',
                 title: singleTrack.title,
                 artwork: singleTrack.artwork,
                 count: 1,
@@ -831,5 +1200,7 @@ module.exports = {
     importYouTube,
     importSpotify,
     importText,
-    parseYouTubeTitle
+    parseYouTubeTitle,
+    extractCreditsFromDescription,
+    cleanTrackName
 };
