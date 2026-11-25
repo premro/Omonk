@@ -44,12 +44,7 @@ class AudioPlayerEngine {
         this.audio.setAttribute('webkit-playsinline', 'true');
 
         // Secondary silent pre-buffer element for lock-screen continuous handoff
-        this.secondaryAudio = new Audio();
-        this.secondaryAudio.preload = "auto";
-        this.secondaryAudio.muted = true;
-        this.secondaryAudio.setAttribute('playsinline', 'true');
-        this.secondaryAudio.setAttribute('webkit-playsinline', 'true');
-        this.prefetchAudio = this.secondaryAudio;
+        // Single hardware media element architecture for iOS Safari & WebKit stability
         this._prefetchedUrl = '';
         this._preloadedNextTrack = null;
 
@@ -567,12 +562,7 @@ class AudioPlayerEngine {
                 p.then(() => this.pauseAnchorAudio.pause()).catch(() => {});
             }
         }
-        if (this.secondaryAudio) {
-            const s = this.secondaryAudio.play();
-            if (s && typeof s.then === 'function') {
-                s.then(() => this.secondaryAudio.pause()).catch(() => {});
-            }
-        }
+
     }
 
     startLockscreenPauseAnchor() {
@@ -590,7 +580,7 @@ class AudioPlayerEngine {
         if (cur) this.updateMediaSession(cur);
         if ("mediaSession" in navigator) {
             // Use 'none' instead of 'paused' to prevent iOS WebKit from triggering sessionWillEndSoon() and tearing down audio session after 3 seconds
-            navigator.mediaSession.playbackState = "none";
+            navigator.mediaSession.playbackState = "paused";
         }
 
         // Auto-stop anchor after 30 minutes to prevent battery drain
@@ -729,6 +719,19 @@ class AudioPlayerEngine {
         });
 
         el.addEventListener('ended', () => {
+            // Guard 1: Never auto-skip if ended fired on silence or placeholder
+            if (!this.audio.src || this.audio.src.includes('silence.mp3')) {
+                return;
+            }
+
+            // Guard 2: Never auto-skip if stream terminated prematurely (socket drop or network stall)
+            const curDuration = el.duration || 0;
+            const curTime = el.currentTime || 0;
+            if (curDuration > 10 && curTime < curDuration - 4) {
+                console.warn(`[Audio Ended Prematurely] Position ${curTime.toFixed(1)}s of ${curDuration.toFixed(1)}s. Re-establishing stream for current track.`);
+                this.recoverStalledOrExpiredStream();
+                return;
+            }
             this.startLockscreenPauseAnchor();
             const currentTrack = this.getCurrentTrack();
             if (currentTrack && window.SpotifyEngine) {
@@ -754,9 +757,7 @@ class AudioPlayerEngine {
 
             if (nextIdx < this.queue.length) {
                 const nextTrack = this.queue[nextIdx];
-                const handoffSrc = (this.secondaryAudio && this.secondaryAudio.src && this._preloadedNextTrack?.id === nextTrack.id)
-                    ? this.secondaryAudio.src
-                    : (nextTrack.streamUrl || null);
+                const handoffSrc = nextTrack.streamUrl || null;
 
                 if (handoffSrc) {
                     this.currentIndex = nextIdx;
@@ -823,16 +824,17 @@ class AudioPlayerEngine {
             }, 1500);
         });
 
-        // Watchdog: recovers expired CDN URLs or frozen sockets after 4 seconds without corrupting buffer position
+        // Watchdog: recovers expired CDN URLs or frozen sockets after genuine stall without corrupting buffer position
         if (this._playbackWatchdog) clearInterval(this._playbackWatchdog);
         this._playbackWatchdog = setInterval(() => {
             if (this.isPlaying && !el.paused && !el.ended) {
                 const cur = el.currentTime;
-                if (this._lastWatchdogPos !== undefined && Math.abs(cur - this._lastWatchdogPos) < 0.02) {
+                // Only consider stalled if audio readyState >= 2 (actively loaded) and position has not advanced
+                if (el.readyState >= 2 && this._lastWatchdogPos !== undefined && Math.abs(cur - this._lastWatchdogPos) < 0.02) {
                     this._stuckCounter = (this._stuckCounter || 0) + 1;
-                    if (this._stuckCounter === 4) {
+                    if (this._stuckCounter === 8) {
                         el.play().catch(() => {});
-                    } else if (this._stuckCounter >= 8) {
+                    } else if (this._stuckCounter >= 24) { // 12 seconds genuine stall threshold
                         this._stuckCounter = 0;
                         this.recoverStalledOrExpiredStream();
                     }
@@ -869,13 +871,25 @@ class AudioPlayerEngine {
                 return;
             }
 
+            // Attempt inline stream recovery for current track first
+            if (!this._retriedCurrentTrackOnError && cur) {
+                this._retriedCurrentTrackOnError = true;
+                console.log(`[Audio Error] Attempting stream recovery for "${cur.title}"...
+`);
+                setTimeout(() => {
+                    this.recoverStalledOrExpiredStream();
+                }, 800);
+                return;
+            }
+            this._retriedCurrentTrackOnError = false;
+
             if (this.onStatusMessage && cur) {
                 this.onStatusMessage(`Stream unavailable for "${cur.title}". Skipping...`);
             }
             if (this._errorRetryTimeout) clearTimeout(this._errorRetryTimeout);
             this._errorRetryTimeout = setTimeout(() => {
                 this.next(true);
-            }, 900);
+            }, 1200);
         });
 
         if (typeof document !== "undefined") {
@@ -967,10 +981,7 @@ class AudioPlayerEngine {
                     if (offset === 1 && nxt && nxt.streamUrl && this._prefetchedUrl !== nxt.streamUrl) {
                         this._prefetchedUrl = nxt.streamUrl;
                         this._preloadedNextTrack = nxt;
-                        if (this.secondaryAudio) {
-                            this.secondaryAudio.src = nxt.streamUrl;
-                            this.secondaryAudio.load();
-                        }
+                        // Next stream pre-warmed in memory without competing audio hardware pipeline
                     }
                 }
             }
@@ -1089,10 +1100,7 @@ class AudioPlayerEngine {
                 const p = this.pauseAnchorAudio.play();
                 if (p && typeof p.then === 'function') p.then(() => this.pauseAnchorAudio.pause()).catch(() => {});
             }
-            if (this.secondaryAudio) {
-                const s = this.secondaryAudio.play();
-                if (s && typeof s.then === 'function') s.then(() => this.secondaryAudio.pause()).catch(() => {});
-            }
+
         } catch (e) {}
 
         if (typeof isSequential === 'boolean') {
@@ -1160,11 +1168,10 @@ class AudioPlayerEngine {
 
         if (!isBlobSource && !isValidUrl(finalUrl)) {
             // Prime audio element within user activation gesture so iOS doesn't revoke playback permission during async fetch
-            this.audio.src = 'assets/silence.mp3';
-            try { const p = this.audio.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
             this.isPlaying = true;
             if (this.onPlaybackStateChange) this.onPlaybackStateChange(true);
             if (this.onStatusMessage) this.onStatusMessage(`Resolving Hi-Res stream for "${track.title}"...`);
+            this.initSilentAudioAnchor();
             finalUrl = await this.refreshStreamUrlForTrack(track);
         }
 
@@ -1323,13 +1330,9 @@ class AudioPlayerEngine {
     seek(seconds) {
         if (!isNaN(seconds) && isFinite(seconds) && seconds >= 0) {
             try {
-                if ('fastSeek' in this.audio && typeof this.audio.fastSeek === 'function') {
-                    this.audio.fastSeek(seconds);
-                } else {
-                    this.audio.currentTime = seconds;
-                }
+                this.audio.currentTime = seconds;
             } catch (e) {
-                try { this.audio.currentTime = seconds; } catch (e2) {}
+                console.warn('[Seek error]:', e);
             }
             this.updatePositionState();
             if (this.onTimeUpdate) {
@@ -1349,6 +1352,8 @@ class AudioPlayerEngine {
         if (this._isSkipping) return;
         this.stopLockscreenPauseAnchor();
         this._isSkipping = true;
+        if (this._skipSafetyTimer) clearTimeout(this._skipSafetyTimer);
+        this._skipSafetyTimer = setTimeout(() => { this._isSkipping = false; }, 4000);
 
         try {
             if (this.queue.length === 0) return;

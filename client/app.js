@@ -3998,10 +3998,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (topResultItem) {
             const handleTopPlay = () => {
                 if (topResultType === 'song') {
-                    if (typeof AudioPlayer.playTrackWithVibeRadio === 'function') {
+                    if (songs && Array.isArray(songs) && songs.length > 0) {
+                        AudioPlayer.playTrack(topResultItem, songs, 0, true);
+                    } else if (typeof AudioPlayer.playTrackWithVibeRadio === 'function') {
                         AudioPlayer.playTrackWithVibeRadio(topResultItem);
                     } else {
-                        AudioPlayer.playTrack(topResultItem, songs, 0, true);
+                        AudioPlayer.playTrack(topResultItem, [topResultItem], 0, true);
                     }
                     showToast(`Playing "${topResultItem.title}" with Vibe Flow`, '▶️');
                 } else if (topResultType === 'playlist') {
@@ -5741,7 +5743,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // 2. Clicking a song that is not playing:
-        if (currentView === 'playlist' || currentView === 'playlist-detail' || currentView === 'album' || currentView === 'album-detail' || currentView === 'liked' || currentView === 'offline') {
+        if (currentView === 'playlist' || currentView === 'playlist-detail' || currentView === 'album' || currentView === 'album-detail' || currentView === 'liked' || currentView === 'offline' || currentView === 'search' || (pool && Array.isArray(pool) && pool.length > 1)) {
             const effectivePool = (pool && Array.isArray(pool) && pool.length > 0) ? pool : (typeof allLoadedSongs !== 'undefined' && allLoadedSongs.length > 0 ? allLoadedSongs : (window.allLoadedSongs || [track]));
             const trackIdx = effectivePool.findIndex(t => String(t.id) === String(track.id) || (t.title && track.title && t.title === track.title));
             const finalIdx = trackIdx >= 0 ? trackIdx : idx;
