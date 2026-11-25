@@ -249,7 +249,9 @@ class PlaylistImporter {
             artist: t.artist,
             album: t.album || '',
             language: t.language || '',
+            era: t.era || '',
             duration: t.duration || 210,
+            durationEstimated: Boolean(t.durationEstimated),
             artwork: t.artwork || data.artwork || '',
             streamUrl: t.streamUrl || '',
             quality: 'FLAC / 320kbps Hi-Fi'
@@ -259,7 +261,11 @@ class PlaylistImporter {
             try {
                 if (onProgress) onProgress(60, `Resolving lossless stream for "${tracks[0].title}"...`);
                 const prefix = window.API_PREFIX || '';
-                const resStream = await fetch(`${prefix}/api/resolve?title=${encodeURIComponent(tracks[0].title)}&artist=${encodeURIComponent(tracks[0].artist || '')}&album=${encodeURIComponent(tracks[0].album || '')}&duration=${encodeURIComponent(tracks[0].duration || 0)}&youtubeId=${encodeURIComponent(tracks[0].youtubeId || '')}`);
+                let resolveUrl = `${prefix}/api/resolve?title=${encodeURIComponent(tracks[0].title)}&artist=${encodeURIComponent(tracks[0].artist || '')}&album=${encodeURIComponent(tracks[0].album || '')}&lang=${encodeURIComponent(tracks[0].language || '')}&youtubeId=${encodeURIComponent(tracks[0].youtubeId || '')}`;
+                if (!tracks[0].durationEstimated && tracks[0].duration) {
+                    resolveUrl += `&duration=${encodeURIComponent(tracks[0].duration)}`;
+                }
+                const resStream = await fetch(resolveUrl);
                 if (resStream.ok) {
                     const resJson = await resStream.json();
                     if (resJson.success && resJson.track && resJson.track.streamUrl) {
@@ -299,6 +305,9 @@ class PlaylistImporter {
         if (onProgress) onProgress(20, 'Scanning YouTube for album chapters...');
 
         let url = pl.sourceUrl;
+        if (!url && pl.tracks?.[0]?.youtubeId) {
+            url = `https://www.youtube.com/watch?v=${pl.tracks[0].youtubeId}`;
+        }
         if (!url && pl.artwork) {
             const vm = pl.artwork.match(/\/vi\/([a-zA-Z0-9_-]{11})\//);
             if (vm) url = `https://www.youtube.com/watch?v=${vm[1]}`;
@@ -318,10 +327,15 @@ class PlaylistImporter {
         const data = await resp.json();
         if (data.success && data.tracks && data.tracks.length > 1) {
             pl.tracks = data.tracks.map((t, idx) => ({
-                id: `yt_tr_${Date.now()}_${idx}`,
+                id: t.id || `yt_tr_${Date.now()}_${idx}`,
+                youtubeId: t.youtubeId || '',
                 title: t.title,
                 artist: t.artist,
+                album: t.album || '',
+                language: t.language || '',
+                era: t.era || '',
                 duration: t.duration || 210,
+                durationEstimated: Boolean(t.durationEstimated),
                 artwork: t.artwork || data.artwork || pl.artwork,
                 quality: 'FLAC / 320kbps Hi-Fi'
             }));

@@ -1282,6 +1282,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
             const rawArtist = u.searchParams.get('artist') || '';
             const rawAlbum = u.searchParams.get('album') || '';
             const rawLang = u.searchParams.get('lang') || '';
+            const rawEra = u.searchParams.get('era') || '';
             const rawDuration = u.searchParams.get('duration') || '0';
 
             resolveEngine.resolveTrackMatch({
@@ -1289,6 +1290,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 artist: rawArtist,
                 album: rawAlbum,
                 lang: rawLang,
+                era: rawEra,
                 duration: parseFloat(rawDuration) || 0
             }).then(resolved => {
                 if (resolved && resolved.success && resolved.track && resolved.track.streamUrl) {
@@ -1424,7 +1426,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             });
-            res.end(JSON.stringify({ success: true, version: '8.19.5', build: 1795697000000, timestamp: 1795697000000 }));
+            res.end(JSON.stringify({ success: true, version: '8.19.6', build: 1795710000000, timestamp: 1795710000000 }));
             return;
         }
 

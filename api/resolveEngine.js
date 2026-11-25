@@ -17,13 +17,57 @@ function normalizeCanonicalTitle(title) {
     if (!title) return '';
     return String(title)
         .toLowerCase()
-        .replace(/\(from\s+["']?.*?["']?\)/gi, '')
-        .replace(/\[from\s+["']?.*?["']?\]/gi, '')
-        .replace(/-\s*from\s+["']?.*?["']?(?:\s*\([^)]*\))?$/gi, '')
+        .replace(/\(from\s+["'\u201c\u201d\u2018\u2019]?.*?["'\u201c\u201d\u2018\u2019]?\)/gi, '')
+        .replace(/\[from\s+["'\u201c\u201d\u2018\u2019]?.*?["'\u201c\u201d\u2018\u2019]?\]/gi, '')
+        .replace(/-\s*from\s+["'\u201c\u201d\u2018\u2019]?.*?["'\u201c\u201d\u2018\u2019]?(?:\s*\([^)]*\))?$/gi, '')
         .replace(/[\(\[].*?[\)\]]/g, '')
         .replace(/\b(remastered|re-mastered|remaster|original motion picture soundtrack|ost|full\s*video|full\s*audio|full\s*song|lyrical\s*video|lyrical\s*song|lyric\s*video|lyrical|lyrics?|video\s*song|audio\s*song|official\s*video|official\s*audio|official|video|audio|hd|4k|8k|version|reprise|male|female|duet)\b/gi, '')
         .replace(/[^a-z0-9\u0B80-\u0BFF\u0900-\u097F\u0C00-\u0C7F\u0D00-\u0D7F]/g, '')
         .trim();
+}
+
+function resolvePhoneticsLoose(str) {
+    const p = searchEngine.phonetics(str || '');
+    if (!p) return '';
+    return p.replace(/d/g, 't');
+}
+
+function sharedPrefixLen(a, b) {
+    const len = Math.min(a.length, b.length);
+    let i = 0;
+    while (i < len && a[i] === b[i]) i++;
+    return i;
+}
+
+function isNearExactPhoneticTitle(sPhon, qPhon) {
+    if (!sPhon || !qPhon) return false;
+    const sWords = sPhon.split(/\s+/).filter(Boolean);
+    const qWords = qPhon.split(/\s+/).filter(Boolean);
+    if (qWords.length < 2 || sWords.length !== qWords.length) return false;
+    let diffs = 0;
+    for (let i = 0; i < qWords.length; i++) {
+        const sw = sWords[i];
+        const qw = qWords[i];
+        if (sw === qw) continue;
+        const maxL = Math.max(sw.length, qw.length);
+        const minL = Math.min(sw.length, qw.length);
+        if (minL >= 5 && sharedPrefixLen(sw, qw) >= maxL - 1) {
+            diffs++;
+            if (diffs > 1) return false;
+        } else {
+            return false;
+        }
+    }
+    return diffs === 1;
+}
+
+function parseEraRange(eraStr) {
+    if (!eraStr) return null;
+    const m = String(eraStr).match(/^(\d{4})\s*[-–]\s*(\d{4})$/);
+    if (m) {
+        return [parseInt(m[1], 10), parseInt(m[2], 10)];
+    }
+    return null;
 }
 
 function extractFilmFromTitle(title) {
@@ -134,7 +178,7 @@ function detectLanguage({ cleanTitle = '', rawTitle = '', validArtist = '', rawA
 }
 
 function scoreCandidate(s, ctx) {
-    const { cleanTitle, rawTitle, rawArtist, rawAlbum, validArtist, targetAlbum, detectedLang, targetDuration } = ctx;
+    const { cleanTitle, rawTitle, rawArtist, rawAlbum, validArtist, targetAlbum, detectedLang, targetDuration, eraRange } = ctx;
     let score = 0;
     let titleMatchLevel = 0; // 0: none, 1: weak/token, 2: includes, 3: startsWith, 4: canonical/phonetic exact, 5: literal exact
     let artistMatched = false;
@@ -149,20 +193,31 @@ function scoreCandidate(s, ctx) {
     const qCanon = normalizeCanonicalTitle(cleanTitle);
     const sTitlePhon = searchEngine.phonetics(candTitleStripped || s.title || '');
     const qPhon = searchEngine.phonetics(cleanTitle || '');
+    const sPhonNoSpace = sTitlePhon.replace(/\s+/g, '');
+    const qPhonNoSpace = qPhon.replace(/\s+/g, '');
+    const allowLoosePhon = detectedLang !== 'english' || qPhon.length >= 8 || qPhon.split(/\s+/).length >= 2;
+    const sPhonLoose = allowLoosePhon ? resolvePhoneticsLoose(candTitleStripped || s.title || '').replace(/\s+/g, '') : '';
+    const qPhonLoose = allowLoosePhon ? resolvePhoneticsLoose(cleanTitle || '').replace(/\s+/g, '') : '';
 
     if (sTitleLow === qTitleLow || sCleanLow === qTitleLow) {
         score += 520;
         titleMatchLevel = 5;
     } else if (sCanon && qCanon && sCanon === qCanon) {
-        score += 450;
+        score += 512;
         titleMatchLevel = 4;
-    } else if (sTitlePhon && qPhon && sTitlePhon === qPhon) {
-        score += 390;
+    } else if (sPhonNoSpace && qPhonNoSpace && sPhonNoSpace === qPhonNoSpace) {
+        score += 504;
+        titleMatchLevel = 4;
+    } else if (sPhonLoose && qPhonLoose && sPhonLoose === qPhonLoose) {
+        score += 494;
+        titleMatchLevel = 4;
+    } else if (isNearExactPhoneticTitle(sTitlePhon, qPhon)) {
+        score += 475;
         titleMatchLevel = 4;
     } else if (sCanon && qCanon && (sCanon.startsWith(qCanon) || qCanon.startsWith(sCanon))) {
         const ratio = Math.min(sCanon.length, qCanon.length) / Math.max(sCanon.length, qCanon.length);
         if (Math.min(sCanon.length, qCanon.length) >= 4 && ratio >= 0.42) {
-            score += 260;
+            score += 290;
             titleMatchLevel = 3;
         } else {
             score += 110;
@@ -171,10 +226,10 @@ function scoreCandidate(s, ctx) {
     } else if (sTitlePhon && qPhon && (sTitlePhon.startsWith(qPhon) || qPhon.startsWith(sTitlePhon))) {
         const sPhonWords = sTitlePhon.split(/\s+/).filter(Boolean);
         const qPhonWords = qPhon.split(/\s+/).filter(Boolean);
-        const allCandInQuery = sPhonWords.length > 0 && sPhonWords.every(w => qPhonWords.includes(w));
+        const allCandInQuery = sPhonWords.length >= 2 && sPhonWords.every(w => qPhonWords.includes(w));
         const ratio = Math.min(sTitlePhon.length, qPhon.length) / Math.max(sTitlePhon.length, qPhon.length);
-        if (allCandInQuery || ratio >= 0.42) {
-            score += 240;
+        if ((allCandInQuery && ratio >= 0.35) || (Math.min(sTitlePhon.length, qPhon.length) >= 4 && ratio >= 0.42)) {
+            score += 270;
             titleMatchLevel = 3;
         } else {
             score += 100;
@@ -272,6 +327,18 @@ function scoreCandidate(s, ctx) {
         else if (sLang && sLang !== 'unknown' && sLang !== detectedLang) score -= 350;
     }
 
+    // Era preference when compilation/playlist specifies an era (e.g. 90's & 2K -> 1990-2009)
+    if (eraRange && s.year) {
+        const sYear = parseInt(String(s.year).slice(0, 4), 10);
+        if (sYear >= 1940 && sYear <= 2030) {
+            if (sYear >= eraRange[0] && sYear <= eraRange[1]) {
+                score += 65;
+            } else if (sYear < eraRange[0] - 15) {
+                score -= 130;
+            }
+        }
+    }
+
     // Duration proximity check (only when both source & candidate have valid duration > 15s)
     let durationDiff = null;
     if (targetDuration && Number(targetDuration) > 15 && s.duration && Number(s.duration) > 15) {
@@ -284,9 +351,15 @@ function scoreCandidate(s, ctx) {
         else score -= 360;
     }
 
-    // Popularity tie-breaker
+    // Popularity weight (decisively favors real studio originals over low-play covers/reels)
     const pop = s.popularity || s.playCount || 0;
-    if (pop > 0) score += Math.min(45, Math.log10(pop + 1) * 6);
+    if (pop > 0) score += Math.min(180, Math.log10(pop + 1) * 26);
+
+    // Penalize ultra-short cover / status clips (< 130s) when no short duration was requested
+    const isShortTarget = targetDuration && Number(targetDuration) > 15 && Number(targetDuration) < 140;
+    if (!isShortTarget && s.duration && Number(s.duration) > 0 && Number(s.duration) < 130 && !/\b(short|status|ringtone|teaser|intro|interlude)\b/i.test(rawTitle)) {
+        score -= 140;
+    }
 
     // Heavy Penalty for unwanted versions (Remix, Karaoke, Cover, Lofi, Teaser, Dialogue)
     const sLower = `${s.title} ${s.artist || ''} ${s.album || ''}`.toLowerCase();
@@ -404,7 +477,8 @@ async function resolveTrackMatch(params = {}) {
         validArtist,
         targetAlbum,
         detectedLang,
-        targetDuration
+        targetDuration,
+        eraRange: parseEraRange(params.era)
     };
 
     const evaluated = candidates.map(s => ({

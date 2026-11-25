@@ -1,5 +1,5 @@
 {
-  "version": "8.19.5",
+  "version": "8.19.6",
   "releaseDate": "2026-11-25",
-  "description": "v8.19.5: Precision YouTube/Spotify import metadata extraction, description credit parsing, strict /api/resolve confidence gate & duration verification."
+  "description": "v8.19.6: Single-video compilation/jukebox bulleted tracklist extraction, Content ID card enrichment, auto-split library recovery, and Tamil transliteration/popularity resolution tuning."
 }

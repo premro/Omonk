@@ -495,7 +495,8 @@ class AudioPlayerEngine {
             let resolveUrl = `${prefix}/api/resolve?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}`;
             if (track.album) resolveUrl += `&album=${encodeURIComponent(track.album)}`;
             if (track.language || track.lang) resolveUrl += `&lang=${encodeURIComponent(track.language || track.lang)}`;
-            if (track.duration && Number(track.duration) > 15) resolveUrl += `&duration=${encodeURIComponent(Math.round(track.duration))}`;
+            if (track.era) resolveUrl += `&era=${encodeURIComponent(track.era)}`;
+            if (track.duration && Number(track.duration) > 15 && !track.durationEstimated) resolveUrl += `&duration=${encodeURIComponent(Math.round(track.duration))}`;
             if (track.youtubeId) resolveUrl += `&youtubeId=${encodeURIComponent(track.youtubeId)}`;
             if (track.spotifyId) resolveUrl += `&spotifyId=${encodeURIComponent(track.spotifyId)}`;
             const res = await fetch(resolveUrl, { signal: controller.signal });
@@ -511,7 +512,12 @@ class AudioPlayerEngine {
                 track._resolvedAt = Date.now();
                 track.image = track.image || data.track.image;
                 track.artwork = track.artwork || data.track.artwork;
-                track.duration = track.duration || data.track.duration;
+                if (data.track.duration && (track.durationEstimated || !track.duration)) {
+                    track.duration = data.track.duration;
+                    track.durationEstimated = false;
+                } else {
+                    track.duration = track.duration || data.track.duration;
+                }
                 if (!track.album && data.track.album) track.album = data.track.album;
                 return su;
             }

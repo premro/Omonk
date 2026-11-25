@@ -480,6 +480,95 @@ function extractCreditsFromDescription(descText) {
     return credits;
 }
 
+function isCompilationTitle(t) {
+    if (!t) return false;
+    return /\b(jukebox|collection|hits|melody|melodies|back\s*to\s*back|non[\s-]*stop|mashup|medley|evergreen|best\s*of|top\s*\d+|songs?\s*playlist|audio\s*jukebox|love\s*songs|golden\s*hits)\b/i.test(t);
+}
+
+function detectCollectionLanguage(title = '', descText = '') {
+    const text = `${title} ${descText}`.toLowerCase();
+    if (/\btamil\b|kollywood|[\u0B80-\u0BFF]/.test(text)) return 'tamil';
+    if (/\btelugu\b|tollywood|[\u0C00-\u0C7F]/.test(text)) return 'telugu';
+    if (/\bhindi\b|bollywood|[\u0900-\u097F]/.test(text)) return 'hindi';
+    if (/\bmalayalam\b|mollywood|[\u0D00-\u0D7F]/.test(text)) return 'malayalam';
+    if (/\bkannada\b|sandalwood|[\u0C80-\u0CFF]/.test(text)) return 'kannada';
+    if (/\bpunjabi\b|pollywood|[\u0A00-\u0A7F]/.test(text)) return 'punjabi';
+    return '';
+}
+
+function detectCollectionEra(title = '') {
+    const t = String(title || '').toLowerCase();
+    const has70 = /\b70'?s\b|197\d/.test(t);
+    const has80 = /\b80'?s\b|198\d/.test(t);
+    const has90 = /\b90'?s\b|199\d/.test(t);
+    const has2k = /\b2k\b|\b2000'?s\b|\b00'?s\b/.test(t);
+    const years = [];
+    if (has70) years.push(1970, 1979);
+    if (has80) years.push(1980, 1989);
+    if (has90) years.push(1990, 1999);
+    if (has2k) years.push(2000, 2009);
+    if (years.length >= 2) {
+        return `${Math.min(...years)}-${Math.max(...years)}`;
+    }
+    return '';
+}
+
+function extractLicensingCards(obj) {
+    let cards = [];
+    if (obj && typeof obj === 'object') {
+        if (obj.videoAttributeViewModel) cards.push(obj.videoAttributeViewModel);
+        for (const k of Object.keys(obj)) {
+            cards = cards.concat(extractLicensingCards(obj[k]));
+        }
+    }
+    return cards;
+}
+
+function isConflictingCardLanguage(cardTitle, collectionLang) {
+    if (!collectionLang || !cardTitle) return false;
+    const low = cardTitle.toLowerCase();
+    const langs = ['tamil', 'telugu', 'hindi', 'malayalam', 'kannada', 'punjabi'];
+    return langs.some(l => l !== collectionLang && new RegExp(`\\b${l}\\b`, 'i').test(low));
+}
+
+function enrichTrackWithLicensingCards(track, cards, collectionLang) {
+    if (!track || !Array.isArray(cards) || cards.length === 0) return;
+    const tCanon = resolveEngine.normalizeCanonicalTitle(track.title);
+    if (!tCanon || tCanon.length < 4) return;
+
+    for (const c of cards) {
+        const rawCTitle = c.title || '';
+        if (!rawCTitle || isConflictingCardLanguage(rawCTitle, collectionLang)) continue;
+        const cCanon = resolveEngine.normalizeCanonicalTitle(rawCTitle);
+        if (!cCanon || cCanon.length < 5) continue;
+
+        const isMatch = cCanon === tCanon ||
+            (tCanon.startsWith(cCanon) && cCanon.length >= 6) ||
+            (cCanon.startsWith(tCanon) && tCanon.length >= 6);
+        if (!isMatch) continue;
+
+        const film = resolveEngine.extractFilmFromTitle(rawCTitle);
+        if (film && !track.album && !isConflictingCardLanguage(film, collectionLang)) {
+            track.album = film;
+        }
+
+        if (!track.artist && c.subtitle) {
+            const pieces = String(c.subtitle).split(/\s*[,|&]\s*/);
+            const verifiedArtists = [];
+            for (const p of pieces) {
+                const known = matchKnownArtist(p);
+                if (known && !verifiedArtists.includes(known)) {
+                    verifiedArtists.push(known);
+                }
+            }
+            if (verifiedArtists.length > 0) {
+                track.artist = verifiedArtists.join(', ');
+            }
+        }
+        break;
+    }
+}
+
 async function importYouTube(inputUrl) {
     if (!inputUrl) return { success: false, error: 'URL is required' };
 
@@ -504,6 +593,7 @@ async function importYouTube(inputUrl) {
     let videoDuration = 0;
     const tracks = [];
     let ytData = null;
+    let nextData = null;
     let descText = '';
 
     // 1. Innertube direct query
@@ -524,14 +614,15 @@ async function importYouTube(inputUrl) {
             }
         } catch (e) {}
 
-        if (!descText) {
+        if (!descText || (!playlistId && (videoDuration > 420 || isCompilationTitle(title)))) {
             try {
-                const nextData = await fetchInnertube('next', {
+                const nData = await fetchInnertube('next', {
                     context: { client: { clientName: 'WEB', clientVersion: '2.20240101.00.00' } },
                     videoId
                 });
-                if (nextData) {
-                    if (!ytData) ytData = nextData;
+                if (nData) {
+                    nextData = nData;
+                    if (!ytData) ytData = nData;
                     function findNextDesc(obj) {
                         if (!obj || typeof obj !== 'object') return '';
                         if (obj.attributedDescription?.content) return obj.attributedDescription.content;
@@ -542,8 +633,10 @@ async function importYouTube(inputUrl) {
                         }
                         return '';
                     }
-                    const nDesc = findNextDesc(nextData);
-                    if (nDesc) descText = nDesc;
+                    if (!descText) {
+                        const nDesc = findNextDesc(nData);
+                        if (nDesc) descText = nDesc;
+                    }
                 }
             } catch (e) {}
         }
@@ -704,8 +797,15 @@ async function importYouTube(inputUrl) {
         }
     }
 
-    // Strategy 2: Structured Chapters in ytData
-    if (tracks.length === 0 && ytData && (playlistId || videoDuration > 480)) {
+    const collectionLang = detectCollectionLanguage(title, descText);
+    const collectionEra = detectCollectionEra(title);
+    const licensingCards = extractLicensingCards(nextData || ytData);
+    const isCompilation = !playlistId && (videoDuration > 420 || isCompilationTitle(title));
+    const isCuratorOrChannel = !primaryArtist || isJunkLabel(primaryArtist) || /editz|channel|records|music|vevo|status|mix|playlist|official|audio|video|lyrics|studio|creations|ent|production|media/i.test(primaryArtist) || /[\uD800-\uDFFF]/.test(primaryArtist);
+
+    // Strategy 2: Structured Chapters in nextData / ytData
+    const chapterSource = nextData || ytData;
+    if (tracks.length === 0 && chapterSource && (playlistId || videoDuration > 420)) {
         function findMarkers(obj) {
             let markers = [];
             if (obj && typeof obj === 'object') {
@@ -717,7 +817,7 @@ async function importYouTube(inputUrl) {
             }
             return markers;
         }
-        const markers = findMarkers(ytData);
+        const markers = findMarkers(chapterSource);
         const seenChapters = new Set();
         const chapterTracks = [];
         for (const m of markers) {
@@ -730,17 +830,20 @@ async function importYouTube(inputUrl) {
                 const dur = endMs > 0 ? Math.round((endMs - sec * 1000) / 1000) : 240;
                 const art = m.thumbnail?.thumbnails?.[m.thumbnail.thumbnails.length - 1]?.url || cover;
 
-                const isCuratorOrChannel = !primaryArtist || isJunkLabel(primaryArtist) || /editz|channel|records|music|vevo|status|mix|playlist|official|audio|video|lyrics|studio|creations|ent|production|media/i.test(primaryArtist) || /[\uD800-\uDFFF]/.test(primaryArtist);
                 const parsed = parseYouTubeTitle(cTitle, primaryArtist);
-                chapterTracks.push({
+                const tr = {
                     title: parsed.title || cleanTrackName(cTitle),
                     artist: (parsed.artist && parsed.artist !== primaryArtist) ? parsed.artist : (isCuratorOrChannel ? '' : primaryArtist),
                     album: parsed.album || '',
+                    language: collectionLang || '',
+                    era: collectionEra || '',
                     duration: dur,
                     artwork: art,
                     startTime: sec,
                     quality: 'FLAC / 320kbps Hi-Fi'
-                });
+                };
+                enrichTrackWithLicensingCards(tr, licensingCards, collectionLang);
+                chapterTracks.push(tr);
             }
         }
         if (chapterTracks.length >= 2) {
@@ -788,18 +891,21 @@ async function importYouTube(inputUrl) {
                 }
 
                 if (timeStr && name) {
-                    const isCuratorOrChannel = !primaryArtist || isJunkLabel(primaryArtist) || /editz|channel|records|music|vevo|status|mix|playlist|official|audio|video|lyrics|studio|creations|ent|production|media/i.test(primaryArtist) || /[\uD800-\uDFFF]/.test(primaryArtist);
                     const parsed = parseYouTubeTitle(name, primaryArtist);
                     const cleanName = parsed.title || cleanTrackName(name);
                     if (cleanName.length >= 2) {
-                        parsedTs.push({
+                        const tr = {
                             title: cleanName,
                             artist: (parsed.artist && parsed.artist !== primaryArtist) ? parsed.artist : (isCuratorOrChannel ? '' : primaryArtist),
                             album: parsed.album || '',
+                            language: collectionLang || '',
+                            era: collectionEra || '',
                             startTime: parseTimestampToSeconds(timeStr),
                             artwork: cover,
                             quality: 'FLAC / 320kbps Hi-Fi'
-                        });
+                        };
+                        enrichTrackWithLicensingCards(tr, licensingCards, collectionLang);
+                        parsedTs.push(tr);
                     }
                 }
             }
@@ -814,33 +920,103 @@ async function importYouTube(inputUrl) {
         }
     }
 
-    // Strategy 4: Video Licensing Cards (only for playlists)
-    if (tracks.length === 0 && ytData && playlistId) {
-        function findCards(obj) {
-            let cards = [];
-            if (obj && typeof obj === 'object') {
-                if (obj.videoAttributeViewModel) cards.push(obj.videoAttributeViewModel);
-                for (const k of Object.keys(obj)) {
-                    cards = cards.concat(findCards(obj[k]));
-                }
+    // Strategy 3B: Bulleted / Numbered Tracklists without Timestamps in Compilation / Jukebox Videos
+    if (tracks.length === 0 && descText && isCompilation) {
+        const unescapedDesc = descText.replace(/\\n/g, '\n');
+        const lines = unescapedDesc.split(/[\r\n]+/);
+        const bulletRegex = /^(?:[•●▪▫‣◦\*✓✔▸▹➤➣➢]+|\-\s+|(?:\d{1,2})\s*[\.\)])\s*(.+)$/;
+        const bulletCandidates = [];
+        const seenCanon = new Set();
+        let inFooterSection = false;
+
+        for (const rawLine of lines) {
+            const l = rawLine.trim();
+            if (!l) continue;
+
+            if (/^(?:🎧|✨|🔗|📱|🏷️)?\s*(?:perfect\s*for|best\s*for|ideal\s*for|follow\s*us|connect|social|hashtags?|tags?|disclaimer|copyright|about|watch\s*more)\s*:?$/i.test(l) || /^hashtags$/i.test(l)) {
+                inFooterSection = true;
+                continue;
             }
-            return cards;
+            if (/^(?:🎶|🎵)?\s*(?:in\s*this|tracklist|song\s*list|songs?\s*list|playlist|songs?\s*included|featured\s*songs?)/i.test(l)) {
+                inFooterSection = false;
+                continue;
+            }
+            if (inFooterSection) continue;
+
+            const bm = l.match(bulletRegex);
+            if (!bm) continue;
+
+            let itemText = bm[1].trim();
+            if (!itemText || itemText.length < 3 || itemText.length > 100) continue;
+            if (/http|www\.|@|#|subscribe|like|share|comment|follow|copyright|©|℗|download|moments|listening|vibes|memories|road\s*trips|playlist|and\s+many\s+more/i.test(itemText)) continue;
+
+            // Convert slug hyphens ("Kadhal-Rojave" -> "Kadhal Rojave") when not "Song - Artist"
+            if (!/\s[-–—]\s/.test(itemText)) {
+                itemText = itemText.replace(/([A-Za-z0-9\u0B80-\u0DFF])-([A-Za-z0-9\u0B80-\u0DFF])/g, '$1 $2')
+                                   .replace(/([A-Za-z0-9\u0B80-\u0DFF])-([A-Za-z0-9\u0B80-\u0DFF])/g, '$1 $2');
+            }
+
+            const parsed = parseYouTubeTitle(itemText, '');
+            const songTitle = cleanTrackName(parsed.title || itemText) || itemText;
+            const canonKey = resolveEngine.normalizeCanonicalTitle(songTitle);
+            if (!songTitle || songTitle.length < 3 || !canonKey || seenCanon.has(canonKey)) continue;
+            seenCanon.add(canonKey);
+
+            const tr = {
+                id: `yt_${videoId}_${bulletCandidates.length + 1}`,
+                title: songTitle,
+                artist: (parsed.artist && parsed.artist !== 'Various Artists' && !isJunkLabel(parsed.artist)) ? parsed.artist : '',
+                album: parsed.album || '',
+                language: collectionLang || '',
+                era: collectionEra || '',
+                duration: 240,
+                durationEstimated: true,
+                artwork: cover,
+                quality: 'FLAC / 320kbps Hi-Fi'
+            };
+            enrichTrackWithLicensingCards(tr, licensingCards, collectionLang);
+            bulletCandidates.push(tr);
+            if (bulletCandidates.length >= 100) break;
         }
-        const cards = findCards(ytData);
+
+        if (bulletCandidates.length >= 3) {
+            const estDur = videoDuration > 60
+                ? Math.max(180, Math.min(360, Math.round(videoDuration / bulletCandidates.length)))
+                : 240;
+            for (const bt of bulletCandidates) {
+                bt.duration = estDur;
+                tracks.push(bt);
+            }
+        }
+    }
+
+    // Strategy 4: Video Licensing Cards (playlists OR multi-song compilation videos without description tracklist)
+    const cardSourceData = nextData || ytData;
+    if (tracks.length === 0 && cardSourceData && (playlistId || isCompilation)) {
+        const cards = licensingCards.length > 0 ? licensingCards : extractLicensingCards(cardSourceData);
+        const cardTracks = [];
         for (const c of cards) {
             const tTitle = c.title || '';
-            const tArtist = c.subtitle || primaryArtist || 'Unknown Artist';
-            if (tTitle && !tracks.some(t => t.title.toLowerCase() === tTitle.toLowerCase())) {
+            if (!tTitle || isConflictingCardLanguage(tTitle, collectionLang)) continue;
+            const tArtist = c.subtitle || (!isCuratorOrChannel ? primaryArtist : '') || '';
+            if (!cardTracks.some(t => t.title.toLowerCase() === tTitle.toLowerCase())) {
                 const parsed = parseYouTubeTitle(tTitle, tArtist);
-                tracks.push({
+                const film = resolveEngine.extractFilmFromTitle(tTitle);
+                cardTracks.push({
                     title: parsed.title || cleanTrackName(tTitle),
                     artist: parsed.artist || tArtist,
-                    album: parsed.album || '',
+                    album: parsed.album || film || '',
+                    language: collectionLang || '',
+                    era: collectionEra || '',
                     duration: 210,
+                    durationEstimated: true,
                     artwork: cover,
                     quality: 'FLAC / 320kbps Hi-Fi'
                 });
             }
+        }
+        if (playlistId ? cardTracks.length >= 1 : cardTracks.length >= 2) {
+            tracks.push(...cardTracks);
         }
     }
 
@@ -895,10 +1071,14 @@ async function importYouTube(inputUrl) {
         } catch (e) {}
     }
 
+    const playlistDisplayTitle = (!playlistId && tracks.length > 1 && title)
+        ? (title.split(/\s*\|\s*/)[0].trim() || title)
+        : (title || 'YouTube Playlist');
+
     return {
         success: true,
         platform: 'YouTube',
-        title: title || 'YouTube Playlist',
+        title: playlistDisplayTitle,
         artwork: tracks[0]?.artwork || cover,
         count: tracks.length,
         tracks
