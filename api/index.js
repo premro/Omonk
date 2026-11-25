@@ -961,8 +961,13 @@ function isSameSongOrReprise(candTitle, seedTitle) {
             (async () => {
                 const list = [];
                 const seen = new Set();
+                const seenCanon = new Set();
                 if (songId) seen.add(String(songId));
-                if (seedTitle) seen.add(seedTitle.toLowerCase().trim());
+                if (seedTitle) {
+                    seen.add(seedTitle.toLowerCase().trim());
+                    const sCanon = normalizeCanonicalTitle(seedTitle);
+                    if (sCanon) seenCanon.add(sCanon);
+                }
 
                 function cleanAlbumKey(alb) {
                     if (!alb) return '';
@@ -976,11 +981,27 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     return art.split(/[,&]/)[0].replace(/[.\-_]/g, ' ').trim().toLowerCase();
                 }
 
-                // Spotify-style Acoustic Cluster & Diversity Tracking
+                // Detect Vibe Category of the seed track to preserve exact vibe continuity
+                const combo = `${seedTitle} ${seedArtist} ${seedAlbum}`.toLowerCase();
+                let seedVibe = 'melodic';
+                if (/\b(sad|pathos|heartbreak|valikudhu|valiye|pirinthathu|pirivu|thanimai|azhugai|kanave|uyirin|kanmani|cheemayi|thenpaandi|thenpandi|thendral vandhu|amma endru|aarariraro|kanne kalaimane|poove sempoove|channa mereya|agar tum saath ho|tujhe bhula diya|kabira|bekhayali|judai|luka chuppi|ae dil hai|kal ho na|someone like you|fix you|the night we met|all too well|lovely|arcade|tears|cry|pain|grief|alone|soga|sogam)\b/i.test(combo)) {
+                    seedVibe = 'sad';
+                } else if (/\b(kuthu|dance|party|club|edm|remix|bass|beat|dappan|item|dj|disco|thara local|jala jala|arabic kuthu|jimikki|dhol|nacho|fast|gym|power|alappara|bottle|machi|tasmac|sarakku|vethalaiya|vethala|potendi|billa|mankatha|baila|bailaa|thiruvizha|dappankuthu|aaluma|doluma|marana mass|vaathi coming|naa ready|jalabulanjangu|sodakku|otha sollaala|chinna machan|appadi podu|nakka mukka|jithu jilladi|danga maari|donu donu|why this kolaveri)\b/i.test(combo)) {
+                    seedVibe = 'dance';
+                } else if (/\b(mass|anthem|brass|hero|intro|whistle|thala|badass|hukum|tiger|jailer|master|leo|beast|vikram|roar|bgm|theme)\b/i.test(combo)) {
+                    seedVibe = 'mass';
+                } else if (/\b(chill|lofi|lo-fi|relax|peace|calm|coffee|night|breeze|ambient|aesthetic|slowed|reverb)\b/i.test(combo)) {
+                    seedVibe = 'chill';
+                } else if (/\b(devotional|bhajan|carnatic|classical|raga|temple|flute|violin|nadaswaram|sloka|stotram|om|shiva|krishna|murugan|ayyappa)\b/i.test(combo)) {
+                    seedVibe = 'devotional';
+                } else if (/\b(kadhal|love|romance|melody|anbe|unplugged|acoustic|nee|nenjam|kanne|penne|vizhi|heart|soft|sweet|duet|priya|prema|ishq|pyaar|mohabbat|tum hi ho|kesariya|perfect|golden hour)\b/i.test(combo)) {
+                    seedVibe = 'romantic';
+                }
+
+                // Diversity & deduplication maps
                 const albumCount = new Map();
                 const artistCount = new Map();
 
-                // Initialize with seed track so other songs from the exact same album are NOT repeated
                 const seedAlbKey = cleanAlbumKey(seedAlbum);
                 if (seedAlbKey && seedAlbKey.length > 2) {
                     albumCount.set(seedAlbKey, 1);
@@ -995,25 +1016,48 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     if (!s || !s.title || !s.streamUrl) return false;
                     const sId = String(s.id || '');
                     const titleKey = (s.title || '').toLowerCase().trim();
+                    const canon = normalizeCanonicalTitle(s.title);
+
                     if (sId && seen.has(sId)) return false;
                     if (seen.has(titleKey)) return false;
+                    if (canon && seenCanon.has(canon)) return false;
                     if (isSameSongOrReprise(s.title, seedTitle)) return false;
+
                     const fullCandStr = `${s.title} ${s.artist || ''} ${s.album || ''}`.toLowerCase();
-                    if (/karaoke|instrumental|minus\s*one|party tyme|prosource|ameritz|serene songs|made pop|tribute version/i.test(fullCandStr)) {
+                    if (/karaoke|instrumental|minus\s*one|party tyme|prosource|ameritz|serene songs|made pop|tribute version|cover version/i.test(fullCandStr)) {
                         return false;
                     }
 
-                    // Exclude static compilation album
-                    if (s.album && /romantic melody/i.test(s.album)) return false;
+                    // Strict Vibe Boundary Enforcement
+                    let candVibe = 'melodic';
+                    if (/\b(sad|pathos|heartbreak|valikudhu|valiye|pirinthathu|pirivu|azhugai|kanave|uyire|alone|cry|tears|grief|pain)\b/i.test(fullCandStr)) candVibe = 'sad';
+                    else if (/\b(kuthu|dance|party|club|edm|remix|bass|beat|dappan|local|nacho|fast|power|bottle|machi|tasmac|aaluma)\b/i.test(fullCandStr)) candVibe = 'dance';
+                    else if (/\b(mass|anthem|hero|intro|whistle|badass|hukum|theme|bgm)\b/i.test(fullCandStr)) candVibe = 'mass';
+                    else if (/\b(chill|lofi|lo-fi|relax|calm|breeze)\b/i.test(fullCandStr)) candVibe = 'chill';
+                    else if (/\b(kadhal|love|romance|melody|anbe|unplugged|acoustic|heart|soft)\b/i.test(fullCandStr)) candVibe = 'romantic';
 
-                    // Spotify Diversity Rule 1: Strict Album Diversity (Max 1 song per album/movie across the queue!)
+                    if (seedVibe === 'sad') {
+                        if (candVibe === 'dance' || candVibe === 'mass') return false;
+                    } else if (seedVibe === 'dance' || seedVibe === 'mass') {
+                        if (candVibe === 'sad') return false;
+                    }
+
+                    // Strict Language Match
+                    if (lang && lang !== 'unknown') {
+                        const sLang = (s.language || '').toLowerCase().trim();
+                        if (sLang && sLang !== 'unknown' && sLang !== lang.toLowerCase().trim()) {
+                            return false;
+                        }
+                    }
+
+                    // Strict Album Diversity (Max 1 song per album/movie across radio stream)
                     const albKey = cleanAlbumKey(s.album);
                     if (albKey && albKey.length > 2) {
                         const count = albumCount.get(albKey) || 0;
                         if (count >= 1) return false;
                     }
 
-                    // Spotify Diversity Rule 2: Artist Diversity (Max 2 songs per primary artist)
+                    // Strict Artist Diversity (Max 2 songs per primary artist)
                     const artKey = cleanArtistKey(s.artist);
                     if (artKey) {
                         const aCount = artistCount.get(artKey) || 0;
@@ -1022,6 +1066,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
 
                     if (sId) seen.add(sId);
                     seen.add(titleKey);
+                    if (canon) seenCanon.add(canon);
                     if (albKey && albKey.length > 2) albumCount.set(albKey, (albumCount.get(albKey) || 0) + 1);
                     if (artKey) artistCount.set(artKey, (artistCount.get(artKey) || 0) + 1);
                     list.push(s);
@@ -1052,18 +1097,34 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     } catch (e) {}
                 }
 
-                // 3. Companion tracks by complementary or same artist (distinct albums only)
+                // 3. Vibe-targeted queries by artist & mood
                 const cleanArtist = (seedArtist || '').split(/[,&]/)[0].replace(/[.\-_]/g, ' ').trim();
-                if (list.length < 15 && cleanArtist) {
+                const vibeKeyword = seedVibe === 'sad' ? 'sad pathos melody' :
+                                    seedVibe === 'dance' ? 'dance kuthu party' :
+                                    seedVibe === 'mass' ? 'mass bgm theme' :
+                                    seedVibe === 'romantic' ? 'romantic melody' :
+                                    seedVibe === 'chill' ? 'chill lofi relax' : 'melody hits';
+
+                if (list.length < 16 && cleanArtist && !/various|soundtrack|unknown/i.test(cleanArtist)) {
                     try {
-                        const artRes = await searchEngine.searchAll(cleanArtist + ' hits', 8, lang);
+                        const artRes = await searchEngine.searchAll(`${cleanArtist} ${vibeKeyword}`, 8, lang);
                         if (artRes && artRes.songs) {
                             artRes.songs.forEach(addCandidate);
                         }
                     } catch (e) {}
                 }
 
-                // 4. Sample diverse curated Hit Charts from the same language
+                // 4. Language Vibe queries to guarantee diverse continuous flow
+                if (list.length < 20) {
+                    try {
+                        const vRes = await searchEngine.searchAll(`${lang} ${vibeKeyword} hits`, 10, lang);
+                        if (vRes && vRes.songs) {
+                            vRes.songs.forEach(addCandidate);
+                        }
+                    } catch (e) {}
+                }
+
+                // 5. Filtered Chart Hits (Only include chart songs matching the same vibe)
                 if (list.length < 20) {
                     try {
                         const dailyHits = (chartsData.charts && chartsData.charts[lang] && chartsData.charts[lang].daily) || [];
@@ -1075,33 +1136,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     } catch (e) {}
                 }
 
-                // 5. Contextual genre & mood queries to complete the cluster
-                const combo = (seedTitle + ' ' + seedArtist + ' ' + seedAlbum).toLowerCase();
-                const isKuthuParty = /machi|bottle|open the bottle|kuthu|party|dance|billa|mankatha|local|sarakku|vethalai|potendi|aaluma|dappan|tasmac|thara local|item|baila/i.test(combo);
-                const isSadPathos = /sad|pathos|heartbreak|valikudhu|valiye|pirivu|azhugai|kanave|thenpaandi|kanne kalaimane|poove sempoove|amma endru/i.test(combo);
-
-                if (list.length < 20) {
-                    let fallbackQueries = [];
-                    if (isKuthuParty) {
-                        fallbackQueries = [lang + ' party dance hits', lang + ' kuthu hits'];
-                    } else if (isSadPathos) {
-                        fallbackQueries = [lang + ' sad melody hits', lang + ' pathos hits'];
-                    } else {
-                        fallbackQueries = [lang + ' top hits', lang + ' latest hits'];
-                    }
-                    for (const fq of fallbackQueries) {
-                        if (list.length >= 25) break;
-                        try {
-                            const res = await searchEngine.searchAll(fq, 6, lang);
-                            if (res && res.songs) {
-                                res.songs.forEach(addCandidate);
-                            }
-                        } catch (e) {}
-                    }
-                }
-
-                // 3. Precision Vibe Re-Ranking:
-                // For "Machi Open the Bottle", prioritize "Vethalaiya Potendi" as #1 next song!
+                // Special vibe re-ranking for classic pairing
                 if (/machi|bottle/i.test(seedTitle)) {
                     const vethIndex = list.findIndex(s => /vethalai/i.test(s.title));
                     if (vethIndex > 0) {
@@ -1117,7 +1152,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 });
                 res.end(JSON.stringify({
                     success: true,
-                    seed: { id: songId, title: seedTitle, artist: seedArtist, album: seedAlbum },
+                    seed: { id: songId, title: seedTitle, artist: seedArtist, album: seedAlbum, vibe: seedVibe },
                     tracks: list
                 }));
             })().catch(err => {
@@ -1130,14 +1165,63 @@ function isSameSongOrReprise(candTitle, seedTitle) {
         // 5B. Album Detail
         if (pathname === '/api/album' || pathname === '/album') {
             const albumId = u.searchParams.get('id') || '';
-            if (!albumId) {
-                res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                res.end(JSON.stringify({ success: false, error: 'Missing album id' }));
-                return;
-            }
-            searchEngine.fetchHttps(`/api/albums?id=${encodeURIComponent(albumId)}`).then(albData => {
-                if (albData && albData.data) {
-                    const norm = searchEngine.normalizeAlbum(albData.data);
+            const albumTitle = u.searchParams.get('title') || u.searchParams.get('name') || u.searchParams.get('q') || '';
+            
+            (async () => {
+                let norm = null;
+                if (albumId && /^\d+$/.test(albumId)) {
+                    try {
+                        const albData = await searchEngine.fetchHttps(`/api/albums?id=${encodeURIComponent(albumId)}`);
+                        if (albData && albData.data) {
+                            norm = searchEngine.normalizeAlbum(albData.data);
+                        }
+                    } catch (e) {}
+                }
+
+                // If not found or missing tracks, search by album title to fetch all album songs
+                if ((!norm || !norm.tracks || norm.tracks.length === 0) && (albumTitle || albumId)) {
+                    const query = albumTitle || albumId;
+                    try {
+                        const searchResult = await searchEngine.searchAll(`${query} album`, 25, '');
+                        const matchingSongs = (searchResult.songs || []).filter(s => {
+                            const albName = (s.album || '').toLowerCase().trim();
+                            const qLower = query.toLowerCase().trim();
+                            return albName && (albName === qLower || albName.includes(qLower) || qLower.includes(albName));
+                        });
+                        
+                        const matchedAlbum = (searchResult.albums || []).find(a => {
+                            const aTitle = (a.title || '').toLowerCase().trim();
+                            const qLower = query.toLowerCase().trim();
+                            return aTitle && (aTitle === qLower || aTitle.includes(qLower) || qLower.includes(aTitle));
+                        });
+
+                        if (matchedAlbum && matchedAlbum.id && (!matchedAlbum.tracks || matchedAlbum.tracks.length === 0)) {
+                            try {
+                                const directAlb = await searchEngine.fetchHttps(`/api/albums?id=${encodeURIComponent(matchedAlbum.id)}`);
+                                if (directAlb?.data) {
+                                    norm = searchEngine.normalizeAlbum(directAlb.data);
+                                }
+                            } catch (e) {}
+                        }
+
+                        if (!norm && matchingSongs.length > 0) {
+                            norm = {
+                                id: matchedAlbum?.id || `alb_${Date.now()}`,
+                                type: 'album',
+                                title: matchedAlbum?.title || matchingSongs[0].album || query,
+                                artist: matchedAlbum?.artist || matchingSongs[0].artist || 'Movie Soundtrack',
+                                year: matchingSongs[0].year || '',
+                                language: matchingSongs[0].language || 'tamil',
+                                songCount: matchingSongs.length,
+                                trackCount: matchingSongs.length,
+                                artwork: matchedAlbum?.artwork || matchingSongs[0].artwork || matchingSongs[0].image || '',
+                                tracks: matchingSongs
+                            };
+                        }
+                    } catch (e) {}
+                }
+
+                if (norm) {
                     res.writeHead(200, {
                         'Content-Type': 'application/json',
                         'Access-Control-Allow-Origin': '*',
@@ -1148,7 +1232,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
                     res.end(JSON.stringify({ success: false, error: 'Album not found' }));
                 }
-            }).catch(e => {
+            })().catch(e => {
                 res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
                 res.end(JSON.stringify({ success: false, error: e.message }));
             });
@@ -1160,22 +1244,31 @@ function isSameSongOrReprise(candTitle, seedTitle) {
             const rawTitle = u.searchParams.get('title') || '';
             const rawArtist = u.searchParams.get('artist') || '';
             const rawAlbum = u.searchParams.get('album') || '';
-            
-            // Clean title: "Muthumani (From "Dorothy")" -> clean: "Muthumani", film: "Dorothy"
-            let cleanTitle = rawTitle.replace(/\s*\(From\s+["'][^"']+["']\)/i, '')
-                                     .replace(/\s*-\s*From\s+["'][^"']+["']/i, '')
-                                     .replace(/\s*\(From\s+[^)]+\)/i, '')
-                                     .replace(/\s*\[[^\]]+\]/g, '')
-                                     .replace(/\s*\(feat\.[^)]+\)/i, '')
-                                     .trim();
-            const filmMatch = rawTitle.match(/From\s+["']?([^"')]+)["']?/i);
-            const film = filmMatch ? filmMatch[1].trim() : '';
-            const artistTokens = rawArtist.split(/[,&]+/).map(a => a.trim()).filter(Boolean);
-            const firstArtist = artistTokens[0] || '';
-            const secondArtist = artistTokens[1] || '';
+            const rawLang = u.searchParams.get('lang') || '';
+
+            // 1. Clean Title & Extract Film/Movie
+            let film = '';
+            const filmMatch = rawTitle.match(/(?:from|\(from|\[from)\s+["']?([^"')\]]+)["']?/i);
+            if (filmMatch) {
+                film = filmMatch[1].trim();
+            }
+
+            let cleanTitle = rawTitle
+                .replace(/\s*\(From\s+["'][^"']+["']\)/gi, '')
+                .replace(/\s*-\s*From\s+["'][^"']+["']/gi, '')
+                .replace(/\s*\(From\s+[^)]+\)/gi, '')
+                .replace(/\s*\[[^\]]+\]/g, '')
+                .replace(/\s*\((?:feat\.|with|ft\.|remastered|re-mastered|remaster|radio edit|original mix|single version|deluxe|version|audio|video song|video|lyrical video|lyrical song|lyrical|lyrics|visualizer|slowed|reverb)[^)]*\)/gi, '')
+                .replace(/\s*[-–—:]\s*(?:remastered|re-mastered|remaster|radio edit|single version|video song|video|audio song|audio|lyrical video|lyrical song|lyrical|lyrics|telugu|tamil|hindi|kannada|malayalam|punjabi|original soundtrack|ost)\b.*$/gi, '')
+                .replace(/\|\s*.*$/, '')
+                .replace(/\s*[-–—]\s*(?:telugu|tamil|hindi|kannada|malayalam|punjabi|english)\s*$/gi, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            if (!cleanTitle) cleanTitle = rawTitle.trim();
 
             // Instant match for Beggin' by Madcon
-            if (/beggin/i.test(cleanTitle) && (/madcon/i.test(firstArtist) || /madcon/i.test(rawArtist) || !firstArtist)) {
+            if (/beggin/i.test(cleanTitle) && (/madcon/i.test(rawArtist) || !rawArtist)) {
                 res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
                 res.end(JSON.stringify({
                     success: true,
@@ -1197,33 +1290,58 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 return;
             }
 
+            // 2. Clean Artist (filter channel/record label noise)
+            let validArtist = rawArtist.replace(/\s*-\s*Topic/gi, '').trim();
+            const junkLabels = [
+                'youtube', 'various artists', 'spotify artist', 'sony music south', 'sony music',
+                't-series', 'tseries', 'sun tv', 'sun pictures', 'think music', 'think music india',
+                'saregama', 'saregama tamil', 'zee music', 'zee music south', 'lahari music',
+                'aditya music', 'speed audio', 'muzik247', 'tips', 'yrf', 'eros now', 'vevo'
+            ];
+            for (const jl of junkLabels) {
+                if (validArtist.toLowerCase() === jl || validArtist.toLowerCase().startsWith(jl)) {
+                    validArtist = '';
+                    break;
+                }
+            }
+
+            // 3. Detect Language
+            const haystack = `${cleanTitle} ${rawTitle} ${validArtist} ${rawAlbum} ${film}`.toLowerCase();
+            let detectedLang = rawLang && rawLang !== 'unknown' ? rawLang.toLowerCase().trim() : '';
+            if (!detectedLang) {
+                if (/[\u0B80-\u0BFF]/.test(haystack)) detectedLang = 'tamil';
+                else if (/[\u0C00-\u0C7F]/.test(haystack)) detectedLang = 'telugu';
+                else if (/[\u0900-\u097F]/.test(haystack)) detectedLang = 'hindi';
+                else if (/[\u0D00-\u0D7F]/.test(haystack)) detectedLang = 'malayalam';
+                else if (/[\u0A80-\u0AFF]/.test(haystack)) detectedLang = 'punjabi';
+                else if (/telugu|devi sri prasad|dsp|thaman/i.test(haystack)) detectedLang = 'telugu';
+                else if (/anirudh|yuvan|harris|ilayaraja|ilaiyaraaja|gv prakash|santhosh narayanan|pradeep kumar|dhanush|sid sriram|d\.?\s*imman/i.test(haystack)) detectedLang = 'tamil';
+                else if (/arijit|shreya|badshah|pritam|atif|kumar sanu|lata|kishore|sonu nigam/i.test(haystack)) detectedLang = 'hindi';
+                else if (/diljit|karan aujla|sidhu/i.test(haystack)) detectedLang = 'punjabi';
+                else if (/sushin|sushin shyam|heshem/i.test(haystack)) detectedLang = 'malayalam';
+                else if (/the weeknd|taylor swift|billie eilish|ed sheeran|drake|post malone|dua lipa|coldplay|bruno mars/i.test(haystack)) detectedLang = 'english';
+            }
+
+            // 4. Form Focused Queries in Strict Priority Order
+            const targetAlbum = (film || rawAlbum || '').trim();
             const queries = [];
-            if (rawAlbum) queries.push(cleanTitle + " " + rawAlbum);
-            if (firstArtist) queries.push(cleanTitle + " " + firstArtist);
-            if (rawAlbum && firstArtist) queries.push(cleanTitle + " " + rawAlbum + " " + firstArtist);
-            if (firstArtist && secondArtist) queries.push(cleanTitle + " " + firstArtist + " " + secondArtist);
-            if (film) queries.push(cleanTitle + " " + film);
+            const primaryArt = validArtist.split(/[,&]/)[0].trim();
+
+            if (targetAlbum && primaryArt) {
+                queries.push(`${cleanTitle} ${targetAlbum} ${primaryArt}`);
+            }
+            if (targetAlbum) {
+                queries.push(`${cleanTitle} ${targetAlbum}`);
+            }
+            if (primaryArt) {
+                queries.push(`${cleanTitle} ${primaryArt}`);
+            }
             queries.push(cleanTitle);
-
-            const titleWords = cleanTitle.split(/\s+/).filter(Boolean);
-            if (titleWords.length > 2) {
-                queries.push(titleWords.slice(0, 2).join(' '));
+            if (detectedLang && detectedLang !== 'english') {
+                queries.push(`${cleanTitle} ${detectedLang}`);
             }
 
-            // Phonetic title alternate (e.g. Enna Azhagu -> Yenna Azhago)
-            const phonAlt = titleWords.slice(0, 2).map(w => {
-                let cw = w;
-                if (/^e/i.test(cw)) cw = 'y' + cw;
-                else if (/^ye/i.test(cw)) cw = cw.slice(1);
-                if (/u$/i.test(cw)) cw = cw.slice(0, -1) + 'o';
-                else if (/o$/i.test(cw)) cw = cw.slice(0, -1) + 'u';
-                return cw;
-            }).join(' ');
-            if (phonAlt && phonAlt !== cleanTitle && !queries.includes(phonAlt)) {
-                queries.push(phonAlt);
-            }
-
-            const searchPromises = queries.map(q => searchEngine.searchAll(q, 20, ''));
+            const searchPromises = queries.map(q => searchEngine.searchAll(q, 15, detectedLang));
             Promise.all(searchPromises).then(results => {
                 const seenIds = new Set();
                 const candidates = [];
@@ -1243,62 +1361,81 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     return;
                 }
 
-                const qPhon = searchEngine.phonetics(cleanTitle);
-                const rawArtistPhon = searchEngine.phonetics(rawArtist);
-                const qArtistPhonTokens = rawArtistPhon.split(/[\s,&+]+/).filter(w => w.length > 2 && !['the', 'and', 'feat'].includes(w));
-
                 function scoreResolveCandidate(s) {
                     let score = 0;
-                    const sTitlePhon = searchEngine.phonetics(s.title);
-                    const sArtPhon = searchEngine.phonetics(s.artist || '');
-                    const sAlbPhon = searchEngine.phonetics(s.album || '');
+                    const sTitle = (s.title || '').toLowerCase().trim();
+                    const qTitle = cleanTitle.toLowerCase().trim();
+                    const sCanon = normalizeCanonicalTitle(s.title);
+                    const qCanon = normalizeCanonicalTitle(cleanTitle);
 
-                    // Title phonetic matching
-                    if (sTitlePhon === qPhon) {
-                        score += 150;
-                    } else if (sTitlePhon.startsWith(qPhon) || qPhon.startsWith(sTitlePhon)) {
-                        score += 110;
-                    } else if (sTitlePhon.includes(qPhon) || qPhon.includes(sTitlePhon)) {
-                        score += 85;
+                    // Title Match
+                    if (sTitle === qTitle) {
+                        score += 500;
+                    } else if (sCanon && qCanon && sCanon === qCanon) {
+                        score += 420;
+                    } else if (sCanon && qCanon && (sCanon.startsWith(qCanon) || qCanon.startsWith(sCanon))) {
+                        score += 260;
+                    } else if (sCanon && qCanon && (sCanon.includes(qCanon) || qCanon.includes(sCanon))) {
+                        score += 180;
                     } else {
-                        const qWords = qPhon.split(' ').filter(w => w.length > 1);
-                        const sWords = sTitlePhon.split(' ').filter(w => w.length > 1);
-                        const matchCount = qWords.filter(w => sWords.includes(w)).length;
-                        if (matchCount > 0) {
-                            score += (matchCount / qWords.length) * 60;
+                        const sTitlePhon = searchEngine.phonetics(s.title);
+                        const qPhon = searchEngine.phonetics(cleanTitle);
+                        if (sTitlePhon === qPhon) score += 200;
+                        else if (sTitlePhon.includes(qPhon) || qPhon.includes(sTitlePhon)) score += 120;
+                    }
+
+                    // Album / Movie Match
+                    const candAlb = (s.album || '').toLowerCase().trim();
+                    const targetAlb = targetAlbum.toLowerCase().trim();
+                    if (targetAlb && candAlb) {
+                        const tCanon = normalizeCanonicalTitle(targetAlb);
+                        const cCanon = normalizeCanonicalTitle(candAlb);
+                        if (candAlb === targetAlb) {
+                            score += 350;
+                        } else if (tCanon && cCanon && (tCanon === cCanon || tCanon.includes(cCanon) || cCanon.includes(tCanon))) {
+                            score += 300;
+                        } else if (candAlb.includes(targetAlb) || targetAlb.includes(candAlb)) {
+                            score += 220;
                         }
                     }
 
-                    // Artist multi-token matching
-                    if (qArtistPhonTokens.length > 0) {
-                        let artistMatches = 0;
-                        for (const tok of qArtistPhonTokens) {
-                            if (sArtPhon.includes(tok)) artistMatches++;
+                    // Artist Match
+                    if (primaryArt) {
+                        const sArt = (s.artist || '').toLowerCase();
+                        const artTokens = primaryArt.toLowerCase().split(/[\s,&]+/).filter(w => w.length > 2);
+                        let artMatches = 0;
+                        for (const tok of artTokens) {
+                            if (sArt.includes(tok)) artMatches++;
                         }
-                        if (artistMatches >= 2) score += 90;
-                        else if (artistMatches === 1) score += 50;
-                        else score -= 40;
+                        if (artMatches >= 2) score += 180;
+                        else if (artMatches === 1) score += 120;
                     }
 
-                    // Film / Album match
-                    const targetAlbum = rawAlbum || film;
-                    if (targetAlbum) {
-                        const albPhon = searchEngine.phonetics(targetAlbum);
-                        if (sAlbPhon.includes(albPhon) || albPhon.includes(sAlbPhon)) {
-                            score += 140;
-                        }
+                    // Language Match
+                    if (detectedLang) {
+                        const sLang = (s.language || '').toLowerCase().trim();
+                        if (sLang === detectedLang) score += 140;
+                        else if (sLang && sLang !== 'unknown' && sLang !== detectedLang) score -= 350;
                     }
 
                     // Popularity boost
                     const pop = s.popularity || s.playCount || 0;
-                    if (pop > 0) {
-                        score += Math.min(25, Math.log10(pop + 1) * 4);
-                    }
+                    if (pop > 0) score += Math.min(25, Math.log10(pop + 1) * 3);
 
-                    // Penalize karaoke & cover tracks
-                    const rawLower = (s.title + " " + (s.artist || "") + " " + (s.album || "")).toLowerCase();
-                    if (/karaoke|instrumental|minus\s*one|cover|tribute/i.test(rawLower)) {
-                        score -= 200;
+                    // Heavy Penalty for unwanted versions (Remix, Karaoke, Cover, Lofi)
+                    const sLower = `${s.title} ${s.artist || ''} ${s.album || ''}`.toLowerCase();
+                    const qLower = `${rawTitle} ${rawArtist} ${rawAlbum}`.toLowerCase();
+                    const isRequested = (term) => qLower.includes(term);
+
+                    const penaltyTerms = [
+                        'remix', 'karaoke', 'instrumental', 'minus one', 'cover', 'tribute',
+                        'lofi', 'lo-fi', 'slowed', 'reverb', '8d', 'dialogue', 'teaser',
+                        'trailer', 'female version', 'male version', 'short', 'status'
+                    ];
+                    for (const pt of penaltyTerms) {
+                        if (sLower.includes(pt) && !isRequested(pt)) {
+                            score -= 450;
+                        }
                     }
 
                     return score;

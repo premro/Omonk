@@ -486,10 +486,10 @@ class AudioPlayerEngine {
             const prefix = getOmonkApiPrefix();
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), 6000);
-            const res = await fetch(
-                `${prefix}/api/resolve?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}`,
-                { signal: controller.signal }
-            );
+            let resolveUrl = `${prefix}/api/resolve?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}`;
+            if (track.album) resolveUrl += `&album=${encodeURIComponent(track.album)}`;
+            if (track.language || track.lang) resolveUrl += `&lang=${encodeURIComponent(track.language || track.lang)}`;
+            const res = await fetch(resolveUrl, { signal: controller.signal });
             clearTimeout(timer);
             if (!res.ok) return null;
             const data = await res.json();
@@ -503,6 +503,7 @@ class AudioPlayerEngine {
                 track.image = track.image || data.track.image;
                 track.artwork = track.artwork || data.track.artwork;
                 track.duration = track.duration || data.track.duration;
+                if (!track.album && data.track.album) track.album = data.track.album;
                 return su;
             }
         } catch (err) {
@@ -985,16 +986,19 @@ class AudioPlayerEngine {
                     }
                 }
             }
-            if (this.repeatMode !== 'all' && window.VibeEngine && typeof window.VibeEngine.getContinuousRadioTrack === 'function') {
+            if (!this.isSequentialContext && this.repeatMode !== 'all' && (this.queue.length - this.currentIndex <= 2) && window.VibeEngine && typeof window.VibeEngine.getContinuousRadioTrack === 'function') {
                 const cur = this.getCurrentTrack();
                 if (cur && !this._isPreloadingContinuousRadio) {
                     this._isPreloadingContinuousRadio = true;
                     window.VibeEngine.getContinuousRadioTrack(cur, this.history).then(newSong => {
                         this._isPreloadingContinuousRadio = false;
-                        if (newSong && newSong.streamUrl && !this.queue.some(q => String(q.id) === String(newSong.id))) {
-                            this.queue.push(newSong);
-                            if (this.onQueueChange) this.onQueueChange(this.queue, this.currentIndex);
-                            if (window.renderSideQueueContent) window.renderSideQueueContent();
+                        if (newSong && newSong.streamUrl) {
+                            const isDup = this.queue.some(q => String(q.id) === String(newSong.id) || isSameSongOrReprise(q.title, newSong.title) || (normalizeCanonicalTitle(q.title) && normalizeCanonicalTitle(q.title) === normalizeCanonicalTitle(newSong.title)));
+                            if (!isDup) {
+                                this.queue.push(newSong);
+                                if (this.onQueueChange) this.onQueueChange(this.queue, this.currentIndex);
+                                if (window.renderSideQueueContent) window.renderSideQueueContent();
+                            }
                         }
                     }).catch(() => { this._isPreloadingContinuousRadio = false; });
                 }
@@ -1120,7 +1124,7 @@ class AudioPlayerEngine {
             if (isSequential === null && queue.length > 1) {
                 this.isSequentialContext = true;
             }
-            if (!this.isSequentialContext || this.queue.length <= 1) {
+            if (!this.isSequentialContext && (!this.queue || this.queue.length <= 1)) {
                 this.seedVibeQueue(track);
             }
         } else if (!this.queue || this.queue.length === 0) {

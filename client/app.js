@@ -1952,6 +1952,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const startPlaylistPlayAll = () => {
             if (tracks.length > 0) {
                 AudioPlayer.isShuffled = false;
+                AudioPlayer.isSequentialContext = true;
+                AudioPlayer.currentContext = 'playlist';
                 const shuffleBtn = document.getElementById('shuffleBtn');
                 if (shuffleBtn) shuffleBtn.classList.remove('active');
                 AudioPlayer.playTrack(tracks[0], tracks, 0, true);
@@ -1962,10 +1964,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const startPlaylistShuffle = () => {
             if (tracks.length > 0) {
                 AudioPlayer.isShuffled = true;
+                AudioPlayer.isSequentialContext = true;
+                AudioPlayer.currentContext = 'playlist';
                 const shuffleBtn = document.getElementById('shuffleBtn');
                 if (shuffleBtn) shuffleBtn.classList.add('active');
                 const rnd = Math.floor(Math.random() * tracks.length);
-                AudioPlayer.playTrack(tracks[rnd], tracks, rnd);
+                AudioPlayer.playTrack(tracks[rnd], tracks, rnd, true);
                 showToast(`Shuffling ${playlist.name}`, '🔀');
             }
         };
@@ -3068,6 +3072,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Autoplay if requested (e.g. clicked green play button ▶)
         if (autoPlay && pl.tracks && pl.tracks.length > 0) {
+            AudioPlayer.isSequentialContext = true;
+            AudioPlayer.currentContext = 'playlist';
             AudioPlayer.playTrack(pl.tracks[0], pl.tracks, 0, true);
             showToast(`Playing "${pl.name}"`, '▶️');
         }
@@ -3295,7 +3301,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast(`Loading album "${album.title}"...`, '⏳');
         let albumTracks = album.tracks || [];
 
-        if ((!albumTracks || albumTracks.length === 0) && album.id) {
+        if ((!albumTracks || albumTracks.length <= 1) && (album.id || album.title)) {
             try {
                 const isCatalyst = typeof window !== 'undefined' && (
                     window.location.hostname.includes('catalystserverless') ||
@@ -3303,17 +3309,45 @@ document.addEventListener('DOMContentLoaded', async () => {
                     window.location.pathname.startsWith('/app')
                 );
                 const prefix = window.API_PREFIX || (isCatalyst ? '/server/music_api' : '');
-                const res = await fetch(`${prefix}/api/album?id=${encodeURIComponent(album.id)}`);
+                const res = await fetch(`${prefix}/api/album?id=${encodeURIComponent(album.id || '')}&title=${encodeURIComponent(album.title || '')}`);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.album && (data.album.tracks || data.album.songs)) {
-                        albumTracks = data.album.tracks || data.album.songs;
-                        album.tracks = albumTracks;
+                        const fetched = data.album.tracks || data.album.songs;
+                        if (fetched.length > albumTracks.length) {
+                            albumTracks = fetched;
+                            album.tracks = albumTracks;
+                        }
                     }
                 }
             } catch (e) {
                 console.warn('[Album] Failed to fetch full album tracks:', e);
             }
+        }
+
+        if (!albumTracks || albumTracks.length <= 1) {
+            try {
+                const isCatalyst = typeof window !== 'undefined' && (
+                    window.location.hostname.includes('catalystserverless') ||
+                    window.location.hostname.includes('zohocatalyst') ||
+                    window.location.pathname.startsWith('/app')
+                );
+                const prefix = window.API_PREFIX || (isCatalyst ? '/server/music_api' : '');
+                const normAlb = (album.title || '').toLowerCase().trim();
+                const sRes = await fetch(`${prefix}/api/search?q=${encodeURIComponent(album.title + ' album')}&limit=30`);
+                if (sRes.ok) {
+                    const sData = await sRes.json();
+                    const sSongs = sData.songs || sData.results || [];
+                    const matched = sSongs.filter(s => {
+                        const sAlb = (s.album || '').toLowerCase().trim();
+                        return sAlb && (sAlb === normAlb || sAlb.includes(normAlb) || normAlb.includes(sAlb));
+                    });
+                    if (matched.length > albumTracks.length) {
+                        albumTracks = matched;
+                        album.tracks = albumTracks;
+                    }
+                }
+            } catch (e) {}
         }
 
         if (!albumTracks || albumTracks.length === 0) {
@@ -3349,6 +3383,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             AudioPlayer.setCinemaPreset('cinemaReference');
         }
 
+        AudioPlayer.isSequentialContext = true;
+        AudioPlayer.currentContext = 'album';
         const toPlay = shuffle ? [...albumTracks].sort(() => Math.random() - 0.5) : [...albumTracks];
         AudioPlayer.playTrack(toPlay[0], toPlay, 0, !shuffle);
         showToast(shuffle ? `Shuffling movie album: ${album.title}` : `Playing movie: ${album.title} (Theatre Cinema Sound)`, '🎬');
@@ -3357,7 +3393,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function addAlbumToQueueOrderWise(album) {
         if (!album) return;
         let albumTracks = album.tracks || [];
-        if ((!albumTracks || albumTracks.length === 0) && album.id) {
+        if ((!albumTracks || albumTracks.length <= 1) && (album.id || album.title)) {
             try {
                 const isCatalyst = typeof window !== 'undefined' && (
                     window.location.hostname.includes('catalystserverless') ||
@@ -3365,15 +3401,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                     window.location.pathname.startsWith('/app')
                 );
                 const prefix = window.API_PREFIX || (isCatalyst ? '/server/music_api' : '');
-                const res = await fetch(`${prefix}/api/album?id=${encodeURIComponent(album.id)}`);
+                const res = await fetch(`${prefix}/api/album?id=${encodeURIComponent(album.id || '')}&title=${encodeURIComponent(album.title || '')}`);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.album && (data.album.tracks || data.album.songs)) {
-                        albumTracks = data.album.tracks || data.album.songs;
-                        album.tracks = albumTracks;
+                        const fetched = data.album.tracks || data.album.songs;
+                        if (fetched.length > albumTracks.length) {
+                            albumTracks = fetched;
+                            album.tracks = albumTracks;
+                        }
                     }
                 }
             } catch (e) {}
+        }
+        if (!albumTracks || albumTracks.length === 0) {
+            const normAlb = (album.title || '').toLowerCase().trim();
+            albumTracks = (allLoadedSongs || []).filter(s => {
+                const sAlb = (s.album || '').toLowerCase().trim();
+                return sAlb && (sAlb === normAlb || sAlb.includes(normAlb) || normAlb.includes(sAlb));
+            });
         }
         if (albumTracks && albumTracks.length > 0) {
             const formatted = albumTracks.map(t => ({

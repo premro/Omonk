@@ -104,6 +104,7 @@ function cleanTrackName(title) {
         .replace(/^\s*\d+[\.\-\)]\s*/, '')
         .replace(/[\(\[\{][^\)\]\}]*(?:remaster|official|audio|video|lyrics?|version|4k|8k|hd|uhd|full)[^\)\]\}]*[\)\]\}]/gi, '')
         .replace(/\s*[-–—:]\s*(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical\s*song|lyrical|lyrics|music\s*video|official\s*video|official\s*audio|official|jukebox|audio\s*jukebox|remastered|status|shorts)\b.*$/gi, '')
+        .replace(/\s+(?:(?:hd|4k|8k|60fps|uhd|full\s*hd)\s+)?(?:video\s*song|video|audio\s*song|audio|lyrical\s*video|lyrical\s*song|lyrical|lyrics|music\s*video|official\s*video|official\s*audio|official|jukebox|full\s*song)\s*$/gi, '')
         .replace(/ (Official Video|Official Audio|Music Video|Lyrical Video|Lyrical|Lyric Video|Video Song|Audio Song|4K|8K|60FPS|Full Song|HD|Remastered|Jukebox|Full Album|Audio Jukebox|status|shorts) /gi, '')
         .replace(/\|\s*.*$/, '')
         .replace(/[\(\[\{]\s*[\)\]\}]/g, '')
@@ -137,15 +138,37 @@ function parseYouTubeTitle(rawTitle, authorName = '') {
     let album = '';
 
     const knownArtists = [
-        'madcon', 'ed sheeran', 'anirudh', 'anirudh ravichander', 'a.r. rahman', 'ar rahman',
-        'ilayaraja', 'ilayaraaja', 'yuvan', 'yuvan shankar raja', 'harris jayaraj', 'pradeep kumar',
-        'sid sriram', 'spb', 'dhanush', 'the weeknd', 'taylor swift', 'dua lipa', 'justin bieber',
-        's.a. rajkumar', 'sa rajkumar', 'deva', 'vidyasagar', 'immann', 'd. imman', 'santhosh narayanan'
+        'anirudh', 'anirudh ravichander', 'a.r. rahman', 'ar rahman', 'ilayaraja', 'ilayaraaja', 'ilaiyaraaja',
+        'yuvan', 'yuvan shankar raja', 'harris jayaraj', 'pradeep kumar', 'sid sriram', 'spb', 's.p. balasubrahmanyam',
+        'dhanush', 'the weeknd', 'taylor swift', 'dua lipa', 'justin bieber', 'ed sheeran', 'billie eilish', 'bad bunny',
+        's.a. rajkumar', 'sa rajkumar', 'deva', 'vidyasagar', 'd. imman', 'imman', 'immann', 'santhosh narayanan',
+        'sushin shyam', 'sushin', 'devi sri prasad', 'dsp', 'thaman', 'thaman s', 'g.v. prakash', 'gv prakash',
+        'hiphop tamizha', 'shreya ghoshal', 'arijit singh', 'arijit', 'karan aujla', 'diljit dosanjh', 'diljit',
+        'badshah', 'pritam', 'neha kakkar', 'atif aslam', 's. janaki', 'k.s. chithra', 'chithra', 'k.j. yesudas',
+        'yesudas', 'hariharan', 'shankar mahadevan', 'vijay antony', 'sai abhyankkar', 'sam c.s.', 'sam cs',
+        'stephen sanchez', 'sabrina carpenter', 'bruno mars', 'post malone', 'drake', 'coldplay', 'madcon'
     ];
+
+    const junkChannelLabels = [
+        'sun tv', 'sun pictures', 'sony music south', 'sony music', 'think music', 'think music india',
+        't-series', 'tseries', 'zee music company', 'zee music south', 'zee music', 'saregama', 'saregama tamil',
+        'lahari music', 'aditya music', 'speed audio', 'muzik247', 'tips official', 'tips', 'yrf', 'eros now',
+        'rajshri', 'speed records', 'white hill music', 'geetha arts', 'lyca productions', 'red giant movies',
+        'svf', 'sathya movies', 'ag entertainment', 'prk audio', 'anand audio', 'vevo'
+    ];
+
+    const isJunkLabel = (str) => {
+        if (!str) return true;
+        const low = str.toLowerCase().trim();
+        if (junkChannelLabels.some(jl => low === jl || low.startsWith(jl))) return true;
+        if (/\b(vevo|records|record label|official channel|topic|channel|studios|productions|entertainment|music company)\b/i.test(low)) return true;
+        if (/\b(directed by|director|producer|starring|choreography|cinematography|dop)\b/i.test(low)) return true;
+        return false;
+    };
 
     if (usefulSegments.length === 0) {
         title = rawTitle.replace(/[-–—|].*$/, '').trim();
-        artist = authorName || 'Various Artists';
+        artist = !isJunkLabel(authorName) ? authorName : 'Various Artists';
     } else if (usefulSegments.length === 1) {
         const seg = usefulSegments[0];
         const dashParts = seg.split(/\s*[-–—]\s*/);
@@ -165,14 +188,47 @@ function parseYouTubeTitle(rawTitle, authorName = '') {
             }
         } else {
             title = seg;
-            artist = authorName || 'Various Artists';
+            artist = !isJunkLabel(authorName) ? authorName : 'Various Artists';
         }
     } else {
         title = usefulSegments[0];
-        album = usefulSegments[1];
-        artist = usefulSegments.length > 2 ? usefulSegments[usefulSegments.length - 1] : usefulSegments[1];
+        const dashInSeg0 = title.split(/\s*[-–—]\s*/);
+        if (dashInSeg0.length >= 2) {
+            if (knownArtists.some(k => dashInSeg0[0].toLowerCase().includes(k))) {
+                artist = dashInSeg0[0].trim();
+                title = dashInSeg0.slice(1).join(' - ').trim();
+            } else if (/video|audio|lyrical|song|full/i.test(dashInSeg0[1])) {
+                title = dashInSeg0[0].trim();
+            }
+        }
+
+        const otherSegments = usefulSegments.slice(1);
+        for (const seg of otherSegments) {
+            if (knownArtists.some(k => seg.toLowerCase().includes(k)) || /\b(singers?|vocals?|composer|music by)\b/i.test(seg)) {
+                if (!artist) artist = seg;
+            } else if (!album && !isJunkLabel(seg) && !/\b(directed|starring|dop|producer)\b/i.test(seg)) {
+                album = seg;
+            }
+        }
+
+        if (!artist) {
+            for (const seg of otherSegments) {
+                if (seg !== album && !isJunkLabel(seg)) {
+                    artist = seg;
+                    break;
+                }
+            }
+        }
+
+        if (!artist) {
+            artist = !isJunkLabel(authorName) ? authorName : 'Various Artists';
+        }
+        if (!album && otherSegments.length > 0 && !isJunkLabel(otherSegments[0])) {
+            album = otherSegments[0];
+        }
     }
 
+    title = cleanTrackName(title) || title;
     return { title, artist, album };
 }
 
@@ -622,11 +678,13 @@ async function importSpotify(inputUrl) {
             if (type === 'track') {
                 const artistsList = (entity?.artists || []).map(a => a.name).filter(Boolean);
                 const artistName = artistsList.join(', ') || entity?.subtitle || 'Spotify Artist';
+                const albumName = entity?.album?.name || (type === 'album' ? title : '');
                 const singleTrack = {
                     id: `sp_${id}`,
                     spotifyId: id,
                     title: cleanTrackName(entity?.title || title) || title,
                     artist: artistName,
+                    album: albumName,
                     duration: Math.round((entity?.duration || 210000) / 1000),
                     artwork: cover,
                     quality: 'FLAC / 320kbps Hi-Fi'
@@ -648,11 +706,13 @@ async function importSpotify(inputUrl) {
             const tracks = trackList.map((t, idx) => {
                 const artistsList = (t.artists || []).map(a => a.name).filter(Boolean);
                 const artistName = artistsList.join(', ') || t.subtitle || '';
+                const albumName = (t.album?.name || t.album || (type === 'album' ? title : '') || '');
                 return {
                     id: `sp_${t.id || id + '_' + idx}`,
                     spotifyId: t.id || id,
                     title: cleanTrackName(t.title) || t.title,
                     artist: artistName,
+                    album: albumName,
                     duration: Math.round((t.duration || 210000) / 1000),
                     artwork: cover,
                     quality: 'FLAC / 320kbps Hi-Fi'
@@ -760,5 +820,6 @@ function importText(text) {
 module.exports = {
     importYouTube,
     importSpotify,
-    importText
+    importText,
+    parseYouTubeTitle
 };

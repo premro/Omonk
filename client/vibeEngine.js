@@ -631,14 +631,35 @@
     const curCanon = normalizeCanonicalTitle(currentTrack.title);
     if (curCanon) historyCanon.add(curCanon);
 
+    // Queue deduplication
+    const queueTracks = (typeof window !== 'undefined' && window.AudioPlayer && Array.isArray(window.AudioPlayer.queue))
+      ? window.AudioPlayer.queue
+      : [];
+    const queueIds = new Set(queueTracks.map(q => String(q?.id)).filter(Boolean));
+    const queueTitles = new Set(queueTracks.map(q => (q?.title || '').toLowerCase().trim()).filter(Boolean));
+    const queueCanon = new Set(queueTracks.map(q => normalizeCanonicalTitle(q?.title)).filter(Boolean));
+
+    const seedLang = detectLanguage(currentTrack);
+    const seedVibe = detectVibeCategory(currentTrack);
+
     const isNotDuplicate = (cand) => {
       if (!cand || !cand.id || !cand.title) return false;
       const titleKey = cand.title.toLowerCase().trim();
       const canonKey = normalizeCanonicalTitle(cand.title);
       if (isSameSongOrReprise(cand.title, currentTrack.title)) return false;
-      if (historyIds.has(String(cand.id))) return false;
-      if (historyTitles.has(titleKey)) return false;
-      if (canonKey && historyCanon.has(canonKey)) return false;
+      if (historyIds.has(String(cand.id)) || queueIds.has(String(cand.id))) return false;
+      if (historyTitles.has(titleKey) || queueTitles.has(titleKey)) return false;
+      if (canonKey && (historyCanon.has(canonKey) || queueCanon.has(canonKey))) return false;
+
+      // Language check
+      if (seedLang && cand.language && cand.language !== 'unknown' && cand.language.toLowerCase().trim() !== seedLang) {
+        return false;
+      }
+      // Vibe check
+      const candVibe = detectVibeCategory(cand);
+      if (seedVibe === 'sad' && (candVibe === 'dance' || candVibe === 'mass')) return false;
+      if ((seedVibe === 'dance' || seedVibe === 'mass') && candVibe === 'sad') return false;
+
       return true;
     };
 
@@ -756,9 +777,15 @@
 
     const candidates = [];
     const seen = new Set();
+    const seenCanon = new Set();
+    const albumCount = new Map();
+    const artistCount = new Map();
+
     if (seedTrack.id) seen.add(String(seedTrack.id));
     if (seedTrack.title) {
       seen.add((seedTrack.title + ' ' + (seedTrack.artist || '')).toLowerCase().trim());
+      const sCanon = normalizeCanonicalTitle(seedTrack.title);
+      if (sCanon) seenCanon.add(sCanon);
     }
 
     function addCandidate(raw) {
@@ -766,10 +793,30 @@
       const title = raw.title || raw.name || '';
       if (!title) return;
       if (isSameSongOrReprise(title, seedTrack.title)) return;
+      const canon = normalizeCanonicalTitle(title);
+      if (canon && seenCanon.has(canon)) return;
+
       const candFull = `${title} ${raw.artist || ''} ${raw.album || ''}`.toLowerCase();
       if (/karaoke|instrumental|minus\s*one|party\s*tyme|prosource|ameritz|serene\s*songs|made\s*pop|backing\s*version|tribute/i.test(candFull)) {
         return;
       }
+
+      // Diversity Rule 1: Strict Album Diversity (max 1 track per movie/album across queue)
+      const rawAlb = (typeof raw.album === 'string' ? raw.album : raw.album?.name) || '';
+      const albKey = rawAlb.toLowerCase().replace(/\(.*?\)/g, '').replace(/soundtrack|theme|single|ost|ep/gi, '').trim();
+      if (albKey && albKey.length > 2) {
+        const aCnt = albumCount.get(albKey) || 0;
+        if (aCnt >= 1) return;
+      }
+
+      // Diversity Rule 2: Artist Diversity (max 2 tracks per artist)
+      const rawArt = (typeof raw.artist === 'string' ? raw.artist : (raw.artists?.primary?.[0]?.name || ''));
+      const artKey = rawArt.split(/[,&]/)[0].toLowerCase().trim();
+      if (artKey) {
+        const artCnt = artistCount.get(artKey) || 0;
+        if (artCnt >= 2) return;
+      }
+
       const key = (title + ' ' + (raw.artist || (raw.artists?.primary?.[0]?.name) || '')).toLowerCase().trim();
       if (seen.has(key)) return;
       const id = String(raw.id || ('cand_' + Math.random().toString(36).slice(2, 9)));
@@ -816,6 +863,9 @@
 
       seen.add(key);
       seen.add(id);
+      if (canon) seenCanon.add(canon);
+      if (albKey && albKey.length > 2) albumCount.set(albKey, (albumCount.get(albKey) || 0) + 1);
+      if (artKey) artistCount.set(artKey, (artistCount.get(artKey) || 0) + 1);
       candidates.push(cand);
     }
 
