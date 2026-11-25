@@ -3234,10 +3234,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const found = window.TypeaheadTrackMap?.get(String(trId)) || (window.AllSongPool || []).find(t => String(t.id) === String(trId));
                 if (found) {
                     hideTypeahead();
-                    const trackPool = (suggestions.tracks && suggestions.tracks.length > 0) ? suggestions.tracks : [found];
-                    const trIdx = trackPool.findIndex(t => String(t.id) === String(found.id));
-                    AudioPlayer.playTrack(found, trackPool, trIdx >= 0 ? trIdx : 0, false);
-                    showToast(`Playing "${found.title}"`, '▶️');
+                    AudioPlayer.isSequentialContext = false;
+                    AudioPlayer.currentContext = 'vibe';
+                    AudioPlayer.playTrackWithVibeRadio(found);
+                    showToast(`Playing "${found.title}" with Vibe Flow`, '✨');
                 }
             });
         });
@@ -4044,14 +4044,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (topResultItem) {
             const handleTopPlay = () => {
                 if (topResultType === 'song') {
-                    if (songs && Array.isArray(songs) && songs.length > 0) {
-                        AudioPlayer.playTrack(topResultItem, songs, 0, true);
-                    } else if (typeof AudioPlayer.playTrackWithVibeRadio === 'function') {
-                        AudioPlayer.playTrackWithVibeRadio(topResultItem);
-                    } else {
-                        AudioPlayer.playTrack(topResultItem, [topResultItem], 0, true);
-                    }
-                    showToast(`Playing "${topResultItem.title}" with Vibe Flow`, '▶️');
+                    AudioPlayer.isSequentialContext = false;
+                    AudioPlayer.currentContext = 'vibe';
+                    AudioPlayer.playTrackWithVibeRadio(topResultItem);
+                    showToast(`Playing "${topResultItem.title}" with Vibe Flow`, '✨');
                 } else if (topResultType === 'playlist') {
                     openAndPlayPlaylist(topResultItem, true);
                 } else if (topResultType === 'album') {
@@ -5789,17 +5785,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // 2. Clicking a song that is not playing:
-        if (currentView === 'playlist' || currentView === 'playlist-detail' || currentView === 'album' || currentView === 'album-detail' || currentView === 'liked' || currentView === 'offline' || currentView === 'search' || (pool && Array.isArray(pool) && pool.length > 1)) {
+        const isAlbumContext = currentView === 'album' || currentView === 'album-detail';
+        const isPlaylistContext = currentView === 'playlist' || currentView === 'playlist-detail' || currentView === 'liked' || currentView === 'offline';
+
+        if (isAlbumContext || isPlaylistContext) {
             const effectivePool = (pool && Array.isArray(pool) && pool.length > 0) ? pool : (typeof allLoadedSongs !== 'undefined' && allLoadedSongs.length > 0 ? allLoadedSongs : (window.allLoadedSongs || [track]));
             const trackIdx = effectivePool.findIndex(t => String(t.id) === String(track.id) || (t.title && track.title && t.title === track.title));
             const finalIdx = trackIdx >= 0 ? trackIdx : idx;
 
+            AudioPlayer.isSequentialContext = true;
+            AudioPlayer.currentContext = isAlbumContext ? 'album' : 'playlist';
             AudioPlayer.playTrack(track, effectivePool, finalIdx, true);
             syncAllSongRowPlayButtons(true);
             showToast(`Playing "${track.title}"`, '▶️');
         } else {
-            // In Search, Home, Artists, or general tracks:
-            // Play with dynamic Vibe Flow matching the acoustic vibe of the selected song!
+            // In Search, Home, Hits, Discover, Artists, or general tracks:
+            // When manually playing one song, seed with dynamic Spotify Vibe Recommendation
+            // matching the acoustic vibe, language, and mood of the selected track!
+            AudioPlayer.isSequentialContext = false;
+            AudioPlayer.currentContext = 'vibe';
             AudioPlayer.playTrackWithVibeRadio(track);
             syncAllSongRowPlayButtons(true);
             showToast(`Playing "${track.title}" with Vibe Flow`, '✨');

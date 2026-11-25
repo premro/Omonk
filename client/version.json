@@ -1,5 +1,5 @@
 {
-  "version": "8.19.2",
+  "version": "8.19.3",
   "releaseDate": "2026-11-25",
-  "description": "v8.19.2 Lossless Music Flow: Autonomous vibe coherence, sequential album & playlist Play All, refined multi-tier YouTube & Spotify import resolution, Vercel & Catalyst sync."
+  "description": "v8.19.3: Manual song playback strictly seeds dynamic Spotify Vibe Autoplay instead of enqueueing search results; preserves sequential context only on albums and playlists."
 }

@@ -743,7 +743,7 @@
         const tracks = json.tracks || [];
         for (const t of tracks) {
           const titleKey = (t.title || '').toLowerCase().trim();
-          if (t && t.streamUrl && !seen.has(String(t.id)) && !seen.has(titleKey)) {
+          if (t && t.title && !seen.has(String(t.id)) && !seen.has(titleKey)) {
             seen.add(String(t.id));
             seen.add(titleKey);
             queue.push(t);

@@ -1065,21 +1065,22 @@ class AudioPlayerEngine {
 
             if (radioTracks && radioTracks.length > 1) {
                 const cur = this.getCurrentTrack();
-                if (cur && (cur.id === track.id || (cur.title || '').toLowerCase().trim() === (track.title || '').toLowerCase().trim())) {
+                if (!cur || cur.id === track.id || (cur.title || '').toLowerCase().trim() === (track.title || '').toLowerCase().trim()) {
+                    const activeCur = cur || track;
                     const historyIds = new Set((this.history || []).map(h => String(h.id)));
                     const historyTitles = new Set((this.history || []).map(h => (h.title || '').toLowerCase().trim()));
                     const historyCanon = new Set((this.history || []).map(h => normalizeCanonicalTitle(h.title)).filter(Boolean));
-                    const seenCanon = new Set([normalizeCanonicalTitle(cur.title)].filter(Boolean));
+                    const seenCanon = new Set([normalizeCanonicalTitle(activeCur.title)].filter(Boolean));
                     const remaining = radioTracks.filter(t => {
                         const canon = normalizeCanonicalTitle(t.title);
-                        if (!t.id || String(t.id) === String(cur.id)) return false;
-                        if (isSameSongOrReprise(t.title, cur.title)) return false;
+                        if (!t.id || String(t.id) === String(activeCur.id)) return false;
+                        if (isSameSongOrReprise(t.title, activeCur.title)) return false;
                         if (historyIds.has(String(t.id)) || historyTitles.has((t.title || '').toLowerCase().trim())) return false;
                         if (canon && (historyCanon.has(canon) || seenCanon.has(canon))) return false;
                         if (canon) seenCanon.add(canon);
                         return true;
                     });
-                    this.queue = [cur, ...remaining];
+                    this.queue = [activeCur, ...remaining];
                     this.currentIndex = 0;
                     if (this.onQueueChange) this.onQueueChange(this.queue, this.currentIndex);
                     if (typeof window !== 'undefined' && typeof window.renderSideQueueContent === 'function') {
