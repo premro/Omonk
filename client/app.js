@@ -83,6 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentArtistLang = 'all';
     let likedTrackIds = new Set();
     let likedTracksMap = new Map();
+    window.likedTrackIds = likedTrackIds;
 
     function getLikedKey() {
         return (window.ProfileManager && window.ProfileManager.getStorageKey) 
@@ -100,10 +101,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         let stored = localStorage.getItem(key) || localStorage.getItem('liked_tracks_ids') || '[]';
         let storedData = localStorage.getItem(dataKey) || localStorage.getItem('liked_tracks_data') || '[]';
         try {
-            likedTrackIds = new Set(JSON.parse(stored));
+            const parsedIds = JSON.parse(stored);
+            likedTrackIds = new Set(Array.isArray(parsedIds) ? parsedIds.map(id => String(id)) : []);
         } catch(e) {
             likedTrackIds = new Set();
         }
+        window.likedTrackIds = likedTrackIds;
         try {
             const arr = JSON.parse(storedData);
             likedTracksMap = new Map();
@@ -812,6 +815,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             await renderPodcastDetailView(param);
         } else if (viewName === 'liked') {
             await renderLikedView();
+        } else if (viewName === 'recent') {
+            await renderRecentView();
+        } else {
+            await renderHomeView();
         }
     }
 
@@ -1239,7 +1246,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('.artist-shelf-item').forEach(item => {
             item.addEventListener('click', () => {
                 const artistId = item.getAttribute('data-artist-id');
-                renderArtistDetailView(artistId);
+                renderView('artist-detail', artistId);
             });
         });
 
@@ -1417,10 +1424,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const startArtistShuffle = () => {
             if (tracks.length > 0) {
                 AudioPlayer.isShuffled = true;
+                AudioPlayer.isSequentialContext = true;
+                AudioPlayer.currentContext = 'playlist';
                 const shuffleBtn = document.getElementById('shuffleBtn');
                 if (shuffleBtn) shuffleBtn.classList.add('active');
                 const rnd = Math.floor(Math.random() * tracks.length);
-                AudioPlayer.playTrack(tracks[rnd], tracks, rnd);
+                AudioPlayer.playTrack(tracks[rnd], tracks, rnd, true);
                 showToast(`Shuffling songs by ${artist.name}`, '🔀');
             }
         };
@@ -2010,6 +2019,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('shufflePlaylistBtn')?.addEventListener('click', startPlaylistShuffle);
         document.getElementById('playlistSectionShuffleBtn')?.addEventListener('click', startPlaylistShuffle);
 
+        const savePlBtn = document.getElementById('savePlaylistBtn');
+        if (savePlBtn) {
+            savePlBtn.addEventListener('click', () => {
+                if (typeof Importer !== 'undefined' && Importer.playlists) {
+                    const exists = Importer.playlists.some(p => p.id === playlist.id);
+                    if (!exists) {
+                        Importer.playlists.unshift(playlist);
+                    }
+                    Importer.savePlaylists();
+                    savePlBtn.classList.add('active');
+                    savePlBtn.style.color = '#00d2ff';
+                    showToast(`Saved "${playlist.name}" to Your Library!`, '✅');
+                }
+            });
+        }
+
+        const morePlBtn = document.getElementById('morePlaylistBtn');
+        if (morePlBtn) {
+            morePlBtn.addEventListener('click', () => {
+                tracks.forEach(t => AudioPlayer.addToQueue(t));
+                showToast(`Added ${tracks.length} tracks from "${playlist.name}" to Queue`, '➕');
+            });
+        }
+
         document.getElementById('deletePlaylistBtn')?.addEventListener('click', () => {
             if (confirm(`Delete playlist "${playlist.name}"?`)) {
                 Importer.deletePlaylist(playlist.id);
@@ -2372,6 +2405,77 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // 3H-0. Recently Played View
+    async function renderRecentView() {
+        const merged = [];
+        const seenIds = new Set();
+        const pushUnique = (t) => {
+            if (!t || (!t.id && !t.title)) return;
+            const k = String(t.id || t.title);
+            if (seenIds.has(k)) return;
+            seenIds.add(k);
+            merged.push(t);
+        };
+
+        if (AudioPlayer && Array.isArray(AudioPlayer.history)) {
+            [...AudioPlayer.history].reverse().forEach(pushUnique);
+        }
+        try {
+            const profId = (window.ProfileManager && window.ProfileManager.getActiveProfileId)
+                ? window.ProfileManager.getActiveProfileId()
+                : 'primary';
+            const rawState = localStorage.getItem(`lossless_prof_${profId}_playback_state`);
+            if (rawState) {
+                const st = JSON.parse(rawState);
+                if (st?.track) pushUnique(st.track);
+                if (Array.isArray(st?.history)) [...st.history].reverse().forEach(pushUnique);
+            }
+        } catch (e) {}
+
+        if (window.SpotifyEngine && typeof window.SpotifyEngine.getProfile === 'function') {
+            const spHist = window.SpotifyEngine.getProfile()?.history || [];
+            for (const h of spHist) {
+                const found = findTrackById(h.id) || (window.AllSongPool || []).find(s => String(s.id) === String(h.id));
+                if (found) pushUnique(found);
+                else if (h.title) {
+                    pushUnique({
+                        id: String(h.id || ('rec_' + Math.random().toString(36).slice(2, 8))),
+                        title: h.title,
+                        artist: h.artist || 'Lossless Artist',
+                        album: h.album || 'Recently Played',
+                        duration: h.duration || 210,
+                        artwork: h.artwork || '',
+                        quality: 'FLAC / 320kbps Hi-Fi'
+                    });
+                }
+            }
+        }
+
+        allLoadedSongs = [...merged];
+        window.AllSongPool = allLoadedSongs;
+
+        const html = `
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <h1 class="section-title">🕒 Recently Played</h1>
+                    <span class="section-subtitle">${merged.length} tracks in your session history</span>
+                </div>
+            </div>
+            ${merged.length === 0 ? `
+                <div style="text-align: center; padding: 60px; color: var(--text-muted);">
+                    <div style="font-size: 40px; margin-bottom: 10px;">🕒</div>
+                    <p>No recently played songs yet. Start listening to build your history!</p>
+                </div>
+            ` : `
+                <div class="track-table">
+                    ${renderTrackRowsHtml(merged)}
+                </div>
+            `}
+        `;
+        contentScroll.innerHTML = html;
+        bindTrackRowEvents(merged);
+    }
+
     // 3H. Liked Songs View
     async function renderLikedView() {
         const likedTracks = Array.from(likedTracksMap.values()).reverse();
@@ -2428,7 +2532,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return tracks.map((t, idx) => {
             const isCurrentTrack = currentTrack && String(currentTrack.id) === String(t.id);
             const isPlayingThis = isCurrentTrack && isAudioPlaying;
-            const isLiked = likedTrackIds.has(t.id);
+            const isLiked = likedTrackIds.has(String(t.id));
             const isDownloaded = (window.OfflineManager && window.OfflineManager.isSongDownloaded && window.OfflineManager.isSongDownloaded(t.id)) || false;
             const rank = t.rank || (idx + 1);
             const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
@@ -2611,7 +2715,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const trackId = row.getAttribute('data-track-id');
             const idx = parseInt(row.getAttribute('data-index'), 10);
             const pool = tracksList || allLoadedSongs;
-            const track = pool.find(t => t.id === trackId) || pool[idx];
+            const track = pool.find(t => String(t.id) === String(trackId)) || pool[idx];
 
             // 1. Direct click on Play/Pause button on song row
             const playBtn = row.querySelector('.row-play-btn');
@@ -2994,8 +3098,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         .replace(/[^\w\s\u0B80-\u0BFF]/gi, ' ')
                         .replace(/hits?|playlist|collection|songs?/gi, '')
                         .trim() || 'tamil gana';
-                    const q = `${searchKeywords} tamil`.trim();
-                    const res = await fetch(`${API_PREFIX}/api/search?q=${encodeURIComponent(q)}&limit=30&lang=tamil`);
+                    const plLang = (playlistObj.language || '').trim();
+                    const q = `${searchKeywords} ${plLang}`.trim();
+                    const langParam = plLang ? `&lang=${encodeURIComponent(plLang)}` : '';
+                    const res = await fetch(`${API_PREFIX}/api/search?q=${encodeURIComponent(q)}&limit=30${langParam}`);
                     const data = await res.json();
                     const candidates = data.results || data.songs || data.data?.results || [];
                     if (candidates.length > 0) {
@@ -3065,10 +3171,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // Render Playlist Detail Screen
-        if (typeof renderPlaylistDetailView === 'function') {
-            await renderPlaylistDetailView(pl.id);
-        }
+        // Render Playlist Detail Screen cleanly via renderView so currentView updates
+        await renderView('playlist-detail', pl.id);
 
         // Autoplay if requested (e.g. clicked green play button ▶)
         if (autoPlay && pl.tracks && pl.tracks.length > 0) {
@@ -3249,7 +3353,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const trId = btn.getAttribute('data-queue-id');
                 const found = window.TypeaheadTrackMap?.get(String(trId)) || (window.AllSongPool || []).find(t => String(t.id) === String(trId));
                 if (found) {
-                    AudioPlayer.addToUserQueue(found);
+                    AudioPlayer.addToQueue(found);
                     btn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#00d2ff" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
                     showToast(`Added to queue: ${found.title}`, '➕');
                     setTimeout(() => {
@@ -3800,15 +3904,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             container.innerHTML = `
                 <div class="search-playlists-grid">
-                    ${artists.map(art => `
-                        <div class="search-playlist-card" style="align-items: center; text-align: center;">
-                            <img class="search-playlist-art" src="${art.artwork || 'icon-512.png'}" style="border-radius: 50%; max-width: 140px;" alt="${art.name}">
-                            <div class="search-playlist-title">${art.name}</div>
-                            <div class="search-playlist-sub">Artist • Studio Creator</div>
+                    ${artists.map(art => {
+                        const aName = art.name || art.title || 'Artist';
+                        return `
+                        <div class="search-playlist-card search-artist-card" data-artist-query="${escapeHtml(aName)}" style="align-items: center; text-align: center; cursor: pointer;">
+                            <img class="search-playlist-art" src="${art.artwork || 'icon-512.png'}" style="border-radius: 50%; max-width: 140px;" alt="${escapeHtml(aName)}" onerror="this.onerror=null;this.src='icon-512.png';">
+                            <div class="search-playlist-title">${escapeHtml(aName)}</div>
+                            <div class="search-playlist-sub">${escapeHtml(art.role || 'Artist')} • Studio Creator</div>
                         </div>
-                    `).join('')}
+                    `;
+                    }).join('')}
                 </div>
             `;
+            container.querySelectorAll('.search-artist-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const qName = card.getAttribute('data-artist-query');
+                    if (qName) renderView('artist-detail', qName);
+                });
+            });
             return;
         }
 
@@ -3861,16 +3974,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (topResultType && topResultItem) {
             const isSong = topResultType === 'song';
             const isAlbum = topResultType === 'album';
+            const isArtist = topResultType === 'artist';
             const isPlaylist = topResultType === 'playlist';
 
             const itemTitle = topResultItem.title || topResultItem.name;
             const itemArt = topResultItem.artwork || topResultItem.image || 'icon-512.png';
             const itemSub = isSong 
                 ? `${topResultItem.artist} • ${topResultItem.album || 'Single'}`
+                : isArtist
+                ? `${topResultItem.role || 'Artist'} • Studio Verified`
                 : isAlbum 
                 ? `${topResultItem.artist || 'Soundtrack'} • ${topResultItem.year || 'Album'}`
                 : `${topResultItem.creator || 'Curated Collection'} • ${topResultItem.songCount ? topResultItem.songCount + ' Tracks' : 'Lossless Playlist'}`;
-            const badgeLabel = isSong ? 'Song' : isAlbum ? 'Album' : 'Playlist';
+            const badgeLabel = isSong ? 'Song' : isArtist ? 'Artist' : isAlbum ? 'Album' : 'Playlist';
 
             const topSongs = (topResultType === 'song' && songs.length > 1) ? songs.filter(s => String(s.id) !== String(topResultItem.id)).slice(0, 4) : songs.slice(0, 4);
 
@@ -3879,7 +3995,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <!-- Left Column: Top result -->
                     <div class="spotify-top-result-col">
                         <h2 class="spotify-section-heading">Top result</h2>
-                        <div class="spotify-top-result-card" id="topResultCard">
+                        <div class="spotify-top-result-card" id="topResultCard" data-song-id="${isSong ? escapeHtml(String(topResultItem.id || '')) : ''}">
                             <img class="spotify-top-result-art" src="${itemArt}" alt="${itemTitle}" onerror="this.onerror=null;this.src='icon-512.png';">
                             <div class="spotify-top-result-title">${itemTitle}</div>
                             <div class="spotify-top-result-meta">
@@ -3898,7 +4014,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                         </svg>
                                     </button>
                                 ` : ''}
-                                <button class="spotify-top-result-play" id="playTopResultBtn" title="Play Now">
+                                <button class="spotify-top-result-play" id="playTopResultBtn" data-song-id="${isSong ? escapeHtml(String(topResultItem.id || '')) : ''}" title="Play Now">
                                     <svg viewBox="0 0 24 24" width="22" height="22" fill="#000"><path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l11.08-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14z"/></svg>
                                 </button>
                             </div>
@@ -4044,10 +4160,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (topResultItem) {
             const handleTopPlay = () => {
                 if (topResultType === 'song') {
-                    AudioPlayer.isSequentialContext = false;
-                    AudioPlayer.currentContext = 'vibe';
-                    AudioPlayer.playTrackWithVibeRadio(topResultItem);
-                    showToast(`Playing "${topResultItem.title}" with Vibe Flow`, '✨');
+                    handleSongPlayPauseToggle(topResultItem, songs, 0);
+                } else if (topResultType === 'artist') {
+                    renderView('artist-detail', topResultItem.name || topResultItem.title || topResultItem.id);
                 } else if (topResultType === 'playlist') {
                     openAndPlayPlaylist(topResultItem, true);
                 } else if (topResultType === 'album') {
@@ -4473,8 +4588,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 e.stopPropagation();
                 const idx = parseInt(btn.getAttribute('data-remove-queue'), 10);
                 if (idx > AudioPlayer.currentIndex && idx < AudioPlayer.queue.length) {
-                    AudioPlayer.queue.splice(idx, 1);
-                    renderSideQueueContent();
+                    AudioPlayer.removeFromQueue(idx);
                     showToast('Removed from queue', '🗑️');
                 }
             });
@@ -4482,12 +4596,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Shuffle Queue
         document.getElementById('sideShuffleQueueBtn')?.addEventListener('click', () => {
-            const currentIdx = AudioPlayer.currentIndex || 0;
+            const currentIdx = Math.max(0, AudioPlayer.currentIndex || 0);
             const up = AudioPlayer.queue.slice(currentIdx + 1);
             for (let i = up.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [up[i], up[j]] = [up[j], up[i]];
             }
+            AudioPlayer.userQueue = [];
             AudioPlayer.queue = [...AudioPlayer.queue.slice(0, currentIdx + 1), ...up];
             renderSideQueueContent();
             showToast('Upcoming queue shuffled', '🔀');
@@ -4495,7 +4610,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Clear Queue
         document.getElementById('sideClearQueueBtn')?.addEventListener('click', () => {
-            AudioPlayer.queue = AudioPlayer.queue.slice(0, AudioPlayer.currentIndex + 1);
+            AudioPlayer.userQueue = [];
+            AudioPlayer.queue = AudioPlayer.queue.slice(0, Math.max(0, AudioPlayer.currentIndex + 1));
             renderSideQueueContent();
             showToast('Upcoming queue cleared', '🧹');
         });
@@ -4631,7 +4747,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         sideNowPlayingContent.style.display = 'flex';
 
         const art = track.artwork || track.image || 'assets/foryou_radar.jpg';
-        const isLiked = likedTrackIds.has(track.id);
+        const isLiked = likedTrackIds.has(String(track.id));
         const queue = AudioPlayer.queue || [];
         const currentIdx = AudioPlayer.currentIndex || 0;
         const upcoming = queue.slice(currentIdx + 1);
@@ -4739,7 +4855,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Attach Spotify-Grade Card Listeners
         document.getElementById('sideNowLikeBtn')?.addEventListener('click', () => {
             playerLikeBtn?.click();
-            const nowLiked = likedTrackIds.has(track.id);
+            const nowLiked = likedTrackIds.has(String(track.id));
             const btn = document.getElementById('sideNowLikeBtn');
             if (btn) {
                 btn.innerHTML = nowLiked ? '❤️' : '🤍';
@@ -4865,14 +4981,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             playerQualityBadge.textContent = track.quality || ' Hi-Res Lossless • 320kbps Master';
         }
 
-        playerLikeBtn.textContent = likedTrackIds.has(track.id) ? '❤️' : '🤍';
-        playerLikeBtn.classList.toggle('liked', likedTrackIds.has(track.id));
+        playerLikeBtn.textContent = likedTrackIds.has(String(track.id)) ? '❤️' : '🤍';
+        playerLikeBtn.classList.toggle('liked', likedTrackIds.has(String(track.id)));
 
         lyricsTrackTitle.textContent = track.title;
         lyricsTrackArtist.textContent = (track.artist && track.artist !== "undefined" && track.artist !== "Unknown") ? track.artist : (track.primaryArtist || track.subtitle || "Lossless Artist");
         Lyrics.loadLyricsForTrack(track);
 
-        syncAllSongRowPlayButtons(!AudioPlayer.audio.paused);
+        syncAllSongRowPlayButtons(AudioPlayer.isPlaying || !AudioPlayer.audio.paused);
 
         // Spotify-style: Show current playing podcast or song on the side
         updateSidePanel(track);
@@ -6308,7 +6424,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ================= MULTI-DEVICE AUTO-REFRESH & LIVE UPDATE SYNC =================
-    const CURRENT_APP_VERSION = "8.19.0";
+    const CURRENT_APP_VERSION = "8.19.4";
     let latestServerTimestamp = 0;
     let latestRemoteVersion = null;
     let userDismissedUpdateVersion = null;

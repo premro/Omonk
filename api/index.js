@@ -5,6 +5,9 @@ const importEngine = require('./importEngine');
 'use strict';
 
 const https = require('https');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 const UPSTREAM_HOST = 'backend.listenfree.in';
 const searchEngine = require('./searchEngine');
@@ -673,20 +676,20 @@ module.exports = async (req, res) => {
                 if (!pid) return;
                 try {
                     const embedRes = await fetchHttps(`https://open.spotify.com/embed/playlist/${pid}`);
-                    const match = embedRes.body.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/);
+                    const match = embedRes.body.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
                     if (match) {
                         const nextData = JSON.parse(match[1]);
                         const entity = nextData?.props?.pageProps?.state?.data?.entity;
                         const list = entity?.trackList || [];
                         if (list.length > 0) {
-                            const existingDaily = (chartsData.charts && chartsData.charts[lang] && chartsData.charts[lang]['daily']) || [];
+                            const existingList = (chartsData.charts && chartsData.charts[lang] && (chartsData.charts[lang][tf] || chartsData.charts[lang]['daily'])) || [];
                             const existingMap = new Map();
-                            existingDaily.forEach(e => {
+                            existingList.forEach(e => {
                                 const key = (e.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
                                 if (key) existingMap.set(key, e);
                             });
 
-                            const playlistCover = entity?.visualIdentity?.image?.[1]?.url || entity?.visualIdentity?.image?.[0]?.url || 'https://charts-images.scdn.co/assets/locale_en/regional/daily/region_in_default.jpg';
+                            const playlistCover = entity?.coverArt?.sources?.[0]?.url || entity?.visualIdentity?.image?.[1]?.url || entity?.visualIdentity?.image?.[0]?.url || 'https://charts-images.scdn.co/assets/locale_en/regional/daily/region_in_default.jpg';
 
                             const fresh = [];
                             for (let idx = 0; idx < list.length; idx++) {
@@ -694,7 +697,7 @@ module.exports = async (req, res) => {
                                 const rawTitle = t.title || 'Unknown Title';
                                 const norm = rawTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-                                const matched = existingMap.get(norm) || existingDaily.find(e => {
+                                const matched = existingMap.get(norm) || existingList.find(e => {
                                     const eNorm = (e.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
                                     return eNorm && norm && (eNorm.includes(norm) || norm.includes(eNorm));
                                 });
@@ -728,15 +731,8 @@ module.exports = async (req, res) => {
                             }
 
                             if (!chartsData.charts[lang]) chartsData.charts[lang] = {};
-                            if (reqTimeframe === 'all' || reqTimeframe === 'daily') {
-                                chartsData.charts[lang]['daily'] = fresh.slice(0, 35);
-                            }
-                            if (reqTimeframe === 'all' || reqTimeframe === 'weekly') {
-                                chartsData.charts[lang]['weekly'] = fresh.slice(5, 35).concat(fresh.slice(0, 5));
-                            }
-                            if (reqTimeframe === 'all' || reqTimeframe === 'monthly') {
-                                chartsData.charts[lang]['monthly'] = fresh.slice(0, 50);
-                            }
+                            const sliceLimit = tf === 'monthly' ? 50 : 35;
+                            chartsData.charts[lang][tf] = fresh.slice(0, sliceLimit);
 
                             try {
                                 fs.writeFileSync(path.join(__dirname, 'chartsData.json'), JSON.stringify(chartsData, null, 2), 'utf8');
@@ -749,8 +745,9 @@ module.exports = async (req, res) => {
             };
 
             const primaryLang = targetLangs[0] || 'tamil';
-            // Sync primary language first so response returns rapidly (<1.5s) without timeout
-            syncSingleLang(primaryLang).then(() => {
+            const targetTimeframes = reqTimeframe === 'all' ? ['daily', 'weekly', 'monthly'] : [reqTimeframe];
+            // Sync requested timeframes for primary language concurrently
+            Promise.all(targetTimeframes.map(tf => syncSingleLang(primaryLang, tf))).then(() => {
                 const currentDaily = (chartsData.charts && chartsData.charts[primaryLang] && chartsData.charts[primaryLang]['daily']) || [];
                 res.writeHead(200, {
                     'Content-Type': 'application/json',
@@ -847,6 +844,7 @@ module.exports = async (req, res) => {
 
         // 4. Single Artist Detail
         if (pathname === '/api/artist' || pathname === '/artist') {
+            const origQuery = (u.searchParams.get('name') || u.searchParams.get('id') || '').trim();
             const rawId = (u.searchParams.get('id') || u.searchParams.get('name') || '').toLowerCase().trim();
             const normId = rawId.replace(/[^a-z0-9]/g, '');
             let found = null;
@@ -861,6 +859,44 @@ module.exports = async (req, res) => {
                     }
                 }
                 if (found) break;
+            }
+            if (!found && origQuery) {
+                try {
+                    const fallbackRes = await searchEngine.searchAll(origQuery, 35);
+                    const matchedArtists = fallbackRes.artists || [];
+                    const fallbackSongs = (fallbackRes.songs || []).filter(s => s.streamUrl);
+                    const bestArt = matchedArtists.find(a => (a.name || a.title || '').toLowerCase().replace(/[^a-z0-9]/g, '') === normId) || matchedArtists[0];
+                    if (bestArt || fallbackSongs.length > 0) {
+                        const artistDisplay = bestArt?.name || bestArt?.title || origQuery;
+                        const artistArt = bestArt?.artwork || fallbackSongs[0]?.artwork || '';
+                        const artistNorm = artistDisplay.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        const prioritized = [
+                            ...fallbackSongs.filter(s => ((s.artist || s.primaryArtist || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(artistNorm || normId))),
+                            ...fallbackSongs.filter(s => !((s.artist || s.primaryArtist || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(artistNorm || normId)))
+                        ];
+                        const mappedTracks = prioritized.map(s => ({
+                            id: s.id,
+                            title: s.title,
+                            artist: s.artist || s.primaryArtist || artistDisplay,
+                            album: s.album || artistDisplay,
+                            duration: s.duration || 210,
+                            artwork: s.artwork || artistArt,
+                            streamUrl: s.streamUrl,
+                            quality: 'FLAC / 320kbps Hi-Fi'
+                        }));
+                        found = {
+                            id: bestArt?.id || origQuery,
+                            name: artistDisplay,
+                            title: artistDisplay,
+                            avatar: artistArt,
+                            artwork: artistArt,
+                            role: bestArt?.role || 'Artist',
+                            listeners: 'Studio Verified Artist',
+                            tracks: mappedTracks,
+                            topTracks: mappedTracks
+                        };
+                    }
+                } catch (e) {}
             }
             if (found) {
                 if (!found.tracks) found.tracks = [];
@@ -931,7 +967,7 @@ function normalizeCanonicalTitle(title) {
         .toLowerCase()
         .replace(/\(from\s+["']?.*?["']?\)/gi, '')
         .replace(/[\(\[].*?[\)\]]/g, '')
-        .replace(/(remastered|re-mastered|original motion picture soundtrack|full video|lyrical|lyrics|audio|video song|version|reprise|male|female|duet)/gi, '')
+        .replace(/\b(remastered|re-mastered|original motion picture soundtrack|full video|lyrical|lyrics|audio|video song|version|reprise|male|female|duet)\b/gi, '')
         .replace(/[^a-z0-9஀-௿ऀ-ॿఀ-౿ഀ-ൿ]/g, '')
         .trim();
 }
@@ -1368,20 +1404,23 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     const sCanon = normalizeCanonicalTitle(s.title);
                     const qCanon = normalizeCanonicalTitle(cleanTitle);
 
-                    // Title Match
+                    // Title Match (literal + canonical + phonetic transliteration)
+                    const sTitlePhon = searchEngine.phonetics(s.title || '');
+                    const qPhon = searchEngine.phonetics(cleanTitle || '');
                     if (sTitle === qTitle) {
                         score += 500;
                     } else if (sCanon && qCanon && sCanon === qCanon) {
                         score += 420;
+                    } else if (sTitlePhon && qPhon && sTitlePhon === qPhon) {
+                        score += 360;
                     } else if (sCanon && qCanon && (sCanon.startsWith(qCanon) || qCanon.startsWith(sCanon))) {
                         score += 260;
+                    } else if (sTitlePhon && qPhon && (sTitlePhon.startsWith(qPhon) || qPhon.startsWith(sTitlePhon))) {
+                        score += 240;
                     } else if (sCanon && qCanon && (sCanon.includes(qCanon) || qCanon.includes(sCanon))) {
                         score += 180;
-                    } else {
-                        const sTitlePhon = searchEngine.phonetics(s.title);
-                        const qPhon = searchEngine.phonetics(cleanTitle);
-                        if (sTitlePhon === qPhon) score += 200;
-                        else if (sTitlePhon.includes(qPhon) || qPhon.includes(sTitlePhon)) score += 120;
+                    } else if (sTitlePhon && qPhon && (sTitlePhon.includes(qPhon) || qPhon.includes(sTitlePhon))) {
+                        score += 150;
                     }
 
                     // Album / Movie Match
@@ -1399,16 +1438,25 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                         }
                     }
 
-                    // Artist Match
-                    if (primaryArt) {
-                        const sArt = (s.artist || '').toLowerCase();
-                        const artTokens = primaryArt.toLowerCase().split(/[\s,&]+/).filter(w => w.length > 2);
+                    // Artist Match (across all artist names, literal + phonetic word match)
+                    if (validArtist) {
+                        const sArt = (s.artist || s.primaryArtist || '').toLowerCase();
+                        const sArtPhonWords = searchEngine.phonetics(sArt).split(/\s+/).filter(Boolean);
+                        const artTokens = validArtist.toLowerCase().split(/[\s,.&]+/).filter(w => w.length > 2);
                         let artMatches = 0;
+                        const matchedTokens = new Set();
                         for (const tok of artTokens) {
-                            if (sArt.includes(tok)) artMatches++;
+                            const tokPhon = searchEngine.phonetics(tok);
+                            const litHit = sArt.includes(tok);
+                            const phonHit = tokPhon.length >= 3 && sArtPhonWords.some(pw => pw === tokPhon || (pw.length >= 4 && pw.startsWith(tokPhon)));
+                            if ((litHit || phonHit) && !matchedTokens.has(tokPhon || tok)) {
+                                matchedTokens.add(tokPhon || tok);
+                                artMatches++;
+                            }
                         }
-                        if (artMatches >= 2) score += 180;
-                        else if (artMatches === 1) score += 120;
+                        if (artMatches >= 2) score += 240;
+                        else if (artMatches === 1) score += 160;
+                        else if (artTokens.length > 0) score -= 150;
                     }
 
                     // Language Match
@@ -1420,7 +1468,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
 
                     // Popularity boost
                     const pop = s.popularity || s.playCount || 0;
-                    if (pop > 0) score += Math.min(25, Math.log10(pop + 1) * 3);
+                    if (pop > 0) score += Math.min(50, Math.log10(pop + 1) * 7);
 
                     // Heavy Penalty for unwanted versions (Remix, Karaoke, Cover, Lofi)
                     const sLower = `${s.title} ${s.artist || ''} ${s.album || ''}`.toLowerCase();
@@ -1538,10 +1586,11 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     if (req.headers.range) {
                         reqHeaders['Range'] = req.headers.range;
                     }
-                    const proxyReq = client.get(targetUrl, { headers: reqHeaders }, (upstreamRes) => {
+                    const proxyReq = client.get(targetUrl, { headers: reqHeaders, timeout: 15000 }, (upstreamRes) => {
                         if (upstreamRes.statusCode >= 300 && upstreamRes.statusCode < 400 && upstreamRes.headers.location) {
+                            upstreamRes.resume();
                             let red = upstreamRes.headers.location;
-                            if (!red.startsWith('http')) red = targetU.origin + red;
+                            try { red = new URL(red, targetUrl).href; } catch (e) {}
                             fetchAndPipe(red, redirectCount + 1);
                             return;
                         }
@@ -1556,10 +1605,15 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                         res.writeHead(upstreamRes.statusCode || 200, headers);
                         upstreamRes.pipe(res);
                     });
+                    proxyReq.on('timeout', () => {
+                        proxyReq.destroy(new Error('Upstream stream timeout'));
+                    });
                     proxyReq.on('error', (err) => {
                         console.warn('[stream proxy error]:', err);
-                        res.writeHead(502, { 'Access-Control-Allow-Origin': '*' });
-                        res.end('Stream upstream error');
+                        if (!res.headersSent) {
+                            res.writeHead(502, { 'Access-Control-Allow-Origin': '*' });
+                        }
+                        if (!res.writableEnded) res.end('Stream upstream error');
                     });
                 } catch (e) {
                     res.writeHead(500, { 'Access-Control-Allow-Origin': '*' });
@@ -1577,7 +1631,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             });
-            res.end(JSON.stringify({ success: true, version: '8.19.1', build: 1792226000000, timestamp: 1792226000000 }));
+            res.end(JSON.stringify({ success: true, version: '8.19.4', build: 1795695000000, timestamp: 1795695000000 }));
             return;
         }
 
@@ -1593,30 +1647,6 @@ function isSameSongOrReprise(candTitle, seedTitle) {
             return;
         }
 
-        // -------------------------------------------------------------
-        // Spotify-Style Aggregator Search (GET /api/search/all?q=...&limit=30)
-        // -------------------------------------------------------------
-        if (pathname === '/api/search/all' || pathname === '/search/all') {
-            const q = u.searchParams.get('q') || u.searchParams.get('query') || '';
-            const limit = parseInt(u.searchParams.get('limit') || '30', 10);
-            const lang = u.searchParams.get('lang') || u.searchParams.get('language') || 'tamil';
-            searchEngine.searchAll(q, limit, lang).then(results => {
-                res.writeHead(200, {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
-                    'Cache-Control': 'public, max-age=300',
-                    'X-Cache': results.cacheHit ? 'HIT' : 'MISS'
-                });
-                res.end(JSON.stringify(results));
-            }).catch(err => {
-                res.writeHead(500, {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                });
-                res.end(JSON.stringify({ success: false, error: err.message }));
-            });
-            return;
-        }
 
 
         // -------------------------------------------------------------
@@ -1689,7 +1719,12 @@ function isSameSongOrReprise(candTitle, seedTitle) {
             const artist = u.searchParams.get('artist') || 'Unknown';
             const safeName = `${artist} - ${title} [Lossless 320kbps].m4a`.replace(/[/\\:*?"<>|]/g, '');
 
-            const pipeAudio = (targetUrl) => {
+            const pipeAudio = (targetUrl, redirectCount = 0) => {
+                if (redirectCount > 5) {
+                    res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ success: false, error: 'Too many redirects' }));
+                    return;
+                }
                 try {
                     if (targetUrl && targetUrl.includes('.saavncdn.com')) {
                         targetUrl = targetUrl.replace(/_(12|48|96|160)\.mp4/i, '_320.mp4');
@@ -1697,23 +1732,45 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     const parsedUrl = new URL(targetUrl);
                     const mod = parsedUrl.protocol === 'https:' ? https : http;
                     const dReq = mod.get(targetUrl, {
-                        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' }
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
+                        timeout: 15000
                     }, (dRes) => {
-                        res.writeHead(200, {
+                        if (dRes.statusCode >= 300 && dRes.statusCode < 400 && dRes.headers.location) {
+                            dRes.resume();
+                            let red = dRes.headers.location;
+                            try { red = new URL(red, targetUrl).href; } catch (e) {}
+                            return pipeAudio(red, redirectCount + 1);
+                        }
+                        if (dRes.statusCode < 200 || dRes.statusCode >= 300) {
+                            dRes.resume();
+                            res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                            res.end(JSON.stringify({ success: false, error: `Upstream returned HTTP ${dRes.statusCode}` }));
+                            return;
+                        }
+                        const headers = {
                             'Content-Type': 'application/octet-stream',
                             'Content-Disposition': `attachment; filename="${encodeURIComponent(safeName)}"`,
                             'Access-Control-Allow-Origin': '*',
                             'Cache-Control': 'no-cache'
-                        });
+                        };
+                        if (dRes.headers['content-length']) headers['Content-Length'] = dRes.headers['content-length'];
+                        res.writeHead(200, headers);
                         dRes.pipe(res);
                     });
+                    dReq.on('timeout', () => dReq.destroy(new Error('Download upstream timeout')));
                     dReq.on('error', (err) => {
-                        res.writeHead(500, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ success: false, error: err.message }));
+                        if (!res.headersSent) {
+                            res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                            res.end(JSON.stringify({ success: false, error: err.message }));
+                        } else if (!res.writableEnded) {
+                            res.end();
+                        }
                     });
                 } catch (e) {
-                    res.writeHead(500, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ success: false, error: e.message }));
+                    if (!res.headersSent) {
+                        res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                        res.end(JSON.stringify({ success: false, error: e.message }));
+                    }
                 }
             };
 
@@ -1874,7 +1931,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
             };
 
             const saavnUrl = `https://www.jiosaavn.com/api.php?__call=autocomplete.get&_format=json&_marker=0&cc=in&includeMetaTags=1&query=${encodeURIComponent(q)}`;
-            https.get(saavnUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 2500 }, (saavnRes) => {
+            const suggestReq = https.get(saavnUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 2500 }, (saavnRes) => {
                 let data = '';
                 saavnRes.on('data', chunk => data += chunk);
                 saavnRes.on('end', () => {
@@ -1987,9 +2044,13 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                         res.end(JSON.stringify({ success: true, query: q, suggestions: [], tracks: [], albums: [] }));
                     }
                 });
-            }).on('error', () => {
-                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                res.end(JSON.stringify({ success: true, query: q, suggestions: [], tracks: [], albums: [] }));
+            });
+            suggestReq.on('timeout', () => suggestReq.destroy());
+            suggestReq.on('error', () => {
+                if (!res.headersSent) {
+                    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ success: true, query: q, suggestions: [], tracks: [], albums: [] }));
+                }
             });
             return;
         }

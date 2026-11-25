@@ -466,6 +466,9 @@ async function savePlaylistsToDB(playlists) {
             const tx = db.transaction('playlists', 'readwrite');
             const store = tx.objectStore('playlists');
             const clearReq = store.clear();
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = (e) => reject(e);
+            tx.onabort = (e) => reject(e);
             clearReq.onsuccess = () => {
                 for (const pl of playlists) {
                     if (!pl || !pl.id) continue;
@@ -486,7 +489,6 @@ async function savePlaylistsToDB(playlists) {
                         tracks: cleanTracks
                     });
                 }
-                resolve(true);
             };
             clearReq.onerror = (e) => reject(e);
         } catch (e) {

@@ -257,6 +257,8 @@ class LyricsManager {
             }
         } else {
             this.hasDual = false;
+            this.currentLyrics = [];
+            this.activeLineIndex = -1;
             if (toggleWrap) toggleWrap.style.display = 'none';
             if (data.syncedLyrics) {
                 this.currentLyrics = this.parseLRC(data.syncedLyrics);

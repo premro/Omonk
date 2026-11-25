@@ -1,5 +1,5 @@
 {
-  "version": "8.19.3",
+  "version": "8.19.4",
   "releaseDate": "2026-11-25",
-  "description": "v8.19.3: Manual song playback strictly seeds dynamic Spotify Vibe Autoplay instead of enqueueing search results; preserves sequential context only on albums and playlists."
+  "description": "v8.19.4: Comprehensive backend & frontend bug-fix release (dynamic artist fallback, phonetic resolver, recent history view, queue/mute/playback stability)."
 }

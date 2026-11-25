@@ -16,6 +16,12 @@
   // Online artist/album related tracks cache (TTL 30 minutes)
   const relatedTracksCache = new Map();
 
+  function getVibeApiPrefix() {
+    if (typeof window !== 'undefined' && window.API_PREFIX) return window.API_PREFIX;
+    const isCat = typeof window !== 'undefined' && (window.location.hostname.includes('catalyst') || window.location.hostname.includes('zohoweb'));
+    return isCat ? '/server/music_api' : '';
+  }
+
   function normalizeCanonicalTitle(title) {
     if (!title) return '';
     return title
@@ -373,7 +379,7 @@
       }
 
       try {
-        const endpoint = `/api/search?q=${encodeURIComponent(query)}&limit=15`;
+        const endpoint = `${getVibeApiPrefix()}/api/search?q=${encodeURIComponent(query)}&limit=15`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3500);
 
@@ -507,8 +513,8 @@
       }
     });
 
-    // Relax exclusions if pool is too small
-    if (candidatePool.length < 3) {
+    // Relax exclusions only when strict pool is completely empty
+    if (candidatePool.length === 0) {
       candidatePool = allCandidates.filter(t => {
         if (!t || !t.id || (currentTrack && t.id === currentTrack.id)) return false;
         const trackLang = detectLanguage(t);
@@ -743,9 +749,11 @@
         const tracks = json.tracks || [];
         for (const t of tracks) {
           const titleKey = (t.title || '').toLowerCase().trim();
-          if (t && t.title && !seen.has(String(t.id)) && !seen.has(titleKey)) {
+          const canonKey = normalizeCanonicalTitle(t.title || '');
+          if (t && t.title && !seen.has(String(t.id)) && !seen.has(titleKey) && (!canonKey || !seen.has('canon_' + canonKey)) && !isSameSongOrReprise(t.title, seedTrack.title)) {
             seen.add(String(t.id));
             seen.add(titleKey);
+            if (canonKey) seen.add('canon_' + canonKey);
             queue.push(t);
             if (queue.length >= count) break;
           }
@@ -996,7 +1004,7 @@
 
         const primaryArt = (sourceTrack.artist || '').split(/[,&]/)[0].trim();
         const searchQ = `${primaryArt} ${vibeKeyword}`.trim();
-        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQ)}&limit=15`);
+        const res = await fetch(`${getVibeApiPrefix()}/api/search?q=${encodeURIComponent(searchQ)}&limit=15`);
         if (res.ok) {
           const data = await res.json();
           const onlineResults = data.results || [];

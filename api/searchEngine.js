@@ -490,6 +490,7 @@ function normalizeArtist(raw) {
     return {
         id: String(raw.id || ''),
         type: 'artist',
+        name: name,
         title: name,
         artists: [name],
         primaryArtist: name,
@@ -730,7 +731,6 @@ async function searchAll(rawQuery, limit = 30, targetLang = '') {
 
     if (langKey) {
         fetchPromises.push(fetchHttps(`/api/search/albums?query=${encodeURIComponent(parsed.cleanText + (effectiveLang ? ' ' + effectiveLang : ''))}&limit=10`));
-        fetchPromises.push(fetchHttps(`/api/search/songs?query=${encodeURIComponent(parsed.cleanText + (effectiveLang ? ' ' + effectiveLang : ''))}&limit=${limit}`));
     }
 
     if (parsed.raw !== parsed.cleanText) {
@@ -896,7 +896,7 @@ async function searchAll(rawQuery, limit = 30, targetLang = '') {
                         image: cat.image || cat.artwork,
                         media_preview_url: cat.streamUrl,
                         streamUrl: cat.streamUrl,
-                        downloadUrl: [{ quality: '320kbps', link: cat.streamUrl }]
+                        downloadUrl: [{ quality: '320kbps', url: cat.streamUrl }]
                     });
                     if (normCat) {
                         normCat.score = 9999;

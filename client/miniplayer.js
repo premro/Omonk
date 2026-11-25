@@ -689,7 +689,7 @@
       const art = safeTrack.artwork || 'icon-512.png';
       const title = safeTrack.title || 'Lossless Hi-Fi';
       const artist = safeTrack.artist || 'Omonk Studio';
-      const isLiked = typeof window !== 'undefined' && window.likedTrackIds && safeTrack.id && window.likedTrackIds.has(safeTrack.id);
+      const isLiked = typeof window !== 'undefined' && window.likedTrackIds && safeTrack.id && window.likedTrackIds.has(String(safeTrack.id));
 
       return `
         <div class="mini-bg-blur" id="miniBgBlur" style="background-image: url('${art}');"></div>
@@ -889,7 +889,7 @@
         e.stopPropagation();
         const pBtn = document.getElementById('playerLikeBtn');
         if (pBtn) pBtn.click();
-        const liked = typeof window !== 'undefined' && window.likedTrackIds && this.lastTrack?.id && window.likedTrackIds.has(this.lastTrack.id);
+        const liked = typeof window !== 'undefined' && window.likedTrackIds && this.lastTrack?.id && window.likedTrackIds.has(String(this.lastTrack.id));
         const b = query(scope, 'miniLikeBtn');
         if (b) {
           b.classList.toggle('liked', liked);
@@ -992,9 +992,10 @@
         return;
       }
 
+      const escMini = (str) => String(str || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
       container.innerHTML = lyrics.map((line, idx) => `
         <div class="mini-lyric-line ${idx === window.Lyrics.activeLineIndex ? 'active' : ''}" data-line-idx="${idx}" data-time="${line.time || 0}">
-          ${line.text}
+          ${escMini(line.text)}
         </div>
       `).join('');
 
@@ -1028,7 +1029,7 @@
       const art = safeTrack.artwork || 'icon-512.png';
       const title = safeTrack.title || 'Lossless Hi-Fi';
       const artist = safeTrack.artist || 'Omonk Studio';
-      const isLiked = typeof window !== 'undefined' && window.likedTrackIds && safeTrack.id && window.likedTrackIds.has(safeTrack.id);
+      const isLiked = typeof window !== 'undefined' && window.likedTrackIds && safeTrack.id && window.likedTrackIds.has(String(safeTrack.id));
 
       const titleEl = query(scope, 'miniTitle');
       if (titleEl) titleEl.textContent = title;
@@ -1043,7 +1044,7 @@
       if (compactThumb) compactThumb.src = art;
 
       const bgBlur = query(scope, 'miniBgBlur');
-      if (bgBlur) bgBlur.style.backgroundImage = 'url(\"' + art + '\")';
+      if (bgBlur) bgBlur.style.backgroundImage = `url("${encodeURI(art)}")`;
 
       const likeBtn = query(scope, 'miniLikeBtn');
       if (likeBtn) {

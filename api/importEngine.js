@@ -12,8 +12,9 @@ function parseTimestampToSeconds(ts) {
     return 0;
 }
 
-function fetchJson(url) {
+function fetchJson(url, maxRedirects = 4) {
     return new Promise((resolve) => {
+        if (!url || maxRedirects < 0) return resolve(null);
         try {
             const parsed = new URL(url);
             const mod = parsed.protocol === 'https:' ? https : http;
@@ -23,6 +24,12 @@ function fetchJson(url) {
                     'Accept': 'application/json, text/plain, */*'
                 }
             }, (res) => {
+                if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                    res.resume();
+                    let nextUrl = res.headers.location;
+                    try { nextUrl = new URL(nextUrl, url).href; } catch (e) {}
+                    return resolve(fetchJson(nextUrl, maxRedirects - 1));
+                }
                 let data = '';
                 res.on('data', chunk => data += chunk);
                 res.on('end', () => {
@@ -51,6 +58,7 @@ function fetchText(url, maxRedirects = 5) {
                 }
             }, (res) => {
                 if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                    res.resume();
                     let nextUrl = res.headers.location;
                     if (!nextUrl.startsWith('http')) {
                         nextUrl = new URL(nextUrl, url).href;
@@ -616,8 +624,10 @@ async function importSpotify(inputUrl) {
         match = url.match(/(playlist|album|track)\b\/([a-zA-Z0-9_-]+)/i);
     }
     if (!match && (url.includes('spotify.link') || url.includes('spotify.app.link'))) {
-        const redirectHtml = await fetchText(url, 3);
-        const mRedirect = redirectHtml.match(/(?:intl-[a-z0-9_-]+\b\/)?(playlist|album|track)\b\/([a-zA-Z0-9_-]+)/i) || redirectHtml.match(/(playlist|album|track)\b\/([a-zA-Z0-9_-]+)/i);
+        const redirectHtml = await fetchText(url, 5);
+        const canonicalMatch = redirectHtml.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i) || redirectHtml.match(/property=["']og:url["'][^>]+content=["']([^"']+)["']/i);
+        const scanTarget = (canonicalMatch ? canonicalMatch[1] + ' ' : '') + redirectHtml;
+        const mRedirect = scanTarget.match(/(?:intl-[a-z0-9_-]+\b\/)?(playlist|album|track)\b\/([a-zA-Z0-9_-]+)/i) || scanTarget.match(/(playlist|album|track)\b\/([a-zA-Z0-9_-]+)/i);
         if (mRedirect) match = mRedirect;
     }
 
