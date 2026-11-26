@@ -513,6 +513,25 @@
     return fetchedTracks;
   }
 
+  function getSafeUserTaste() {
+    try {
+      if (typeof window !== 'undefined' && window.ProfileManager && typeof window.ProfileManager.getUserTaste === 'function') {
+        return window.ProfileManager.getUserTaste();
+      }
+      if (typeof window !== 'undefined' && window.SpotifyEngine && typeof window.SpotifyEngine.getProfile === 'function') {
+        const p = window.SpotifyEngine.getProfile() || {};
+        return {
+          languages: Array.isArray(p.preferredLanguages) ? p.preferredLanguages : [],
+          favoriteArtists: Object.keys(p.artists || {}).filter(k => (p.artists[k] || 0) >= 15),
+          blockedArtists: [],
+          blockedTracks: [],
+          acousticPreferences: p.acousticPreferences || null
+        };
+      }
+    } catch (e) {}
+    return null;
+  }
+
   /**
    * Main Standalone Vibe Recommendation Function:
    * Selects the next song to play based on dynamic Vibe-Matching against the currently playing track.
@@ -520,7 +539,7 @@
   function getNextVibeTrack(currentTrack, catalog, history = [], targetLanguage = null) {
     if (!currentTrack && (!catalog || catalog.length === 0)) return null;
 
-    const taste = (typeof window !== 'undefined' && window.ProfileManager) ? window.ProfileManager.getUserTaste() : null;
+    const taste = getSafeUserTaste();
     const appState = (typeof window !== 'undefined' && window.State) ? window.State : null;
 
     // 1. Language Enforcement: Strictly preserve current track's language
@@ -740,7 +759,7 @@
   async function getContinuousRadioTrack(currentTrack, history = []) {
     if (!currentTrack) return null;
     const prefix = getVibeApiPrefix();
-    const taste = (typeof window !== 'undefined' && window.ProfileManager) ? window.ProfileManager.getUserTaste() : null;
+    const taste = getSafeUserTaste();
 
     const recentHistory = (Array.isArray(history) ? history : []).slice(-35);
     const historyIds = new Set(recentHistory.map(h => typeof h === 'string' ? h : String(h?.id)).filter(Boolean));
@@ -887,7 +906,7 @@
   async function getVibeRadioQueue(seedTrack, count = 20, history = null) {
     if (!seedTrack) return [];
     const prefix = getVibeApiPrefix();
-    const taste = (typeof window !== 'undefined' && window.ProfileManager) ? window.ProfileManager.getUserTaste() : null;
+    const taste = getSafeUserTaste();
 
     const effectiveHistory = Array.isArray(history)
       ? history

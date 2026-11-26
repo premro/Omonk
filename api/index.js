@@ -1531,7 +1531,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             });
-            res.end(JSON.stringify({ success: true, version: '8.19.9', build: 1795720200000, timestamp: 1795720200000 }));
+            res.end(JSON.stringify({ success: true, version: '8.19.10', build: 1795720200000, timestamp: 1795720200000 }));
             return;
         }
 

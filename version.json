@@ -1,5 +1,5 @@
 {
-  "version": "8.19.9",
+  "version": "8.19.10",
   "releaseDate": "2026-11-27",
-  "description": "v8.19.9: Added Vercel Web Analytics HTML integration, excluded /_vercel/ from vercel.json rewrites & Service Worker caching, and kept lock-screen MediaSession & vibe-matched radio fixes."
+  "description": "v8.19.10: Fixed Vibe Radio auto-suggestions queue failure caused by missing ProfileManager.getUserTaste(), plus Vercel Web Analytics and lock-screen controls."
 }

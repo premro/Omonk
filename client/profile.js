@@ -121,6 +121,51 @@ class DeviceProfileManager {
             storageType: 'Local Machine Browser Storage (Persistent)'
         };
     }
+
+    getUserTaste() {
+        try {
+            const spProfile = (typeof window !== 'undefined' && window.SpotifyEngine && typeof window.SpotifyEngine.getProfile === 'function')
+                ? window.SpotifyEngine.getProfile()
+                : null;
+            let prefLangs = [];
+            try {
+                prefLangs = JSON.parse(localStorage.getItem('preferred_languages') || '[]');
+            } catch (e) {}
+            const artistScores = (spProfile && spProfile.artists && typeof spProfile.artists === 'object') ? spProfile.artists : {};
+            const favoriteArtists = Object.entries(artistScores)
+                .filter(([, score]) => Number(score) >= 15)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 15)
+                .map(([name]) => name);
+            let blockedArtists = [];
+            let blockedTracks = [];
+            try {
+                const ba = JSON.parse(localStorage.getItem(this.getStorageKey('blocked_artists')) || '[]');
+                if (Array.isArray(ba)) blockedArtists = ba;
+                const bt = JSON.parse(localStorage.getItem(this.getStorageKey('blocked_tracks')) || '[]');
+                if (Array.isArray(bt)) blockedTracks = bt;
+            } catch (e) {}
+            return {
+                languages: (Array.isArray(prefLangs) && prefLangs.length > 0)
+                    ? prefLangs
+                    : ((spProfile && Array.isArray(spProfile.preferredLanguages) && spProfile.preferredLanguages.length > 0)
+                        ? spProfile.preferredLanguages
+                        : ['tamil']),
+                favoriteArtists,
+                blockedArtists,
+                blockedTracks,
+                acousticPreferences: (spProfile && spProfile.acousticPreferences) || null
+            };
+        } catch (e) {
+            return {
+                languages: ['tamil'],
+                favoriteArtists: [],
+                blockedArtists: [],
+                blockedTracks: [],
+                acousticPreferences: null
+            };
+        }
+    }
 }
 
 window.ProfileManager = new DeviceProfileManager();
