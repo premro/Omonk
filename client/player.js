@@ -501,11 +501,12 @@ class AudioPlayerEngine {
         try {
             const prefix = getOmonkApiPrefix();
             const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 6000);
+            const timer = setTimeout(() => controller.abort(), 12000);
             let resolveUrl = `${prefix}/api/resolve?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}`;
             if (track.album) resolveUrl += `&album=${encodeURIComponent(track.album)}`;
             if (track.language || track.lang) resolveUrl += `&lang=${encodeURIComponent(track.language || track.lang)}`;
             if (track.era) resolveUrl += `&era=${encodeURIComponent(track.era)}`;
+            if (track.year) resolveUrl += `&year=${encodeURIComponent(track.year)}`;
             if (track.duration && Number(track.duration) > 15 && !track.durationEstimated) resolveUrl += `&duration=${encodeURIComponent(Math.round(track.duration))}`;
             if (track.youtubeId) resolveUrl += `&youtubeId=${encodeURIComponent(track.youtubeId)}`;
             if (track.spotifyId) resolveUrl += `&spotifyId=${encodeURIComponent(track.spotifyId)}`;
@@ -1108,6 +1109,7 @@ class AudioPlayerEngine {
                     title: track.title || '',
                     artist: track.artist || '',
                     album: track.album || '',
+                    year: track.year || '',
                     lang: track.language || 'tamil'
                 });
                 const res = await fetch(`${prefix}/api/radio?${qParams.toString()}`);

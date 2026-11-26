@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lossless-studio-v8.19.10';
+const CACHE_NAME = 'lossless-studio-v8.19.11';
 const ASSETS = [
   './',
   './index.html',
@@ -55,7 +55,12 @@ self.addEventListener('message', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
+  // Never intercept cross-origin CDN requests (audio streams, external artwork) or media/range requests
+  if (url.origin !== self.location.origin || e.request.headers.has('range') || e.request.destination === 'audio' || e.request.destination === 'video') {
+    return;
+  }
   // Pass API, streaming, server, and Vercel Analytics requests straight to network
   if (url.pathname.includes('/api/') || url.pathname.includes('/server/') || url.pathname.startsWith('/_vercel/')) {
     return;

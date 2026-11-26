@@ -149,13 +149,32 @@
       return 'romantic';
     }
 
-    // Acoustic feature fallbacks
-    const bpm = track.bpm || 100;
-    const energy = track.energy !== undefined ? track.energy : 0.5;
-    if (energy < 0.42 && bpm < 88) return 'sad';
-    if (energy > 0.75 && bpm > 118) return 'dance';
-    if (energy < 0.52) return 'romantic';
+    // Acoustic feature fallbacks (only apply when explicit numeric energy/bpm exist)
+    const hasBpm = typeof track.bpm === 'number' && !isNaN(track.bpm);
+    const hasEnergy = typeof track.energy === 'number' && !isNaN(track.energy);
+    const bpm = hasBpm ? track.bpm : 100;
+    const energy = hasEnergy ? track.energy : 0.60;
+    if (hasEnergy && energy < 0.42 && bpm < 88) return 'sad';
+    if (hasEnergy && energy > 0.75 && bpm > 118) return 'dance';
+    if (hasEnergy && energy < 0.50) return 'romantic';
     return 'melodic';
+  }
+
+  const NON_SONG_RE = /\b(karaoke|instrumental|minus\s*one|party\s*tyme|prosource|ameritz|serene\s*songs|made\s*pop|backing\s*version|tribute|thirukkural|thirupathigam|namasivaya|kolaru|sloka|stotram|mantra|discourse|audiobook|speech|dialogue)\b/i;
+
+  function extractTrackYear(t) {
+    if (!t) return 0;
+    const y = parseInt(t.year || t.releaseYear || 0, 10);
+    if (y >= 1940 && y <= 2030) return y;
+    const m = String(t.album || t.title || '').match(/\b(19[4-9]\d|20[0-2]\d)\b/);
+    return m ? parseInt(m[1], 10) : 0;
+  }
+
+  function isEraCompatible(seedYear, candYear) {
+    if (!seedYear || !candYear) return true;
+    if (seedYear >= 2000 && candYear < 1995) return false;
+    if (seedYear <= 1992 && candYear >= 2015) return false;
+    return true;
   }
 
   function detectLanguage(track) {
@@ -789,9 +808,13 @@
     const seedLang = detectLanguage(currentTrack);
     const seedVibe = detectVibeCategory(currentTrack);
     const seedArtistKey = cleanArtistPrimaryKey(currentTrack.artist || '');
+    const seedYear = extractTrackYear(currentTrack);
 
-    const isValidCandidate = (cand, strictVibe = true) => {
+    const isValidCandidate = (cand, strictVibe = true, fromLocal = false) => {
       if (!cand || !cand.id || !cand.title) return false;
+      const candStr = `${cand.title} ${cand.artist || ''} ${cand.album || ''}`;
+      if (NON_SONG_RE.test(candStr)) return false;
+      if (fromLocal && !isEraCompatible(seedYear, extractTrackYear(cand))) return false;
       const titleKey = cand.title.toLowerCase().trim();
       const canonKey = normalizeCanonicalTitle(cand.title);
       if (isSameSongOrReprise(cand.title, currentTrack.title)) return false;
@@ -819,11 +842,11 @@
 
     const collected = [];
     const collectedIds = new Set();
-    const pushIfValid = (cand) => {
+    const pushIfValid = (cand, fromLocal = false) => {
       if (!cand || !cand.id || collectedIds.has(String(cand.id))) return;
-      if (cand.streamUrl && isValidCandidate(cand, true)) {
+      if (cand.streamUrl && isValidCandidate(cand, true, fromLocal)) {
         collectedIds.add(String(cand.id));
-        collected.push(cand);
+        collected.push(fromLocal ? { ...cand, _fromLocal: true } : cand);
       }
     };
 
@@ -834,13 +857,14 @@
         title: currentTrack.title || '',
         artist: currentTrack.artist || '',
         album: currentTrack.album || '',
+        year: seedYear ? String(seedYear) : '',
         lang: currentTrack.language || seedLang || 'tamil'
       });
       const res = await fetch(`${prefix}/api/radio?${qParams.toString()}`);
       if (res.ok) {
         const json = await res.json();
         const candidateTracks = json.tracks || [];
-        candidateTracks.forEach(pushIfValid);
+        candidateTracks.forEach(c => pushIfValid(c, false));
       }
     } catch (e) {
       console.warn('[VibeEngine] getContinuousRadioTrack fetch failed:', e);
@@ -861,21 +885,24 @@
           if (sRes.ok) {
             const sJson = await sRes.json();
             const sTracks = sJson.results || sJson.songs || [];
-            sTracks.forEach(pushIfValid);
+            sTracks.forEach(c => pushIfValid(c, false));
           }
         }
       } catch (e) {}
     }
 
-    // Step 3: Supplement from local catalog / related pool
+    // Step 3: Supplement from local catalog / related pool only when remote recommendations are sparse
     const pool = (typeof window !== 'undefined' && window.AllSongPool && window.AllSongPool.length > 0)
       ? window.AllSongPool
       : [];
-    [...getAllRelatedTracks(), ...pool].forEach(pushIfValid);
+    if (collected.length < 5) {
+      [...getAllRelatedTracks(), ...pool].forEach(c => pushIfValid(c, true));
+    }
 
     if (collected.length > 0) {
       const scored = collected.map(cand => {
         let dist = calculateVibeDistance(currentTrack, cand, taste);
+        if (cand._fromLocal) dist += 0.35;
         // Gentle diversity nudge so next auto-played track mixes composers nicely
         const candArtKey = cleanArtistPrimaryKey(cand.artist || '');
         if (seedArtistKey && candArtKey && candArtKey === seedArtistKey && collected.length >= 4) {
@@ -901,7 +928,7 @@
 
   /**
    * Builds an instant Spotify Autoplay / Track Radio Queue seeded by a track.
-   * Mixes composers naturally while strictly matching the seed track's vibe & excluding history.
+   * Prioritizes upstream /api/radio track recommendations, mixes composers naturally, and prevents search-pool clutter.
    */
   async function getVibeRadioQueue(seedTrack, count = 20, history = null) {
     if (!seedTrack) return [];
@@ -925,12 +952,16 @@
 
     const seedLang = detectLanguage(seedTrack);
     const seedVibe = detectVibeCategory(seedTrack);
+    const seedYear = extractTrackYear(seedTrack);
 
     const rawCandidates = [];
     const rawSeenIds = new Set();
 
-    const collectRaw = (t) => {
+    const collectRaw = (t, fromRadio = false) => {
       if (!t || !t.title) return;
+      const candStr = `${t.title} ${t.artist || ''} ${t.album || ''}`;
+      if (NON_SONG_RE.test(candStr)) return;
+      if (!fromRadio && !isEraCompatible(seedYear, extractTrackYear(t))) return;
       const tid = String(t.id || '');
       if (tid && rawSeenIds.has(tid)) return;
       const titleKey = t.title.toLowerCase().trim();
@@ -950,7 +981,7 @@
       if (seedLang && t.language && t.language !== 'unknown' && tLang !== seedLang) return;
 
       if (tid) rawSeenIds.add(tid);
-      rawCandidates.push(t);
+      rawCandidates.push({ ...t, _fromRadio: fromRadio });
     };
 
     try {
@@ -959,23 +990,26 @@
         title: seedTrack.title || '',
         artist: seedTrack.artist || '',
         album: seedTrack.album || '',
+        year: seedYear ? String(seedYear) : '',
         lang: seedTrack.language || seedLang || 'tamil'
       });
       const res = await fetch(`${prefix}/api/radio?${qParams.toString()}`);
       if (res.ok) {
         const json = await res.json();
         const tracks = json.tracks || [];
-        tracks.forEach(collectRaw);
+        tracks.forEach(t => collectRaw(t, true));
       }
     } catch (e) {
       console.warn('[VibeEngine] getVibeRadioQueue error:', e);
     }
 
-    // Supplement with local pool and cached related tracks
-    const localPool = (typeof window !== 'undefined' && window.AllSongPool && window.AllSongPool.length > 0)
-      ? window.AllSongPool
-      : [];
-    [...getAllRelatedTracks(), ...localPool].forEach(collectRaw);
+    // Only supplement with related/local pool if upstream /api/radio returned fewer than count tracks
+    if (rawCandidates.length < count) {
+      const localPool = (typeof window !== 'undefined' && window.AllSongPool && window.AllSongPool.length > 0)
+        ? window.AllSongPool
+        : [];
+      [...getAllRelatedTracks(), ...localPool].forEach(t => collectRaw(t, false));
+    }
 
     // Filter by strict bidirectional vibe compatibility first; relax only if < 5 matches
     let vibeMatched = rawCandidates.filter(t => isVibeCompatible(seedVibe, detectVibeCategory(t), true));
@@ -986,10 +1020,10 @@
       vibeMatched = rawCandidates;
     }
 
-    // Score with acoustic vibe distance + small jitter so varied composers & fresh hits surface
-    const scored = vibeMatched.map(t => ({
+    // Score with acoustic vibe distance while preserving /api/radio priority over local fallback
+    const scored = vibeMatched.map((t, idx) => ({
       track: t,
-      distance: calculateVibeDistance(seedTrack, t, taste) + (Math.random() * 0.04)
+      distance: calculateVibeDistance(seedTrack, t, taste) + (t._fromRadio ? (idx * 0.004) : 0.35) + (Math.random() * 0.02)
     }));
     scored.sort((a, b) => a.distance - b.distance);
 

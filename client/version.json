@@ -1,5 +1,5 @@
 {
-  "version": "8.19.10",
+  "version": "8.19.11",
   "releaseDate": "2026-11-27",
-  "description": "v8.19.10: Fixed Vibe Radio auto-suggestions queue failure caused by missing ProfileManager.getUserTaste(), plus Vercel Web Analytics and lock-screen controls."
+  "description": "v8.19.11: Prevent SW from intercepting cross-origin audio streams, extend resolve timeout, prioritize /api/radio track recommendations, and enforce era compatibility so search clutter doesn't push old songs ahead of vibe matches."
 }

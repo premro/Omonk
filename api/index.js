@@ -994,6 +994,9 @@ function isSameSongOrReprise(candTitle, seedTitle) {
             const seedArtist = u.searchParams.get('artist') || '';
             const seedAlbum = u.searchParams.get('album') || '';
             const lang = u.searchParams.get('lang') || 'tamil';
+            const rawSeedYear = parseInt(u.searchParams.get('year') || '0', 10);
+            const parsedYearMatch = `${seedTitle} ${seedAlbum}`.match(/\b(19[4-9]\d|20[0-2]\d)\b/);
+            const seedYear = (rawSeedYear >= 1940 && rawSeedYear <= 2030) ? rawSeedYear : (parsedYearMatch ? parseInt(parsedYearMatch[1], 10) : 0);
 
             (async () => {
                 const list = [];
@@ -1101,7 +1104,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     artistCount.set(seedArtKey, 1);
                 }
 
-                function addCandidate(s, strictVibe = true) {
+                function addCandidate(s, strictVibe = true, fromUpstream = false) {
                     if (!s || !s.title || !s.streamUrl) return false;
                     const sId = String(s.id || '');
                     const titleKey = (s.title || '').toLowerCase().trim();
@@ -1113,8 +1116,19 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     if (isSameSongOrReprise(s.title, seedTitle)) return false;
 
                     const fullCandStr = `${s.title} ${s.artist || ''} ${s.album || ''}`.toLowerCase();
-                    if (/karaoke|instrumental|minus\s*one|party tyme|prosource|ameritz|serene songs|made pop|tribute version|cover version/i.test(fullCandStr)) {
+                    if (/karaoke|instrumental|minus\s*one|party tyme|prosource|ameritz|serene songs|made pop|tribute version|cover version|thirukkural|thirupathigam|namasivaya|kolaru|sloka|stotram|mantra|discourse|audiobook|dialogue/i.test(fullCandStr)) {
                         return false;
+                    }
+
+                    // Era guard on non-upstream fallback tracks so modern seeds don't get 1960s/80s clutter and classic seeds keep classic vibes
+                    if (!fromUpstream && seedYear) {
+                        const rawCY = parseInt(s.year || '0', 10);
+                        const albYearMatch = String(s.album || s.title || '').match(/\b(19[4-9]\d|20[0-2]\d)\b/);
+                        const candYear = (rawCY >= 1940 && rawCY <= 2030) ? rawCY : (albYearMatch ? parseInt(albYearMatch[1], 10) : 0);
+                        if (candYear) {
+                            if (seedYear >= 2000 && candYear < 1995) return false;
+                            if (seedYear <= 1992 && candYear >= 2015) return false;
+                        }
                     }
 
                     const candVibe = detectTrackVibe(s.title, s.artist, s.album);
@@ -1150,6 +1164,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     if (albKey && albKey.length > 2) albumCount.set(albKey, (albumCount.get(albKey) || 0) + 1);
                     if (artKey) artistCount.set(artKey, (artistCount.get(artKey) || 0) + 1);
                     s._vibeCategory = candVibe;
+                    s._fromUpstream = fromUpstream;
                     list.push(s);
                     return true;
                 }
@@ -1175,7 +1190,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     try {
                         const sug = await searchEngine.fetchHttps('/api/songs/' + encodeURIComponent(songId) + '/suggestions');
                         if (sug && sug.data && Array.isArray(sug.data)) {
-                            sug.data.map(searchEngine.normalizeSong).forEach(s => addCandidate(s, true));
+                            sug.data.map(searchEngine.normalizeSong).forEach(s => addCandidate(s, true, true));
                         }
                     } catch (e) {}
                 }
@@ -1193,12 +1208,13 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     try {
                         const artRes = await searchEngine.searchAll(`${cleanArtist} ${vibeKeyword}`, 8, lang);
                         if (artRes && artRes.songs) {
-                            artRes.songs.forEach(s => addCandidate(s, true));
+                            artRes.songs.forEach(s => addCandidate(s, true, false));
                         }
                     } catch (e) {}
                 }
 
                 // 4. Multi-composer vibe queries (keeps composers mixed while strictly matching vibe)
+                const isClassicSeed = seedYear > 0 && seedYear <= 1995;
                 const TAMIL_VIBE_POOLS = {
                     dance: [
                         'tamil kuthu dance hits', 'tamil party fast beat songs',
@@ -1215,9 +1231,12 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                         'ar rahman romantic tamil', 'gv prakash melody hits',
                         'sid sriram tamil romantic'
                     ],
-                    sad: [
-                        'yuvan sad pathos tamil', 'ilaiyaraaja sad hits',
-                        'ar rahman sad tamil', 'tamil heartbreak pathos hits'
+                    sad: isClassicSeed ? [
+                        'ilaiyaraaja sad hits', 'ar rahman sad tamil',
+                        'spb sad tamil hits', 'yuvan sad pathos tamil'
+                    ] : [
+                        'yuvan sad pathos tamil', 'ar rahman sad tamil',
+                        'gv prakash sad melody', 'tamil heartbreak pathos hits'
                     ],
                     chill: [
                         'tamil acoustic chill hits', 'pradeep kumar melody hits',
@@ -1226,9 +1245,13 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     devotional: [
                         'tamil devotional hits', 'carnatic classical tamil songs'
                     ],
-                    melodic: [
+                    melodic: isClassicSeed ? [
                         'ilaiyaraaja melody hits', 'vidyasagar melody hits',
-                        'harris jayaraj melody hits', 'ar rahman tamil melody'
+                        'deva melody tamil hits', 'ar rahman 90s tamil'
+                    ] : [
+                        'harris jayaraj melody hits', 'ar rahman tamil melody',
+                        'gv prakash melody hits', 'anirudh melody hits',
+                        'yuvan melody tamil hits'
                     ]
                 };
 
@@ -1249,7 +1272,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     try {
                         const vRes = await searchEngine.searchAll(vq, 8, lang);
                         if (vRes && vRes.songs) {
-                            vRes.songs.forEach(s => addCandidate(s, true));
+                            vRes.songs.forEach(s => addCandidate(s, true, false));
                         }
                     } catch (e) {}
                 }
@@ -1265,14 +1288,17 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                             [chartPool[i], chartPool[j]] = [chartPool[j], chartPool[i]];
                         }
                         for (const ch of chartPool) {
-                            addCandidate(ch, true);
+                            addCandidate(ch, true, false);
                             if (list.length >= 20) break;
                         }
                     } catch (e) {}
                 }
 
-                // Prioritize exact vibe matches first, then compatible vibes, preserving composer variety
+                // Prioritize upstream native suggestions first, then exact vibe matches, preserving composer variety
                 list.sort((a, b) => {
+                    const aUp = a._fromUpstream ? 0 : 1;
+                    const bUp = b._fromUpstream ? 0 : 1;
+                    if (aUp !== bUp) return aUp - bUp;
                     const aExact = a._vibeCategory === seedVibe ? 0 : 1;
                     const bExact = b._vibeCategory === seedVibe ? 0 : 1;
                     return aExact - bExact;
@@ -1531,7 +1557,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             });
-            res.end(JSON.stringify({ success: true, version: '8.19.10', build: 1795720200000, timestamp: 1795720200000 }));
+            res.end(JSON.stringify({ success: true, version: '8.19.11', build: 1795720200000, timestamp: 1795720200000 }));
             return;
         }
 
