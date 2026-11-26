@@ -210,12 +210,15 @@ async function downloadTrackToFile(track, preferredFormat = null) {
     try {
         const prefix = getApiPrefix();
         let streamUrl = track.streamUrl;
-        const safeArtist = (track.artist && track.artist !== 'undefined' && track.artist !== 'Unknown') ? track.artist : (track.primaryArtist || 'Lossless Artist');
+        const safeArtist = (track.artist && track.artist !== 'undefined' && track.artist !== 'Unknown' && track.artist !== 'Lossless Artist' && track.artist !== 'Various Artists') ? track.artist : (track.primaryArtist || '');
         const cleanTitle = (track.title || 'Track').replace(/[/\\:*?"<>|]/g, '');
 
         if (!streamUrl || streamUrl.includes('p.scdn.co')) {
             try {
-                const res = await fetch(`${prefix}/api/resolve?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(safeArtist)}`);
+                let resolveUrl = `${prefix}/api/resolve?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(safeArtist)}&album=${encodeURIComponent(track.album || '')}`;
+                if (track.language || track.lang) resolveUrl += `&lang=${encodeURIComponent(track.language || track.lang)}`;
+                if (track.era) resolveUrl += `&era=${encodeURIComponent(track.era)}`;
+                const res = await fetch(resolveUrl);
                 const data = await res.json();
                 if (data.success && data.track && data.track.streamUrl) {
                     streamUrl = data.track.streamUrl;
@@ -322,13 +325,18 @@ async function downloadTrackToOfflineDB(track, onProgress = null) {
         let streamUrl = track.streamUrl;
         if (!streamUrl || streamUrl.includes('p.scdn.co')) {
             if (onProgress) onProgress(10, 'Resolving lossless stream...');
-            const res = await fetch(`${prefix}/api/resolve?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}`);
+            let resolveUrl = `${prefix}/api/resolve?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}&album=${encodeURIComponent(track.album || '')}`;
+            if (track.language || track.lang) resolveUrl += `&lang=${encodeURIComponent(track.language || track.lang)}`;
+            if (track.era) resolveUrl += `&era=${encodeURIComponent(track.era)}`;
+            const res = await fetch(resolveUrl);
             const data = await res.json();
             if (data.success && data.track && data.track.streamUrl) {
                 streamUrl = data.track.streamUrl;
                 track.image = track.image || data.track.image;
                 track.artwork = track.artwork || data.track.artwork;
-                track.duration = track.duration || data.track.duration;
+                if ((!track.artist || track.artist === 'Various Artists') && data.track.artist) track.artist = data.track.artist;
+                if (!track.album && data.track.album) track.album = data.track.album;
+                track.duration = (track.durationEstimated ? data.track.duration : track.duration) || data.track.duration;
             }
         }
 

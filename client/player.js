@@ -518,6 +518,7 @@ class AudioPlayerEngine {
                 } else {
                     track.duration = track.duration || data.track.duration;
                 }
+                if ((!track.artist || track.artist === 'Various Artists') && data.track.artist) track.artist = data.track.artist;
                 if (!track.album && data.track.album) track.album = data.track.album;
                 return su;
             }

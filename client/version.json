@@ -1,5 +1,5 @@
 {
-  "version": "8.19.6",
-  "releaseDate": "2026-11-25",
-  "description": "v8.19.6: Single-video compilation/jukebox bulleted tracklist extraction, Content ID card enrichment, auto-split library recovery, and Tamil transliteration/popularity resolution tuning."
+  "version": "8.19.7",
+  "releaseDate": "2026-11-26",
+  "description": "v8.19.7: Compilation era detection with smart apostrophes, language/era preservation in stream & offline resolution, and automatic artist backfill."
 }

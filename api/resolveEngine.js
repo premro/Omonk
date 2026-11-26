@@ -3,7 +3,7 @@
 const searchEngine = require('./searchEngine');
 
 const JUNK_ARTIST_LABELS = [
-    'youtube', 'various artists', 'spotify artist', 'unknown artist', 'unknown',
+    'youtube', 'various artists', 'spotify artist', 'lossless artist', 'unknown artist', 'unknown',
     'sony music south', 'sony music', 'sony music india', 't-series', 'tseries',
     'sun tv', 'sun pictures', 'think music', 'think music india', 'saregama',
     'saregama tamil', 'zee music', 'zee music company', 'zee music south',

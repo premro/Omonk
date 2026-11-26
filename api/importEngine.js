@@ -498,10 +498,10 @@ function detectCollectionLanguage(title = '', descText = '') {
 
 function detectCollectionEra(title = '') {
     const t = String(title || '').toLowerCase();
-    const has70 = /\b70'?s\b|197\d/.test(t);
-    const has80 = /\b80'?s\b|198\d/.test(t);
-    const has90 = /\b90'?s\b|199\d/.test(t);
-    const has2k = /\b2k\b|\b2000'?s\b|\b00'?s\b/.test(t);
+    const has70 = /\b70['’\u2018\u2019]?s\b|197\d/.test(t);
+    const has80 = /\b80['’\u2018\u2019]?s\b|198\d/.test(t);
+    const has90 = /\b90['’\u2018\u2019]?s\b|199\d/.test(t);
+    const has2k = /\b2k\b|\b2000['’\u2018\u2019]?s\b|\b00['’\u2018\u2019]?s\b/.test(t);
     const years = [];
     if (has70) years.push(1970, 1979);
     if (has80) years.push(1980, 1989);

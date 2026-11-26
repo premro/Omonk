@@ -2649,14 +2649,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         let streamUrl = extractDownloadUrl(track);
         if (!streamUrl && track.id) {
             try {
-                const res = await fetch(`${API_PREFIX}/api/resolve?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}&album=${encodeURIComponent(track.album || '')}`);
+                let resolveUrl = `${API_PREFIX}/api/resolve?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}&album=${encodeURIComponent(track.album || '')}`;
+                if (track.language || track.lang) resolveUrl += `&lang=${encodeURIComponent(track.language || track.lang)}`;
+                if (track.era) resolveUrl += `&era=${encodeURIComponent(track.era)}`;
+                if (track.duration && Number(track.duration) > 15 && !track.durationEstimated) resolveUrl += `&duration=${encodeURIComponent(Math.round(track.duration))}`;
+                const res = await fetch(resolveUrl);
                 const data = await res.json();
                 if (data.success && data.track && data.track.streamUrl) {
                     streamUrl = data.track.streamUrl;
                     track.streamUrl = streamUrl;
                     track.image = track.image || data.track.image;
                     track.artwork = track.artwork || data.track.artwork;
-                    track.duration = track.duration || data.track.duration;
+                    if (data.track.duration && (track.durationEstimated || !track.duration)) {
+                        track.duration = data.track.duration;
+                        track.durationEstimated = false;
+                    } else {
+                        track.duration = track.duration || data.track.duration;
+                    }
+                    if ((!track.artist || track.artist === 'Various Artists') && data.track.artist) track.artist = data.track.artist;
                     if (data.track.album) track.album = data.track.album;
                 }
             } catch (err) {
@@ -6424,7 +6434,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // ================= MULTI-DEVICE AUTO-REFRESH & LIVE UPDATE SYNC =================
-    const CURRENT_APP_VERSION = "8.19.6";
+    const CURRENT_APP_VERSION = "8.19.7";
     let latestServerTimestamp = 0;
     let latestRemoteVersion = null;
     let userDismissedUpdateVersion = null;
