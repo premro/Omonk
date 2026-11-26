@@ -162,6 +162,9 @@
 
   const NON_SONG_RE = /\b(karaoke|instrumental|minus\s*one|party\s*tyme|prosource|ameritz|serene\s*songs|made\s*pop|backing\s*version|tribute|thirukkural|thirupathigam|namasivaya|kolaru|sloka|stotram|mantra|discourse|audiobook|speech|dialogue)\b/i;
 
+  const CLASSIC_ARTIST_RE = /\b(t\.?\s*m\.?\s*soundararajan|l\.?\s*r\.?\s*eswari|p\.?\s*susheela|m\.?\s*s\.?\s*viswanathan|k\.?\s*v\.?\s*mahadevan|a\.?\s*m\.?\s*rajah|ghantasala|p\.?\s*b\.?\s*srinivas|malaysia\s*vasudevan|lata\s*mangeshkar|kishore\s*kumar|mohammed\s*rafi|asha\s*bhosle|mukesh|manna\s*dey)\b/i;
+  const MODERN_ARTIST_RE = /\b(anirudh|sai\s*abhyankkar|hiphop\s*tamizha|g\.?\s*v\.?\s*prakash|sam\s*c\.?\s*s\.?|leon\s*james|sean\s*roldan|asal\s*kolaar|paal\s*dabba)\b/i;
+
   function extractTrackYear(t) {
     if (!t) return 0;
     const y = parseInt(t.year || t.releaseYear || 0, 10);
@@ -170,10 +173,14 @@
     return m ? parseInt(m[1], 10) : 0;
   }
 
-  function isEraCompatible(seedYear, candYear) {
-    if (!seedYear || !candYear) return true;
-    if (seedYear >= 2000 && candYear < 1995) return false;
-    if (seedYear <= 1992 && candYear >= 2015) return false;
+  function isEraCompatible(seedYear, candYear, seedTrack = null, candTrack = null) {
+    const isClassicSeed = (seedYear > 0 && seedYear <= 1995) || (seedTrack && CLASSIC_ARTIST_RE.test(seedTrack.artist || ''));
+    const effSeedYear = isClassicSeed ? (seedYear > 0 && seedYear <= 1995 ? seedYear : 1978) : seedYear;
+    const effCandYear = candYear || (candTrack && String(candTrack.id || '').startsWith('sp_') ? 2025 : 0);
+    if (isClassicSeed && !effCandYear && candTrack && MODERN_ARTIST_RE.test(candTrack.artist || '')) return false;
+    if (!effSeedYear || !effCandYear) return true;
+    if (effSeedYear >= 2000 && effCandYear < 1995) return false;
+    if (effSeedYear <= 1995 && effCandYear >= 2015) return false;
     return true;
   }
 
@@ -961,7 +968,7 @@
       if (!t || !t.title) return;
       const candStr = `${t.title} ${t.artist || ''} ${t.album || ''}`;
       if (NON_SONG_RE.test(candStr)) return;
-      if (!fromRadio && !isEraCompatible(seedYear, extractTrackYear(t))) return;
+      if (!t._fromUpstream && !isEraCompatible(seedYear, extractTrackYear(t), seedTrack, t)) return;
       const tid = String(t.id || '');
       if (tid && rawSeenIds.has(tid)) return;
       const titleKey = t.title.toLowerCase().trim();
@@ -1020,10 +1027,10 @@
       vibeMatched = rawCandidates;
     }
 
-    // Score with acoustic vibe distance while preserving /api/radio priority over local fallback
+    // Score with acoustic vibe distance while preserving upstream /api/radio priority over fallback
     const scored = vibeMatched.map((t, idx) => ({
       track: t,
-      distance: calculateVibeDistance(seedTrack, t, taste) + (t._fromRadio ? (idx * 0.004) : 0.35) + (Math.random() * 0.02)
+      distance: calculateVibeDistance(seedTrack, t, taste) + (t._fromUpstream ? (idx * 0.003) : (t._fromRadio ? 0.18 + (idx * 0.004) : 0.45)) + (Math.random() * 0.02)
     }));
     scored.sort((a, b) => a.distance - b.distance);
 

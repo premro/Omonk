@@ -996,7 +996,9 @@ function isSameSongOrReprise(candTitle, seedTitle) {
             const lang = u.searchParams.get('lang') || 'tamil';
             const rawSeedYear = parseInt(u.searchParams.get('year') || '0', 10);
             const parsedYearMatch = `${seedTitle} ${seedAlbum}`.match(/\b(19[4-9]\d|20[0-2]\d)\b/);
-            const seedYear = (rawSeedYear >= 1940 && rawSeedYear <= 2030) ? rawSeedYear : (parsedYearMatch ? parseInt(parsedYearMatch[1], 10) : 0);
+            let seedYear = (rawSeedYear >= 1940 && rawSeedYear <= 2030) ? rawSeedYear : (parsedYearMatch ? parseInt(parsedYearMatch[1], 10) : 0);
+            const CLASSIC_ARTIST_RE = /\b(t\.?\s*m\.?\s*soundararajan|l\.?\s*r\.?\s*eswari|p\.?\s*susheela|m\.?\s*s\.?\s*viswanathan|k\.?\s*v\.?\s*mahadevan|a\.?\s*m\.?\s*rajah|ghantasala|p\.?\s*b\.?\s*srinivas|malaysia\s*vasudevan|lata\s*mangeshkar|kishore\s*kumar|mohammed\s*rafi|asha\s*bhosle|mukesh|manna\s*dey)\b/i;
+            let isClassicSeed = (seedYear > 0 && seedYear <= 1995) || CLASSIC_ARTIST_RE.test(seedArtist);
 
             (async () => {
                 const list = [];
@@ -1121,13 +1123,19 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     }
 
                     // Era guard on non-upstream fallback tracks so modern seeds don't get 1960s/80s clutter and classic seeds keep classic vibes
-                    if (!fromUpstream && seedYear) {
+                    const effectiveSeedYear = isClassicSeed ? (seedYear > 0 && seedYear <= 1995 ? seedYear : 1978) : seedYear;
+                    if (!fromUpstream && effectiveSeedYear) {
                         const rawCY = parseInt(s.year || '0', 10);
                         const albYearMatch = String(s.album || s.title || '').match(/\b(19[4-9]\d|20[0-2]\d)\b/);
-                        const candYear = (rawCY >= 1940 && rawCY <= 2030) ? rawCY : (albYearMatch ? parseInt(albYearMatch[1], 10) : 0);
+                        const candYear = (rawCY >= 1940 && rawCY <= 2030)
+                            ? rawCY
+                            : (albYearMatch ? parseInt(albYearMatch[1], 10) : (String(s.id || '').startsWith('sp_') ? 2025 : 0));
                         if (candYear) {
-                            if (seedYear >= 2000 && candYear < 1995) return false;
-                            if (seedYear <= 1992 && candYear >= 2015) return false;
+                            if (effectiveSeedYear >= 2000 && candYear < 1995) return false;
+                            if (effectiveSeedYear <= 1995 && candYear >= 2015) return false;
+                        }
+                        if (isClassicSeed && !candYear && /anirudh|sai abhyankkar|hiphop tamizha|g\.?\s*v\.?\s*prakash|sam c\.?\s*s\.?|leon james|sean roldan|asal kolaar/i.test(s.artist || '')) {
+                            return false;
                         }
                     }
 
@@ -1171,22 +1179,35 @@ function isSameSongOrReprise(candTitle, seedTitle) {
 
                 // 1. Resolve real Saavn ID if missing or using an OMonk chart ID (sp_... or omonk_...)
                 const cleanSeedTitle = seedTitle.replace(/\s*\(From\s+[^)]+\)/gi, '').replace(/\s*-\s*From\s+.*$/i, '').trim();
+                const cleanSeedAlbum = seedAlbum.replace(/\s*\([^)]+\)/g, '').replace(/\s*-\s*.*$/g, '').trim();
                 const anchorComposer = pickComposerOrPrimaryArtist(seedArtist);
-                if (!songId || String(songId).startsWith('sp_') || String(songId).startsWith('omonk_')) {
-                    const resolveQuery = [cleanSeedTitle || seedTitle, anchorComposer || seedArtist].filter(Boolean).join(' ').trim();
-                    if (resolveQuery) {
+                const isPlaceholderId = (idStr) => !idStr || String(idStr).startsWith('sp_') || String(idStr).startsWith('omonk_');
+                if (isPlaceholderId(songId)) {
+                    const tryQueries = [
+                        [cleanSeedTitle || seedTitle, cleanSeedAlbum].filter(Boolean).join(' ').trim(),
+                        [cleanSeedTitle || seedTitle, anchorComposer || seedArtist].filter(Boolean).join(' ').trim(),
+                        cleanSeedTitle || seedTitle
+                    ].filter(Boolean);
+                    for (const rq of tryQueries) {
+                        if (!isPlaceholderId(songId)) break;
                         try {
-                            const resolved = await searchEngine.searchAll(resolveQuery, 1, lang);
-                            if (resolved && resolved.songs && resolved.songs.length > 0 && resolved.songs[0].id) {
-                                songId = resolved.songs[0].id;
+                            const resolved = await searchEngine.searchAll(rq, 10, lang);
+                            const realSong = (resolved && resolved.songs || []).find(s => !isPlaceholderId(s.id));
+                            if (realSong) {
+                                songId = realSong.id;
                                 seen.add(String(songId));
+                                const ry = parseInt(realSong.year || '0', 10);
+                                if (!seedYear && ry >= 1940 && ry <= 2030) {
+                                    seedYear = ry;
+                                    isClassicSeed = (seedYear > 0 && seedYear <= 1995) || CLASSIC_ARTIST_RE.test(seedArtist);
+                                }
                             }
                         } catch (e) {}
                     }
                 }
 
                 // 2. Query Upstream native suggestions using resolved song ID (strict vibe match)
-                if (songId && !String(songId).startsWith('sp_') && !String(songId).startsWith('omonk_')) {
+                if (!isPlaceholderId(songId)) {
                     try {
                         const sug = await searchEngine.fetchHttps('/api/songs/' + encodeURIComponent(songId) + '/suggestions');
                         if (sug && sug.data && Array.isArray(sug.data)) {
@@ -1214,7 +1235,6 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 }
 
                 // 4. Multi-composer vibe queries (keeps composers mixed while strictly matching vibe)
-                const isClassicSeed = seedYear > 0 && seedYear <= 1995;
                 const TAMIL_VIBE_POOLS = {
                     dance: [
                         'tamil kuthu dance hits', 'tamil party fast beat songs',
@@ -1226,14 +1246,17 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                         'tamil mass anthem songs', 'anirudh mass hits',
                         'yuvan mass songs', 'santhosh narayanan mass songs'
                     ],
-                    romantic: [
+                    romantic: isClassicSeed ? [
+                        'ms viswanathan melody hits', 'ilaiyaraaja romantic tamil hits',
+                        'tm soundararajan duet hits', 'p susheela romantic tamil'
+                    ] : [
                         'harris jayaraj love melody', 'yuvan love melody hits',
                         'ar rahman romantic tamil', 'gv prakash melody hits',
                         'sid sriram tamil romantic'
                     ],
                     sad: isClassicSeed ? [
                         'ilaiyaraaja sad hits', 'ar rahman sad tamil',
-                        'spb sad tamil hits', 'yuvan sad pathos tamil'
+                        'spb sad tamil hits', 'ms viswanathan sad tamil'
                     ] : [
                         'yuvan sad pathos tamil', 'ar rahman sad tamil',
                         'gv prakash sad melody', 'tamil heartbreak pathos hits'
@@ -1246,8 +1269,8 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                         'tamil devotional hits', 'carnatic classical tamil songs'
                     ],
                     melodic: isClassicSeed ? [
-                        'ilaiyaraaja melody hits', 'vidyasagar melody hits',
-                        'deva melody tamil hits', 'ar rahman 90s tamil'
+                        'ilaiyaraaja melody hits', 'ms viswanathan tamil hits',
+                        'tm soundararajan classic hits', 'p susheela tamil melody hits'
                     ] : [
                         'harris jayaraj melody hits', 'ar rahman tamil melody',
                         'gv prakash melody hits', 'anirudh melody hits',
@@ -1277,8 +1300,8 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     } catch (e) {}
                 }
 
-                // 5. Filtered Chart Hits (Strictly shuffled & only matching the same vibe)
-                if (list.length < 16) {
+                // 5. Filtered Chart Hits (Only for modern/contemporary seeds when upstream & vibe queries returned < 8 tracks)
+                if (list.length < 8 && !isClassicSeed && (!seedYear || seedYear >= 2010)) {
                     try {
                         const dailyHits = (chartsData.charts && chartsData.charts[lang] && chartsData.charts[lang].daily) || [];
                         const weeklyHits = (chartsData.charts && chartsData.charts[lang] && chartsData.charts[lang].weekly) || [];
@@ -1557,7 +1580,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             });
-            res.end(JSON.stringify({ success: true, version: '8.19.11', build: 1795720200000, timestamp: 1795720200000 }));
+            res.end(JSON.stringify({ success: true, version: '8.19.12', build: 1795720200000, timestamp: 1795720200000 }));
             return;
         }
 

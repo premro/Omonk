@@ -1089,7 +1089,7 @@ class AudioPlayerEngine {
         this.queue = [track];
         this.currentIndex = 0;
         const p = this.playTrack(track, [track], 0, false, true);
-        this.seedVibeQueue(track);
+        this._vibeSeedPromise = this.seedVibeQueue(track);
         await p;
     }
 
@@ -1178,6 +1178,10 @@ class AudioPlayerEngine {
             }
         } catch (e) {
             console.warn('[VibeEngine] seedVibeQueue error:', e);
+        } finally {
+            if (seedToken === this._vibeSeedToken) {
+                this._vibeSeedPromise = null;
+            }
         }
     }
 
@@ -1207,13 +1211,13 @@ class AudioPlayerEngine {
                 this.isSequentialContext = true;
             }
             if (!skipAutoVibeSeed && !this.isSequentialContext && (!this.queue || this.queue.length <= 1)) {
-                this.seedVibeQueue(track);
+                this._vibeSeedPromise = this.seedVibeQueue(track);
             }
         } else if (!this.queue || this.queue.length === 0) {
             this.queue = [track];
             this.currentIndex = 0;
             this.isSequentialContext = false;
-            if (!skipAutoVibeSeed) this.seedVibeQueue(track);
+            if (!skipAutoVibeSeed) this._vibeSeedPromise = this.seedVibeQueue(track);
         } else {
             const existingIdx = this.queue.findIndex(t => String(t.id) === String(track.id) || (t.title && t.title === track.title));
             if (existingIdx >= 0) {
@@ -1222,7 +1226,7 @@ class AudioPlayerEngine {
                 this.queue = [track];
                 this.currentIndex = 0;
                 this.isSequentialContext = false;
-                if (!skipAutoVibeSeed) this.seedVibeQueue(track);
+                if (!skipAutoVibeSeed) this._vibeSeedPromise = this.seedVibeQueue(track);
             }
         }
 
@@ -1524,6 +1528,26 @@ class AudioPlayerEngine {
             if (window.renderSideQueueContent) window.renderSideQueueContent();
             if (autoPlay) await this.playTrack(track, this.queue, 0, this.isSequentialContext);
             return;
+        }
+
+        if (this._vibeSeedPromise && !this.isSequentialContext) {
+            try {
+                await this._vibeSeedPromise;
+            } catch (e) {}
+            const seededNextIdx = this.currentIndex + 1;
+            if (seededNextIdx < this.queue.length) {
+                this.currentIndex = seededNextIdx;
+                const track = this.queue[this.currentIndex];
+                if (autoPlay && track) {
+                    this._isTrackSwitching = true;
+                    this.isPlaying = true;
+                    this.updateMediaSession(track, true);
+                }
+                if (this.onQueueChange) this.onQueueChange(this.queue, this.currentIndex);
+                if (window.renderSideQueueContent) window.renderSideQueueContent();
+                if (autoPlay) await this.playTrack(track, this.queue, this.currentIndex, this.isSequentialContext);
+                return;
+            }
         }
 
         const cur = this.getCurrentTrack();

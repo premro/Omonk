@@ -1,5 +1,5 @@
 {
-  "version": "8.19.11",
+  "version": "8.19.12",
   "releaseDate": "2026-11-27",
-  "description": "v8.19.11: Prevent SW from intercepting cross-origin audio streams, extend resolve timeout, prioritize /api/radio track recommendations, and enforce era compatibility so search clutter doesn't push old songs ahead of vibe matches."
+  "description": "v8.19.12: Resolve placeholder chart IDs (sp_/omonk_) to real Saavn IDs for upstream suggestions, guard classic/retro queues from un-dated modern chart clutter, prioritize upstream recommendations, and await initial vibe seeding on Next."
 }
