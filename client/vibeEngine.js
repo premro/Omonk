@@ -43,8 +43,74 @@
     return false;
   }
 
+  const KNOWN_COMPOSERS = [
+    'yuvan shankar raja', 'a.r. rahman', 'ar rahman', 'anirudh ravichander', 'anirudh',
+    'harris jayaraj', 'ilaiyaraaja', 'ilayaraja', 'santhosh narayanan', 'g.v. prakash',
+    'gv prakash', 'vidyasagar', 'deva', 'd. imman', 'imman', 'hiphop tamizha',
+    'sai abhyankkar', 'sean roldan', 'sam c.s.', 'thaman', 'devi sri prasad',
+    'pritam', 'vishal-shekhar', 'amit trivedi', 'shankar-ehsaan-loy', 'sushin shyam',
+    'm.m. keeravani', 'mani sharma'
+  ];
 
-  
+  function pickComposerOrPrimaryArtist(artStr) {
+    if (!artStr) return '';
+    const parts = artStr.split(/[,&]/).map(p => p.replace(/[.\-_]/g, ' ').trim()).filter(Boolean);
+    for (const p of parts) {
+      const low = p.toLowerCase();
+      if (KNOWN_COMPOSERS.some(c => low.includes(c.replace(/\./g, '')) || c.replace(/\./g, '').includes(low))) {
+        return p;
+      }
+    }
+    return parts[0] || '';
+  }
+
+  function cleanArtistPrimaryKey(artStr) {
+    if (!artStr) return '';
+    const picked = pickComposerOrPrimaryArtist(artStr);
+    return (picked || artStr.split(/[,&]/)[0]).replace(/[.\-_]/g, ' ').trim().toLowerCase();
+  }
+
+  const SAD_VIBE_RE = /\b(sad|pathos|heartbreak|valikudhu|valiye|pirinthathu|pirivu|thanimai|azhugai|kanave|uyirin|kanmani|cheemayi|thenpaandi|thenpandi|thendral vandhu|amma endru|aarariraro|kanne kalaimane|poove sempoove|pogadhe|oru kal|yaen ennai|channa mereya|agar tum saath ho|tujhe bhula diya|kabira|bekhayali|judai|luka chuppi|ae dil hai|kal ho na|someone like you|fix you|the night we met|all too well|lovely|arcade|tears|cry|pain|grief|alone|soga|sogam)\b/i;
+  const DANCE_VIBE_RE = /\b(kuthu|dance|party|club|edm|remix|bass|beat|dappan|item|dj|disco|thara local|jala jala|arabic kuthu|jimikki|dhol|nacho|fast|gym|power|alappara|bottle|machi|tasmac|sarakku|vethalaiya|vethala|potendi|billa|mankatha|baila|bailaa|thiruvizha|dappankuthu|aaluma|doluma|marana mass|vaathi coming|naa ready|jalabulanjangu|jalabulajangu|sodakku|otha sollaala|chinna machan|appadi podu|podu|o podu|nakka mukka|jithu jilladi|danga maari|donu donu|why this kolaveri|saroja|saman|nikolo|chennai 600028|jalsa|pannungada|manmadha raasa|taxi taxi|urvasi|mukkala|pettai|chikku bukku|rowdy baby|selfie pulla|vaadi pulla|no money|top tucker|kaavaalaa|kaavaala|chill bro|verithanam|pathala|guleba|kutti story|dandanakka|gana|gaana|whistle podu|manasilaayo|golden sparrow|matta|peppy|upbeat|funk|bhangra|lungi dance|badtameez|kar gayi chull|kala chashma|vaada bin laada|rap|drill|hip hop|rock)\b/i;
+  const MASS_VIBE_RE = /\b(mass|anthem|brass|hero|intro|whistle|thala|badass|hukum|tiger|jailer|master|leo|beast|vikram|roar|bgm|theme|veera|veezha veera|hunter|raavana|god mode|powerhouse|bloody sweet|kaththi|mersal|theri|kabali|neruppu da|aalaporan|petta|teaser)\b/i;
+  const CHILL_VIBE_RE = /\b(chill|lofi|lo-fi|relax|peace|calm|coffee|night|breeze|ambient|aesthetic|slowed|reverb|unplugged|lullaby)\b/i;
+  const DEVOTIONAL_VIBE_RE = /\b(devotional|bhajan|carnatic|classical|raga|temple|flute|violin|nadaswaram|sloka|stotram|om|shiva|krishna|murugan|ayyappa|bakthi|bhakti|suprabhatam)\b/i;
+  const ROMANTIC_VIBE_RE = /\b(kadhal|kaadhal|love|romance|romantic|melody|anbe|acoustic|nee|nenjam|kanne|penne|vizhi|heart|soft|sweet|duet|priya|prema|ishq|pyaar|mohabbat|tum hi ho|kesariya|perfect|golden hour|ennavale|munbe vaa|vaseegara|poongatrile|uyire|suttrum vizhi|new york nagaram|moongil thottam|thalli pogathey|pookkale|nenjukkul|ennodu nee|hosanna|vinnaithaandi|venmathiye)\b/i;
+
+  function isVibeCompatible(seedVibe, candVibe, strict = true) {
+    if (!seedVibe || !candVibe || candVibe === seedVibe) return true;
+    if (seedVibe === 'dance' || seedVibe === 'mass') {
+      if (candVibe === 'dance' || candVibe === 'mass') return true;
+      return !strict && candVibe === 'melodic';
+    }
+    if (seedVibe === 'sad') {
+      if (candVibe === 'sad' || candVibe === 'chill') return true;
+      return candVibe === 'romantic' || (!strict && candVibe === 'melodic');
+    }
+    if (seedVibe === 'romantic') {
+      return candVibe === 'romantic' || candVibe === 'chill' || candVibe === 'melodic';
+    }
+    if (seedVibe === 'chill') {
+      return candVibe === 'chill' || candVibe === 'romantic' || candVibe === 'melodic';
+    }
+    if (seedVibe === 'devotional') {
+      return candVibe === 'devotional' || candVibe === 'chill';
+    }
+    // melodic: compatible with melodic/romantic/chill, never dance/mass/sad
+    return candVibe === 'melodic' || candVibe === 'romantic' || candVibe === 'chill';
+  }
+
+  function getVibeSearchKeyword(vibe) {
+    if (vibe === 'sad') return 'sad pathos melody';
+    if (vibe === 'dance') return 'dance kuthu party';
+    if (vibe === 'mass') return 'mass bgm theme';
+    if (vibe === 'romantic') return 'romantic melody kadhal';
+    if (vibe === 'chill') return 'chill lofi relax';
+    if (vibe === 'devotional') return 'devotional classical';
+    return 'melody';
+  }
+
+
   /**
    * High-Precision 6-Category Vibe Classifier
    * Categorizes any track into: 'sad', 'romantic', 'dance', 'mass', 'chill', 'devotional', or 'melodic'
@@ -54,32 +120,32 @@
     const raw = `${track.title || ''} ${track.artist || ''} ${track.album || ''} ${track.mood || ''} ${track.vibe || ''}`.toLowerCase();
 
     // 1. Sad / Pathos / Heartbreak / Emotional Ballad
-    if (/\b(sad|pathos|heartbreak|valikudhu|valiye|pirinthathu|pirivu|thanimai|azhugai|kanave|uyirin|kanmani|cheemayi|thenpaandi|thenpandi|thendral vandhu|amma endru|aarariraro|kanne kalaimane|poove sempoove|channa mereya|agar tum saath ho|tujhe bhula diya|kabira|bekhayali|judai|luka chuppi|ae dil hai|kal ho na|someone like you|fix you|the night we met|all too well|lovely|arcade|tears|cry|pain|grief|alone|soga|sogam)\b/i.test(raw)) {
+    if (SAD_VIBE_RE.test(raw)) {
       return 'sad';
     }
 
     // 2. Energetic / Dance / Party / Kuthu
-    if (/\b(kuthu|dance|party|club|edm|remix|bass|beat|dappan|item|dj|disco|thara local|jala jala|arabic kuthu|jimikki|dhol|nacho|fast|gym|power|alappara|bottle|machi|tasmac|sarakku|vethalaiya|vethala|potendi|billa|mankatha|baila|bailaa|thiruvizha|dappankuthu|aaluma|doluma|marana mass|vaathi coming|naa ready|jalabulanjangu|sodakku|otha sollaala|chinna machan|appadi podu|nakka mukka|jithu jilladi|danga maari|donu donu|why this kolaveri)\b/i.test(raw)) {
+    if (DANCE_VIBE_RE.test(raw)) {
       return 'dance';
     }
 
     // 3. Mass / Anthem / Hero BGM
-    if (/\b(mass|anthem|brass|hero|intro|whistle|thala|badass|hukum|naa ready|tiger|jailer|master|leo|beast|vikram|roar|bgm|theme)\b/i.test(raw)) {
+    if (MASS_VIBE_RE.test(raw)) {
       return 'mass';
     }
 
     // 4. Chill / Lo-Fi / Relaxing
-    if (/\b(chill|lofi|lo-fi|relax|peace|calm|coffee|night|breeze|ambient|aesthetic|slowed|reverb)\b/i.test(raw)) {
+    if (CHILL_VIBE_RE.test(raw)) {
       return 'chill';
     }
 
     // 5. Devotional / Classical
-    if (/\b(devotional|bhajan|carnatic|classical|raga|temple|flute|violin|nadaswaram|sloka|stotram|om|shiva|krishna|murugan|ayyappa)\b/i.test(raw)) {
+    if (DEVOTIONAL_VIBE_RE.test(raw)) {
       return 'devotional';
     }
 
     // 6. Romantic / Melody
-    if (/\b(kadhal|love|romance|melody|anbe|unplugged|acoustic|nee|nenjam|kanne|penne|vizhi|heart|soft|sweet|duet|priya|prema|ishq|pyaar|mohabbat|tum hi ho|kesariya|perfect|golden hour)\b/i.test(raw)) {
+    if (ROMANTIC_VIBE_RE.test(raw)) {
       return 'romantic';
     }
 
@@ -138,8 +204,10 @@
     const hasNumericBpm = (typeof bpm === 'number' && !isNaN(bpm) && bpm > 30 && bpm < 250);
     const hasNumericEnergy = (typeof energy === 'number' && !isNaN(energy) && energy >= 0 && energy <= 1.0);
 
-    // If already fully populated with numeric values, return directly
-    if (hasNumericBpm && hasNumericEnergy && mood) {
+    const isGenericDefault = (bpm === 105 && energy === 0.60 && (!mood || mood === 'melodic'));
+
+    // If already explicitly populated with non-generic numeric values, return directly
+    if (!isGenericDefault && hasNumericBpm && hasNumericEnergy && mood) {
       return { bpm, energy, mood, tempo: tempo || (bpm > 115 ? 'fast' : bpm < 90 ? 'slow' : 'medium'), genre: genre || 'pop', language };
     }
 
@@ -151,37 +219,53 @@
     let inferredMood = mood || 'melodic';
     let inferredTempo = tempo || 'medium';
 
-    // 1. Energetic / Dance / Fast / Bass Beat
-    if (/\b(kuthu|dance|party|edm|remix|bass|mass|fast|beat|rap|drill|hip hop|gym|rock|teaser|theme|item|club|power|whistle|thala|dappan|hukum|badass|bottle|machi|tasmac|sarakku|vethalaiya|vethala|potendi|billa|mankatha|baila|bailaa|thiruvizha|dappankuthu|aaluma|doluma|marana mass|vaathi coming|naa ready|jalabulanjangu|sodakku|otha sollaala|chinna machan|appadi podu|nakka mukka|jithu jilladi|danga maari|donu donu|why this kolaveri)\b/i.test(haystack)) {
-      inferredBpm = hasNumericBpm ? bpm : 136;
-      inferredEnergy = hasNumericEnergy ? energy : 0.92;
+    // 1. Sad / Pathos / Heartbreak
+    if (SAD_VIBE_RE.test(haystack)) {
+      inferredBpm = (hasNumericBpm && !isGenericDefault) ? bpm : 78;
+      inferredEnergy = (hasNumericEnergy && !isGenericDefault) ? energy : 0.34;
+      inferredMood = 'sad';
+      inferredTempo = 'slow';
+      genre = genre || 'sad';
+    }
+    // 2. Energetic / Dance / Fast / Bass Beat
+    else if (DANCE_VIBE_RE.test(haystack)) {
+      inferredBpm = (hasNumericBpm && !isGenericDefault) ? bpm : 136;
+      inferredEnergy = (hasNumericEnergy && !isGenericDefault) ? energy : 0.92;
       inferredMood = 'energetic';
       inferredTempo = 'fast';
       genre = genre || 'dance';
     }
-    // 2. Slow / Melody / Romance / Soulful
-    else if (/\b(melody|love|kadhal|unplugged|acoustic|slow|romantic|soul|sad|rain|thendral|nee|nenjam|kanne|penne|vizhi|heart|soft|valikudhu|pirivu|kanave|uyire)\b/i.test(haystack)) {
-      inferredBpm = hasNumericBpm ? bpm : 82;
-      inferredEnergy = hasNumericEnergy ? energy : 0.36;
-      inferredMood = 'romantic';
-      inferredTempo = 'slow';
-      genre = genre || 'melody';
+    // 3. Mass / Anthem / Hero BGM
+    else if (MASS_VIBE_RE.test(haystack)) {
+      inferredBpm = (hasNumericBpm && !isGenericDefault) ? bpm : 128;
+      inferredEnergy = (hasNumericEnergy && !isGenericDefault) ? energy : 0.88;
+      inferredMood = 'energetic';
+      inferredTempo = 'fast';
+      genre = genre || 'mass';
     }
-    // 3. Chill / Lo-Fi / Ambient
-    else if (/\b(chill|lofi|lo-fi|relax|peace|calm|coffee|night|breeze|ambient|aesthetic)\b/i.test(haystack)) {
-      inferredBpm = hasNumericBpm ? bpm : 76;
-      inferredEnergy = hasNumericEnergy ? energy : 0.28;
+    // 4. Chill / Lo-Fi / Ambient
+    else if (CHILL_VIBE_RE.test(haystack)) {
+      inferredBpm = (hasNumericBpm && !isGenericDefault) ? bpm : 76;
+      inferredEnergy = (hasNumericEnergy && !isGenericDefault) ? energy : 0.28;
       inferredMood = 'chill';
       inferredTempo = 'slow';
       genre = genre || 'lo-fi';
     }
-    // 4. Classical / Devotional / Traditional
-    else if (/\b(classical|carnatic|raga|bhajan|devotional|folk|flute|violin|nadaswaram|sloka|stotram|temple)\b/i.test(haystack)) {
-      inferredBpm = hasNumericBpm ? bpm : 94;
-      inferredEnergy = hasNumericEnergy ? energy : 0.48;
+    // 5. Classical / Devotional / Traditional
+    else if (DEVOTIONAL_VIBE_RE.test(haystack)) {
+      inferredBpm = (hasNumericBpm && !isGenericDefault) ? bpm : 94;
+      inferredEnergy = (hasNumericEnergy && !isGenericDefault) ? energy : 0.48;
       inferredMood = 'devotional';
       inferredTempo = 'medium';
       genre = genre || 'classical';
+    }
+    // 6. Slow / Melody / Romance / Soulful
+    else if (ROMANTIC_VIBE_RE.test(haystack)) {
+      inferredBpm = (hasNumericBpm && !isGenericDefault) ? bpm : 84;
+      inferredEnergy = (hasNumericEnergy && !isGenericDefault) ? energy : 0.38;
+      inferredMood = 'romantic';
+      inferredTempo = 'slow';
+      genre = genre || 'melody';
     }
     // 5. Artist DNA Fallback
     else {
@@ -269,21 +353,22 @@
     const curVibe = detectVibeCategory(currentTrack);
     const candVibe = detectVibeCategory(candidateTrack);
 
-    // Hard vibe boundaries: never mix sad with party/dance or vice versa!
-    if (curVibe === 'sad') {
-      if (candVibe === 'dance' || candVibe === 'mass') return 9999.0;
-      if (candVibe !== 'sad' && candVibe !== 'chill' && candVibe !== 'romantic' && candVibe !== 'melodic') return 500.0;
-    } else if (curVibe === 'dance' || curVibe === 'mass') {
-      if (candVibe === 'sad') return 9999.0;
-      if (candVibe !== 'dance' && candVibe !== 'mass' && candVibe !== 'energetic') return 200.0;
+    // Bidirectional hard vibe boundaries: never mix dance/mass with romantic/melodic/sad/chill/devotional or sad with dance/mass
+    if (!isVibeCompatible(curVibe, candVibe, true)) {
+      return 9999.0;
     }
 
     let moodScore = 0.0;
     if (curVibe === candVibe) {
       moodScore = 0.0;
+    } else if ((curVibe === 'dance' && candVibe === 'mass') || (curVibe === 'mass' && candVibe === 'dance')) {
+      moodScore = 0.08;
     } else if ((curVibe === 'romantic' && candVibe === 'chill') || (curVibe === 'chill' && candVibe === 'romantic')) {
       moodScore = 0.04;
-    } else if (curVibe === 'sad' && candVibe === 'romantic') {
+    } else if ((curVibe === 'romantic' && candVibe === 'melodic') || (curVibe === 'melodic' && candVibe === 'romantic') ||
+               (curVibe === 'chill' && candVibe === 'melodic') || (curVibe === 'melodic' && candVibe === 'chill')) {
+      moodScore = 0.06;
+    } else if (curVibe === 'sad' && (candVibe === 'romantic' || candVibe === 'chill')) {
       moodScore = 0.10;
     } else {
       moodScore = 0.35;
@@ -294,31 +379,33 @@
 
     let normalizedDist = bpmScore + energyScore + moodScore + tempoScore;
 
-    // Feature E: Metadata Synergy (Soundtrack / Artist / Music Director)
+    // Feature E: Light Metadata Synergy (mix composers freely while giving tiny soundtrack affinity)
     let synergyModifier = 0.0;
     const curArtist = (currentTrack.artist || '').toLowerCase().trim();
     const candArtist = (candidateTrack.artist || '').toLowerCase().trim();
     const curAlbum = (currentTrack.album || currentTrack.category || '').toLowerCase().trim();
     const candAlbum = (candidateTrack.album || candidateTrack.category || '').toLowerCase().trim();
+    const isGenericAlbum = (alb) => !alb || /\b(best of|hits of|top hits|romantic|melody|chill|single|collection|playlist|evergreen|greatest)\b/i.test(alb);
 
-    // 1. Same Movie / Album soundtrack affinity bonus
-    if (curAlbum && candAlbum && curAlbum.length >= 3 && (curAlbum === candAlbum || curAlbum.includes(candAlbum) || candAlbum.includes(curAlbum))) {
-      synergyModifier -= 0.30;
+    // 1. Modest same-movie soundtrack affinity (only for real film soundtracks, not compilation albums)
+    if (curAlbum && candAlbum && curAlbum.length >= 3 && !isGenericAlbum(curAlbum) && !isGenericAlbum(candAlbum) &&
+        (curAlbum === candAlbum || curAlbum.includes(candAlbum) || candAlbum.includes(curAlbum))) {
+      synergyModifier -= 0.08;
     }
 
-    // 2. Same Composer / Artist affinity bonus
+    // 2. Allow composers to mix freely: tiny affinity instead of heavy single-composer lock-in
     if (curArtist && candArtist) {
-      const curPrimary = curArtist.split(/[,&]/)[0].trim();
-      const candPrimary = candArtist.split(/[,&]/)[0].trim();
-      if (curPrimary && candPrimary && (curPrimary === candPrimary || curArtist.includes(candPrimary) || candArtist.includes(curPrimary))) {
-        synergyModifier -= 0.20;
+      const curPrimary = cleanArtistPrimaryKey(curArtist);
+      const candPrimary = cleanArtistPrimaryKey(candArtist);
+      if (curPrimary && candPrimary && curPrimary === candPrimary) {
+        synergyModifier -= 0.02;
       }
     }
 
     // 3. User favorite artists affinity bonus
     if (taste && Array.isArray(taste.favoriteArtists)) {
       if (taste.favoriteArtists.some(fa => candArtist.includes(fa.toLowerCase()))) {
-        synergyModifier -= 0.15;
+        synergyModifier -= 0.08;
       }
     }
 
@@ -340,6 +427,20 @@
     relatedTracksCache.set(cacheKey, merged);
   }
 
+  function getAllRelatedTracks() {
+    const all = [];
+    const seen = new Set();
+    for (const arr of relatedTracksCache.values()) {
+      for (const t of arr) {
+        if (t && t.id && !seen.has(t.id)) {
+          seen.add(t.id);
+          all.push(t);
+        }
+      }
+    }
+    return all;
+  }
+
   /**
    * Helper: Asynchronously fetches related online tracks by artist or album.
    * Results are cached for 30 minutes.
@@ -348,25 +449,17 @@
     if (!track) return [];
     const queries = [];
     const alb = (track.album || "").replace(/\(From.*?\)/i, "").trim();
-    const art = (track.artist?.split(/[,&]/)[0] || "").trim();
-    const acoustics = inferAcoustics(track);
+    const art = pickComposerOrPrimaryArtist(track.artist || "");
+    const seedVibe = detectVibeCategory(track);
+    const vibeKeyword = getVibeSearchKeyword(seedVibe);
     const lang = detectLanguage(track) || 'tamil';
 
     if (art && art.length >= 3) {
-      queries.push(art);
-      if (acoustics.mood === 'melodic' || acoustics.mood === 'romantic') {
-        queries.push(`${art} melody hits`);
-      } else if (acoustics.energy > 0.7) {
-        queries.push(`${art} dance hits`);
-      } else {
-        queries.push(`${art} hits`);
-      }
+      queries.push(`${art} ${vibeKeyword}`);
     }
-    if (alb && alb.length >= 3 && !alb.toLowerCase().includes("single") && !alb.toLowerCase().includes("hits")) {
+    queries.push(`${lang} ${vibeKeyword} songs`);
+    if (alb && alb.length >= 3 && !/\b(single|hits|best of|collection|romantic|melody)\b/i.test(alb)) {
       queries.push(alb);
-    }
-    if (queries.length < 2) {
-      queries.push(acoustics.mood === 'melodic' ? `${lang} melody hits` : `${lang} hits`);
     }
 
     const fetchedTracks = [];
@@ -475,17 +568,20 @@
     const recentHistory = (Array.isArray(history) ? history : []).slice(-2);
     let consecutiveArtist = null;
     if (recentHistory.length >= 2) {
-      const a1 = (recentHistory[0]?.artist || '').split(/[,&]/)[0].toLowerCase().trim();
-      const a2 = (recentHistory[1]?.artist || '').split(/[,&]/)[0].toLowerCase().trim();
+      const a1 = cleanArtistPrimaryKey(recentHistory[0]?.artist || '');
+      const a2 = cleanArtistPrimaryKey(recentHistory[1]?.artist || '');
       if (a1 && a1 === a2) {
         consecutiveArtist = a1;
       }
     }
 
-    // 5. Filter candidates
+    const seedVibe = detectVibeCategory(currentTrack);
+
+    // 5. Filter candidates (strict language + strict bidirectional vibe)
     let candidatePool = allCandidates.filter(t => {
       if (!t || !t.id || excludeIds.has(t.id)) return false;
       if (t.duration && t.duration <= 45) return false;
+      if (currentTrack && isSameSongOrReprise(t.title, currentTrack.title)) return false;
 
       // Blocked artist filter
       if (taste && Array.isArray(taste.blockedArtists)) {
@@ -500,25 +596,46 @@
 
       // Avoid 3rd consecutive play of same artist
       if (consecutiveArtist) {
-        const candArt = (t.artist || '').split(/[,&]/)[0].toLowerCase().trim();
-        if (candArt === consecutiveArtist) return false;
+        const candArt = cleanArtistPrimaryKey(t.artist || '');
+        if (candArt && candArt === consecutiveArtist) return false;
       }
 
       // Strict language match
       const trackLang = detectLanguage(t);
       if (enforcedLang === 'tamil') {
-        return trackLang === 'tamil';
-      } else {
-        return trackLang === enforcedLang;
+        if (trackLang !== 'tamil') return false;
+      } else if (trackLang !== enforcedLang) {
+        return false;
       }
+
+      // Strict vibe compatibility match
+      return isVibeCompatible(seedVibe, detectVibeCategory(t), true);
     });
+
+    // Relax only vibe strictness (keep language & anti-clash) before falling back further
+    if (candidatePool.length === 0) {
+      candidatePool = allCandidates.filter(t => {
+        if (!t || !t.id || excludeIds.has(t.id)) return false;
+        if (currentTrack && isSameSongOrReprise(t.title, currentTrack.title)) return false;
+        const trackLang = detectLanguage(t);
+        if (trackLang !== enforcedLang) return false;
+        return isVibeCompatible(seedVibe, detectVibeCategory(t), false);
+      });
+    }
 
     // Relax exclusions only when strict pool is completely empty
     if (candidatePool.length === 0) {
       candidatePool = allCandidates.filter(t => {
         if (!t || !t.id || (currentTrack && t.id === currentTrack.id)) return false;
         const trackLang = detectLanguage(t);
-        if (enforcedLang === 'tamil') return trackLang === 'tamil';
+        return trackLang === enforcedLang && isVibeCompatible(seedVibe, detectVibeCategory(t), false);
+      });
+    }
+
+    if (candidatePool.length === 0) {
+      candidatePool = allCandidates.filter(t => {
+        if (!t || !t.id || (currentTrack && t.id === currentTrack.id)) return false;
+        const trackLang = detectLanguage(t);
         return trackLang === enforcedLang;
       });
     }
@@ -618,15 +735,12 @@
   /**
    * Spotify-Grade Continuous Radio Track Fetcher
    * Fetches the next best acoustic/vibe match when the current song completes.
+   * Mixes composers naturally while strictly enforcing vibe compatibility.
    */
   async function getContinuousRadioTrack(currentTrack, history = []) {
     if (!currentTrack) return null;
-    const isCatalyst = typeof window !== 'undefined' && (
-      window.location.hostname.includes('catalystserverless') ||
-      window.location.hostname.includes('zohocatalyst') ||
-      window.location.pathname.startsWith('/app')
-    );
-    const prefix = (typeof window !== 'undefined' && window.API_PREFIX) ? window.API_PREFIX : (isCatalyst ? '/server/music_api' : '');
+    const prefix = getVibeApiPrefix();
+    const taste = (typeof window !== 'undefined' && window.ProfileManager) ? window.ProfileManager.getUserTaste() : null;
 
     const recentHistory = (Array.isArray(history) ? history : []).slice(-35);
     const historyIds = new Set(recentHistory.map(h => typeof h === 'string' ? h : String(h?.id)).filter(Boolean));
@@ -636,6 +750,14 @@
     const historyCanon = new Set(recentHistory.map(h => typeof h === 'string' ? '' : normalizeCanonicalTitle(h?.title)).filter(Boolean));
     const curCanon = normalizeCanonicalTitle(currentTrack.title);
     if (curCanon) historyCanon.add(curCanon);
+
+    // Avoid 3rd consecutive track by the exact same primary artist/composer
+    let consecutiveArtist = null;
+    if (recentHistory.length >= 2) {
+      const a1 = cleanArtistPrimaryKey(recentHistory[recentHistory.length - 1]?.artist || '');
+      const a2 = cleanArtistPrimaryKey(recentHistory[recentHistory.length - 2]?.artist || '');
+      if (a1 && a1 === a2) consecutiveArtist = a1;
+    }
 
     // Queue deduplication
     const queueTracks = (typeof window !== 'undefined' && window.AudioPlayer && Array.isArray(window.AudioPlayer.queue))
@@ -647,8 +769,9 @@
 
     const seedLang = detectLanguage(currentTrack);
     const seedVibe = detectVibeCategory(currentTrack);
+    const seedArtistKey = cleanArtistPrimaryKey(currentTrack.artist || '');
 
-    const isNotDuplicate = (cand) => {
+    const isValidCandidate = (cand, strictVibe = true) => {
       if (!cand || !cand.id || !cand.title) return false;
       const titleKey = cand.title.toLowerCase().trim();
       const canonKey = normalizeCanonicalTitle(cand.title);
@@ -657,83 +780,159 @@
       if (historyTitles.has(titleKey) || queueTitles.has(titleKey)) return false;
       if (canonKey && (historyCanon.has(canonKey) || queueCanon.has(canonKey))) return false;
 
+      if (taste && Array.isArray(taste.blockedArtists)) {
+        const candArt = (cand.artist || '').toLowerCase();
+        if (taste.blockedArtists.some(ba => candArt.includes(ba.toLowerCase()))) return false;
+      }
+      if (taste && Array.isArray(taste.blockedTracks) && taste.blockedTracks.includes(cand.id)) return false;
+
+      const candArtKey = cleanArtistPrimaryKey(cand.artist || '');
+      if (consecutiveArtist && candArtKey && candArtKey === consecutiveArtist) return false;
+
       // Language check
       if (seedLang && cand.language && cand.language !== 'unknown' && cand.language.toLowerCase().trim() !== seedLang) {
         return false;
       }
-      // Vibe check
+      // Strict bidirectional vibe check
       const candVibe = detectVibeCategory(cand);
-      if (seedVibe === 'sad' && (candVibe === 'dance' || candVibe === 'mass')) return false;
-      if ((seedVibe === 'dance' || seedVibe === 'mass') && candVibe === 'sad') return false;
-
-      return true;
+      return isVibeCompatible(seedVibe, candVibe, strictVibe);
     };
 
-    // Step 1: Original Upstream Vibe Radio candidates
+    const collected = [];
+    const collectedIds = new Set();
+    const pushIfValid = (cand) => {
+      if (!cand || !cand.id || collectedIds.has(String(cand.id))) return;
+      if (cand.streamUrl && isValidCandidate(cand, true)) {
+        collectedIds.add(String(cand.id));
+        collected.push(cand);
+      }
+    };
+
+    // Step 1: Upstream Vibe Radio candidates (collect all compatible, don't just take index 0)
     try {
       const qParams = new URLSearchParams({
         id: currentTrack.id || '',
         title: currentTrack.title || '',
         artist: currentTrack.artist || '',
         album: currentTrack.album || '',
-        lang: currentTrack.language || 'tamil'
+        lang: currentTrack.language || seedLang || 'tamil'
       });
       const res = await fetch(`${prefix}/api/radio?${qParams.toString()}`);
       if (res.ok) {
         const json = await res.json();
         const candidateTracks = json.tracks || [];
-        for (const cand of candidateTracks) {
-          if (isNotDuplicate(cand) && cand.streamUrl) {
-            return cand;
-          }
-        }
+        candidateTracks.forEach(pushIfValid);
       }
     } catch (e) {
       console.warn('[VibeEngine] getContinuousRadioTrack fetch failed:', e);
     }
 
-    // Step 2: Original Query search for fresh hits by artist
-    try {
-      const artist = (currentTrack.artist || '').split(/[,&]/)[0].trim();
-      if (artist) {
-        const sRes = await fetch(`${prefix}/api/search?q=${encodeURIComponent(artist + ' hits')}&limit=10`);
-        if (sRes.ok) {
-          const sJson = await sRes.json();
-          const sTracks = sJson.results || sJson.songs || [];
-          for (const cand of sTracks) {
-            if (isNotDuplicate(cand) && cand.streamUrl) {
-              return cand;
-            }
+    // Step 2: Supplement with vibe-matched search if sparse
+    if (collected.length < 5) {
+      try {
+        const vibeKeyword = getVibeSearchKeyword(seedVibe);
+        const composer = pickComposerOrPrimaryArtist(currentTrack.artist || '');
+        const searchQueries = [];
+        searchQueries.push(`${seedLang || 'tamil'} ${vibeKeyword} hits`);
+        if (composer) searchQueries.push(`${composer} ${vibeKeyword}`);
+
+        for (const sq of searchQueries) {
+          if (collected.length >= 10) break;
+          const sRes = await fetch(`${prefix}/api/search?q=${encodeURIComponent(sq)}&limit=12`);
+          if (sRes.ok) {
+            const sJson = await sRes.json();
+            const sTracks = sJson.results || sJson.songs || [];
+            sTracks.forEach(pushIfValid);
           }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
+    }
 
-    // Fallback: original local pool
+    // Step 3: Supplement from local catalog / related pool
     const pool = (typeof window !== 'undefined' && window.AllSongPool && window.AllSongPool.length > 0)
       ? window.AllSongPool
       : [];
+    [...getAllRelatedTracks(), ...pool].forEach(pushIfValid);
+
+    if (collected.length > 0) {
+      const scored = collected.map(cand => {
+        let dist = calculateVibeDistance(currentTrack, cand, taste);
+        // Gentle diversity nudge so next auto-played track mixes composers nicely
+        const candArtKey = cleanArtistPrimaryKey(cand.artist || '');
+        if (seedArtistKey && candArtKey && candArtKey === seedArtistKey && collected.length >= 4) {
+          dist += 0.03;
+        }
+        return { track: cand, distance: dist };
+      });
+      scored.sort((a, b) => a.distance - b.distance);
+      const top5 = scored.slice(0, Math.min(5, scored.length));
+      const weights = top5.map(item => 1.0 / (item.distance + 0.06));
+      const totalWeight = weights.reduce((acc, w) => acc + w, 0);
+      let rand = Math.random() * totalWeight;
+      for (let i = 0; i < weights.length; i++) {
+        rand -= weights[i];
+        if (rand <= 0) return top5[i].track;
+      }
+      return top5[0].track;
+    }
+
+    // Fallback: local pool with full vibe scoring
     return getNextVibeTrack(currentTrack, pool, history);
   }
 
   /**
    * Builds an instant Spotify Autoplay / Track Radio Queue seeded by a track.
-   * e.g., For "Machi Open the Bottle", immediately queues "Vethalaiya Potendi",
-   * "Vaada Bin Laada", "Aaluma Doluma", "Naa Ready", etc.
+   * Mixes composers naturally while strictly matching the seed track's vibe & excluding history.
    */
-  async function getVibeRadioQueue(seedTrack, count = 20) {
+  async function getVibeRadioQueue(seedTrack, count = 20, history = null) {
     if (!seedTrack) return [];
-    const isCatalyst = typeof window !== 'undefined' && (
-      window.location.hostname.includes('catalystserverless') ||
-      window.location.hostname.includes('zohocatalyst') ||
-      window.location.pathname.startsWith('/app')
-    );
-    const prefix = isCatalyst ? '/server/music_api' : '';
+    const prefix = getVibeApiPrefix();
+    const taste = (typeof window !== 'undefined' && window.ProfileManager) ? window.ProfileManager.getUserTaste() : null;
+
+    const effectiveHistory = Array.isArray(history)
+      ? history
+      : ((typeof window !== 'undefined' && window.AudioPlayer && Array.isArray(window.AudioPlayer.history)) ? window.AudioPlayer.history : []);
+    const recentHistory = effectiveHistory.slice(-30);
+    const historyIds = new Set(recentHistory.map(h => typeof h === 'string' ? h : String(h?.id)).filter(Boolean));
+    const historyTitles = new Set(recentHistory.map(h => typeof h === 'string' ? '' : (h?.title || '').toLowerCase().trim()).filter(Boolean));
+    const historyCanon = new Set(recentHistory.map(h => typeof h === 'string' ? '' : normalizeCanonicalTitle(h?.title)).filter(Boolean));
 
     const queue = [seedTrack];
     const seen = new Set();
     if (seedTrack.id) seen.add(String(seedTrack.id));
     if (seedTrack.title) seen.add(seedTrack.title.toLowerCase().trim());
+    const seedCanon = normalizeCanonicalTitle(seedTrack.title || '');
+    if (seedCanon) seen.add('canon_' + seedCanon);
+
+    const seedLang = detectLanguage(seedTrack);
+    const seedVibe = detectVibeCategory(seedTrack);
+
+    const rawCandidates = [];
+    const rawSeenIds = new Set();
+
+    const collectRaw = (t) => {
+      if (!t || !t.title) return;
+      const tid = String(t.id || '');
+      if (tid && rawSeenIds.has(tid)) return;
+      const titleKey = t.title.toLowerCase().trim();
+      const canonKey = normalizeCanonicalTitle(t.title);
+      if (isSameSongOrReprise(t.title, seedTrack.title)) return;
+      if (tid && (seen.has(tid) || historyIds.has(tid))) return;
+      if (seen.has(titleKey) || historyTitles.has(titleKey)) return;
+      if (canonKey && (seen.has('canon_' + canonKey) || historyCanon.has(canonKey))) return;
+
+      if (taste && Array.isArray(taste.blockedArtists)) {
+        const candArt = (t.artist || '').toLowerCase();
+        if (taste.blockedArtists.some(ba => candArt.includes(ba.toLowerCase()))) return;
+      }
+      if (taste && Array.isArray(taste.blockedTracks) && tid && taste.blockedTracks.includes(t.id)) return;
+
+      const tLang = detectLanguage(t);
+      if (seedLang && t.language && t.language !== 'unknown' && tLang !== seedLang) return;
+
+      if (tid) rawSeenIds.add(tid);
+      rawCandidates.push(t);
+    };
 
     try {
       const qParams = new URLSearchParams({
@@ -741,26 +940,68 @@
         title: seedTrack.title || '',
         artist: seedTrack.artist || '',
         album: seedTrack.album || '',
-        lang: seedTrack.language || 'tamil'
+        lang: seedTrack.language || seedLang || 'tamil'
       });
       const res = await fetch(`${prefix}/api/radio?${qParams.toString()}`);
       if (res.ok) {
         const json = await res.json();
         const tracks = json.tracks || [];
-        for (const t of tracks) {
-          const titleKey = (t.title || '').toLowerCase().trim();
-          const canonKey = normalizeCanonicalTitle(t.title || '');
-          if (t && t.title && !seen.has(String(t.id)) && !seen.has(titleKey) && (!canonKey || !seen.has('canon_' + canonKey)) && !isSameSongOrReprise(t.title, seedTrack.title)) {
-            seen.add(String(t.id));
-            seen.add(titleKey);
-            if (canonKey) seen.add('canon_' + canonKey);
-            queue.push(t);
-            if (queue.length >= count) break;
-          }
-        }
+        tracks.forEach(collectRaw);
       }
     } catch (e) {
       console.warn('[VibeEngine] getVibeRadioQueue error:', e);
+    }
+
+    // Supplement with local pool and cached related tracks
+    const localPool = (typeof window !== 'undefined' && window.AllSongPool && window.AllSongPool.length > 0)
+      ? window.AllSongPool
+      : [];
+    [...getAllRelatedTracks(), ...localPool].forEach(collectRaw);
+
+    // Filter by strict bidirectional vibe compatibility first; relax only if < 5 matches
+    let vibeMatched = rawCandidates.filter(t => isVibeCompatible(seedVibe, detectVibeCategory(t), true));
+    if (vibeMatched.length < 5) {
+      vibeMatched = rawCandidates.filter(t => isVibeCompatible(seedVibe, detectVibeCategory(t), false));
+    }
+    if (vibeMatched.length === 0) {
+      vibeMatched = rawCandidates;
+    }
+
+    // Score with acoustic vibe distance + small jitter so varied composers & fresh hits surface
+    const scored = vibeMatched.map(t => ({
+      track: t,
+      distance: calculateVibeDistance(seedTrack, t, taste) + (Math.random() * 0.04)
+    }));
+    scored.sort((a, b) => a.distance - b.distance);
+
+    const artistCounts = new Map();
+    const albumCounts = new Map();
+    const seedAlbKey = (seedTrack.album || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/soundtrack|theme|single|ost|ep/gi, '').trim();
+
+    for (const item of scored) {
+      const t = item.track;
+      const tid = String(t.id || '');
+      const titleKey = (t.title || '').toLowerCase().trim();
+      const canonKey = normalizeCanonicalTitle(t.title || '');
+      if ((tid && seen.has(tid)) || seen.has(titleKey) || (canonKey && seen.has('canon_' + canonKey))) continue;
+
+      const artKey = cleanArtistPrimaryKey(t.artist || '');
+      if (artKey && (artistCounts.get(artKey) || 0) >= 2) continue;
+
+      const albKey = (t.album || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/soundtrack|theme|single|ost|ep/gi, '').trim();
+      if (albKey && albKey.length > 2 && !/\b(best of|hits of|top hits|romantic|melody|collection)\b/i.test(albKey)) {
+        if (albKey !== seedAlbKey && (albumCounts.get(albKey) || 0) >= 1) continue;
+        if (albKey === seedAlbKey && (albumCounts.get(albKey) || 0) >= 1) continue;
+      }
+
+      if (tid) seen.add(tid);
+      seen.add(titleKey);
+      if (canonKey) seen.add('canon_' + canonKey);
+      if (artKey) artistCounts.set(artKey, (artistCounts.get(artKey) || 0) + 1);
+      if (albKey && albKey.length > 2) albumCounts.set(albKey, (albumCounts.get(albKey) || 0) + 1);
+
+      queue.push(t);
+      if (queue.length >= count) break;
     }
 
     return queue;
@@ -796,6 +1037,8 @@
       if (sCanon) seenCanon.add(sCanon);
     }
 
+    const seedVibe = detectVibeCategory(seedTrack);
+
     function addCandidate(raw) {
       if (!raw) return;
       const title = raw.title || raw.name || '';
@@ -809,8 +1052,12 @@
         return;
       }
 
-      // Diversity Rule 1: Strict Album Diversity (max 1 track per movie/album across queue)
+      const rawArt = (typeof raw.artist === 'string' ? raw.artist : (raw.artists?.primary?.[0]?.name || ''));
       const rawAlb = (typeof raw.album === 'string' ? raw.album : raw.album?.name) || '';
+      const candVibe = detectVibeCategory({ title, artist: rawArt, album: rawAlb, mood: raw.mood, vibe: raw.vibe });
+      if (!isVibeCompatible(seedVibe, candVibe, true)) return;
+
+      // Diversity Rule 1: Strict Album Diversity (max 1 track per movie/album across queue)
       const albKey = rawAlb.toLowerCase().replace(/\(.*?\)/g, '').replace(/soundtrack|theme|single|ost|ep/gi, '').trim();
       if (albKey && albKey.length > 2) {
         const aCnt = albumCount.get(albKey) || 0;
@@ -818,8 +1065,7 @@
       }
 
       // Diversity Rule 2: Artist Diversity (max 2 tracks per artist)
-      const rawArt = (typeof raw.artist === 'string' ? raw.artist : (raw.artists?.primary?.[0]?.name || ''));
-      const artKey = rawArt.split(/[,&]/)[0].toLowerCase().trim();
+      const artKey = cleanArtistPrimaryKey(rawArt);
       if (artKey) {
         const artCnt = artistCount.get(artKey) || 0;
         if (artCnt >= 2) return;
@@ -889,11 +1135,12 @@
       }
     };
 
-    // Step 1: Query Search API for Primary Artist / Composer hits (Never query raw song title!)
-    const primaryArt = (seedTrack.artist || '').split(/[,&]/)[0].replace(/[.\-_]/g, ' ').trim();
+    // Step 1: Query Search API for Composer / Primary Artist vibe hits (Never query raw song title!)
+    const primaryArt = pickComposerOrPrimaryArtist(seedTrack.artist || '');
     const seedLang = detectLanguage(seedTrack);
+    const vibeKeyword = getVibeSearchKeyword(seedVibe);
     if (primaryArt && primaryArt.length > 2 && !/unknown|soundtrack|va|various/i.test(primaryArt)) {
-      const q = `${primaryArt} ${seedLang} hits`;
+      const q = `${primaryArt} ${vibeKeyword}`;
       const res = await fetchFast(prefix + '/api/search?q=' + encodeURIComponent(q) + '&limit=12');
       if (res && res.ok) {
         try {
@@ -906,15 +1153,9 @@
       }
     }
 
-    // Step 2: Query companion vibe tracks in the same language
+    // Step 2: Query companion vibe tracks in the same language (mixes composers)
     if (candidates.length < count) {
       try {
-        const seedVibe = detectVibeCategory(seedTrack);
-        const vibeKeyword = seedVibe === 'sad' ? 'sad pathos melody' :
-                            seedVibe === 'dance' ? 'dance kuthu party' :
-                            seedVibe === 'mass' ? 'mass bgm theme' :
-                            seedVibe === 'romantic' ? 'romantic melody' :
-                            seedVibe === 'chill' ? 'chill lofi relax' : 'melody hits';
         const searchQ = `${seedLang} ${vibeKeyword} hits`;
 
         const res = await fetchFast(prefix + '/api/search?q=' + encodeURIComponent(searchQ) + '&limit=15');
@@ -983,8 +1224,8 @@
       const cVibe = detectVibeCategory(c);
       const cLang = detectLanguage(c);
 
-      // Same language and compatible vibe
-      if (cVibe === sourceVibe && (cLang === sourceLang || sourceLang === 'unknown')) {
+      // Same language and strictly compatible vibe
+      if (isVibeCompatible(sourceVibe, cVibe, true) && (cLang === sourceLang || sourceLang === 'unknown')) {
         seen.add(c.id || c.title);
         matched.push(c);
       }
@@ -993,17 +1234,11 @@
     // Sort matched by vibe distance to sourceTrack
     matched.sort((a, b) => calculateVibeDistance(sourceTrack, a) - calculateVibeDistance(sourceTrack, b));
 
-    // 2. If pool has fewer than 6 matching tracks, fetch more online asynchronously!
+    // 2. If pool has fewer than count matching tracks, fetch more online asynchronously!
     if (matched.length < count && typeof fetch !== 'undefined') {
       try {
-        let vibeKeyword = sourceVibe === 'sad' ? 'sad pathos melody' :
-                          sourceVibe === 'dance' ? 'dance kuthu party' :
-                          sourceVibe === 'mass' ? 'mass bgm theme' :
-                          sourceVibe === 'romantic' ? 'romantic melody kadhal' :
-                          sourceVibe === 'chill' ? 'chill lofi relax' : 'hit songs';
-
-        const primaryArt = (sourceTrack.artist || '').split(/[,&]/)[0].trim();
-        const searchQ = `${primaryArt} ${vibeKeyword}`.trim();
+        const vibeKeyword = getVibeSearchKeyword(sourceVibe);
+        const searchQ = `${sourceLang || 'tamil'} ${vibeKeyword} hits`.trim();
         const res = await fetch(`${getVibeApiPrefix()}/api/search?q=${encodeURIComponent(searchQ)}&limit=15`);
         if (res.ok) {
           const data = await res.json();
@@ -1011,7 +1246,7 @@
           for (const ot of onlineResults) {
             if (!seen.has(ot.id || ot.title)) {
               const otVibe = detectVibeCategory(ot);
-              if (otVibe === sourceVibe || sourceVibe === 'melodic' || otVibe === 'romantic') {
+              if (isVibeCompatible(sourceVibe, otVibe, true)) {
                 seen.add(ot.id || ot.title);
                 matched.push(ot);
                 if (matched.length >= count) break;
@@ -1028,6 +1263,9 @@
   const VibeEngine = {
     getAlgorithmicMatchingTracks,
     detectVibeCategory,
+    isVibeCompatible,
+    getVibeSearchKeyword,
+    pickComposerOrPrimaryArtist,
     curateMatchingVibeStream,
     getNextVibeTrack,
     resolveNextVibeTrackAsync,

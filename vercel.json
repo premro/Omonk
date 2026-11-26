@@ -54,7 +54,7 @@
       "destination": "/client/index.html"
     },
     {
-      "source": "/((?!api/|server/|client/).*)",
+      "source": "/((?!api/|server/|client/|_vercel/).*)",
       "destination": "/client/$1"
     }
   ]

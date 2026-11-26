@@ -1,5 +1,5 @@
 {
-  "version": "8.19.7",
-  "releaseDate": "2026-11-26",
-  "description": "v8.19.7: Compilation era detection with smart apostrophes, language/era preservation in stream & offline resolution, and automatic artist backfill."
+  "version": "8.19.9",
+  "releaseDate": "2026-11-27",
+  "description": "v8.19.9: Added Vercel Web Analytics HTML integration, excluded /_vercel/ from vercel.json rewrites & Service Worker caching, and kept lock-screen MediaSession & vibe-matched radio fixes."
 }

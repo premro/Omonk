@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lossless-studio-v8.19.7';
+const CACHE_NAME = 'lossless-studio-v8.19.9';
 const ASSETS = [
   './',
   './index.html',
@@ -56,8 +56,8 @@ self.addEventListener('message', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  // Pass API, streaming, and server requests straight to network
-  if (url.pathname.includes('/api/') || url.pathname.includes('/server/')) {
+  // Pass API, streaming, server, and Vercel Analytics requests straight to network
+  if (url.pathname.includes('/api/') || url.pathname.includes('/server/') || url.pathname.startsWith('/_vercel/')) {
     return;
   }
   // Network first for core scripts, html, css, and json so updates take effect immediately
