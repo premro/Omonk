@@ -1,5 +1,5 @@
 {
-  "version": "8.19.12",
+  "version": "8.19.13",
   "releaseDate": "2026-11-27",
-  "description": "v8.19.12: Resolve placeholder chart IDs (sp_/omonk_) to real Saavn IDs for upstream suggestions, guard classic/retro queues from un-dated modern chart clutter, prioritize upstream recommendations, and await initial vibe seeding on Next."
+  "description": "v8.19.13: Deterministic Media Session lock-screen lifecycle, Next icon SVG fix, canonical Logo/Home URL routing, resilient SW update lifecycle, 2-hour chart sync with cron & single-flight locking, and entity decoding across podcasts/charts."
 }

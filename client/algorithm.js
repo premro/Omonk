@@ -148,8 +148,22 @@ const SpotifyEngine = (() => {
     function generateDailyMixes(candidatePool) {
         if (!candidatePool || candidatePool.length === 0) return {};
 
+        // Deduplicate candidate pool by track ID and normalized title
+        const seenKeys = new Set();
+        const dedupedPool = [];
+        for (const track of candidatePool) {
+            if (!track || !track.title) continue;
+            const tid = track.id ? String(track.id) : '';
+            const normTitle = String(track.title).toLowerCase().replace(/[^a-z0-9]/g, '');
+            const key = tid || normTitle;
+            if (!key || seenKeys.has(key) || (normTitle && seenKeys.has('t_' + normTitle))) continue;
+            seenKeys.add(key);
+            if (normTitle) seenKeys.add('t_' + normTitle);
+            dedupedPool.push(track);
+        }
+
         // Score all candidates
-        const enriched = candidatePool.map(track => {
+        const enriched = dedupedPool.map(track => {
             const feat = deriveAcousticFeatures(track);
             const artistKey = (track.artist || '').split(',')[0].trim();
             const artistAffinity = tasteProfile.artists[artistKey] || 0;
@@ -179,11 +193,13 @@ const SpotifyEngine = (() => {
             .sort((a, b) => b.score - a.score)
             .slice(0, 15);
 
-        // Discover Weekly: high similarity but not in recent history
+        // Discover Weekly: high similarity but not in recent history (deterministic comparator)
         const recentIds = new Set(tasteProfile.history.slice(0, 30).map(h => h.id));
         const discoverWeekly = enriched
             .filter(t => !recentIds.has(t.id))
-            .sort((a, b) => (b.score * 0.7 + (Math.random() * 30)) - (a.score * 0.7 + (Math.random() * 30)))
+            .map(t => ({ track: t, rankScore: t.score * 0.7 + (Math.random() * 30) }))
+            .sort((a, b) => b.rankScore - a.rankScore)
+            .map(item => item.track)
             .slice(0, 18);
 
         return {

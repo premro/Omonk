@@ -92,6 +92,7 @@ async function saveTrackOffline(track, audioBlob, lyricsData = null) {
             blobType: audioBlob.type || (isWav ? 'audio/wav' : 'audio/mp4'),
             fileSize: audioBlob.size,
             lyrics: lyricsData,
+            isOffline: true,
             downloadedAt: Date.now()
         };
         const req = store.put(offlineRecord);
@@ -244,8 +245,13 @@ async function downloadTrackToFile(track, preferredFormat = null) {
                 if (resp.ok) {
                     const buf = await resp.arrayBuffer();
                     const actx = new (window.AudioContext || window.webkitAudioContext)();
-                    const audioBuffer = await actx.decodeAudioData(buf);
-                    const wavBlob = encodeAudioBufferToWav24(audioBuffer);
+                    let wavBlob;
+                    try {
+                        const audioBuffer = await actx.decodeAudioData(buf);
+                        wavBlob = encodeAudioBufferToWav24(audioBuffer);
+                    } finally {
+                        await actx.close().catch(() => {});
+                    }
                     
                     const filename = `${safeArtist} - ${cleanTitle} [Studio Lossless 24-bit].wav`;
                     const blobUrl = URL.createObjectURL(wavBlob);
@@ -513,8 +519,15 @@ async function getOfflineTrackBlobUrl(trackId) {
     if (!record || !record.audioBlob) return null;
 
     const tid = String(trackId);
+    const activeAudioSrc = (typeof window !== 'undefined' && window.AudioPlayer && window.AudioPlayer.audio)
+        ? (window.AudioPlayer.audio.src || '')
+        : '';
     if (_activeBlobUrls.has(tid)) {
-        try { URL.revokeObjectURL(_activeBlobUrls.get(tid)); } catch (e) {}
+        const prevBlobUrl = _activeBlobUrls.get(tid);
+        if (prevBlobUrl && prevBlobUrl === activeAudioSrc) {
+            return prevBlobUrl;
+        }
+        try { URL.revokeObjectURL(prevBlobUrl); } catch (e) {}
     }
     const freshBlobUrl = URL.createObjectURL(record.audioBlob);
     _activeBlobUrls.set(tid, freshBlobUrl);

@@ -2266,6 +2266,7 @@ input:checked + .slider:before {
         display: flex;
         align-items: center;
         gap: 8px;
+        cursor: pointer;
     }
 
     .mobile-brand-logo-img {
@@ -2568,9 +2569,9 @@ input:checked + .slider:before {
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
-        width: 30px !important;
-        height: 30px !important;
-        min-width: 30px !important;
+        width: 34px !important;
+        height: 34px !important;
+        min-width: 34px !important;
         background: transparent !important;
         border: none !important;
         color: #ffffff !important;

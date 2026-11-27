@@ -9,6 +9,7 @@ const https = require('https');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const net = require('net');
 
 const UPSTREAM_HOST = 'backend.listenfree.in';
 const searchEngine = require('./searchEngine');
@@ -19,6 +20,98 @@ try {
 } catch (e) {}
 let podcastsData = {};
 try { podcastsData = require('./verified_podcasts.json'); } catch(e){}
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const SYNC_RETRY_COOLDOWN_MS = 5 * 60 * 1000;
+const TMP_CHARTS_PATH = '/tmp/chartsData.json';
+let LAST_CHART_SYNC_AT = 0;
+let LAST_CHART_SYNC_ATTEMPT_AT = 0;
+let activeChartSyncPromise = null;
+
+function isPrivateOrBlockedIp(ip) {
+    if (!ip) return true;
+    const lower = String(ip).trim().toLowerCase();
+    if (lower === '::1' || lower === '::' || lower === '0.0.0.0') return true;
+    if (lower.startsWith('::ffff:')) {
+        return isPrivateOrBlockedIp(lower.slice(7));
+    }
+    const ipv4Match = lower.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4Match) {
+        const a = Number(ipv4Match[1]);
+        const b = Number(ipv4Match[2]);
+        if (a === 10 || a === 127 || a === 0) return true;
+        if (a === 169 && b === 254) return true;
+        if (a === 172 && b >= 16 && b <= 31) return true;
+        if (a === 192 && b === 168) return true;
+        if (a === 100 && b >= 64 && b <= 127) return true;
+        return false;
+    }
+    if (lower.startsWith('fe80:') || lower.startsWith('fc') || lower.startsWith('fd')) return true;
+    return false;
+}
+
+function isSafeExternalHttpUrl(rawUrl) {
+    try {
+        const parsed = new URL(String(rawUrl || ''));
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+        const host = (parsed.hostname || '').replace(/^\[|\]$/g, '').toLowerCase();
+        if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) {
+            return false;
+        }
+        if (/^(0x[0-9a-f]+|\d+)$/i.test(host)) return false;
+        if (net.isIP(host) && isPrivateOrBlockedIp(host)) return false;
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function decodeHtmlEntities(str) {
+    if (typeof str !== 'string' || !str.includes('&')) return str || '';
+    const map = {
+        '&amp;': '&',
+        '&lt;': '<',
+        '&gt;': '>',
+        '&quot;': '"',
+        '&#39;': "'",
+        '&#039;': "'",
+        '&apos;': "'",
+        '&nbsp;': ' '
+    };
+    return str
+        .replace(/&(amp|lt|gt|quot|apos|nbsp|#0*39);/gi, (m) => map[m.toLowerCase()] || map[m] || m)
+        .replace(/&#(\d+);/g, (_, code) => {
+            const n = parseInt(code, 10);
+            return Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : _;
+        })
+        .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+            const n = parseInt(hex, 16);
+            return Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : _;
+        });
+}
+
+(function hydrateChartsFromTmp() {
+    try {
+        if (fs.existsSync(TMP_CHARTS_PATH)) {
+            const raw = fs.readFileSync(TMP_CHARTS_PATH, 'utf8');
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.charts && typeof parsed.charts === 'object') {
+                for (const lang of Object.keys(parsed.charts)) {
+                    if (!chartsData.charts[lang]) chartsData.charts[lang] = {};
+                    for (const tf of Object.keys(parsed.charts[lang] || {})) {
+                        const list = parsed.charts[lang][tf];
+                        if (Array.isArray(list) && list.length > 0) {
+                            chartsData.charts[lang][tf] = list;
+                        }
+                    }
+                }
+            }
+            if (typeof parsed?._lastSyncAt === 'number' && parsed._lastSyncAt > 0) {
+                LAST_CHART_SYNC_AT = parsed._lastSyncAt;
+            }
+        }
+    } catch (e) {}
+})();
 
 /**
  * Yumi Hi-Fi Music Engine - Advanced I/O Function
@@ -110,9 +203,9 @@ const CHART_PLAYLIST_MAP = {
     'top-global': '37i9dQZEVXbMDoHDwVN2tF'   // Top 50 Global
 };
 
-function fetchHttps(url) {
+function fetchHttps(url, timeoutMs = 7000) {
     return new Promise((resolve, reject) => {
-        https.get(url, {
+        const req = https.get(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
@@ -120,7 +213,11 @@ function fetchHttps(url) {
             let data = '';
             res.on('data', c => data += c);
             res.on('end', () => resolve({ status: res.statusCode, body: data }));
-        }).on('error', reject);
+        });
+        req.on('error', reject);
+        req.setTimeout(timeoutMs, () => {
+            req.destroy(new Error('Request timed out'));
+        });
     });
 }
 
@@ -194,10 +291,10 @@ async function handleSpotifyTrending(chartKey, res) {
         const normalized = trackList.map((t, idx) => {
             const uri = t.uri || '';
             const trackId = uri.replace('spotify:track:', '');
-            const artists = (t.subtitle || 'Unknown Artist').replace(/\u00a0/g, ' ');
+            const artists = decodeHtmlEntities((t.subtitle || 'Unknown Artist').replace(/\u00a0/g, ' '));
             return {
                 rank: idx + 1,
-                title: t.title || 'Unknown Title',
+                title: decodeHtmlEntities(t.title || 'Unknown Title'),
                 artist: artists,
                 albumArt: defaultCover,
                 trackId: trackId,
@@ -665,91 +762,153 @@ module.exports = async (req, res) => {
         }
 
         // 0. Sync Charts Endpoint (Daily, Weekly, Monthly across all languages via Spotify Live)
+        const persistChartsSnapshot = () => {
+            try {
+                fs.writeFileSync(
+                    TMP_CHARTS_PATH,
+                    JSON.stringify({ charts: chartsData.charts, _lastSyncAt: LAST_CHART_SYNC_AT }),
+                    'utf8'
+                );
+            } catch (tmpErr) {}
+            try {
+                fs.writeFileSync(path.join(__dirname, 'chartsData.json'), JSON.stringify(chartsData, null, 2), 'utf8');
+            } catch (fsErr) {}
+        };
+
+        const syncSingleLang = async (lang, tf = 'daily') => {
+            const pid = SPOTIFY_TIMEFRAME_PLAYLIST_MAP[lang]?.[tf] || CHART_PLAYLIST_MAP[lang];
+            if (!pid) return false;
+            try {
+                const embedRes = await fetchHttps(`https://open.spotify.com/embed/playlist/${pid}`);
+                const match = embedRes.body.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+                if (!match) return false;
+
+                const nextData = JSON.parse(match[1]);
+                const entity = nextData?.props?.pageProps?.state?.data?.entity;
+                const list = entity?.trackList || [];
+                if (!Array.isArray(list) || list.length === 0) return false;
+
+                const existingList = (chartsData.charts && chartsData.charts[lang] && (chartsData.charts[lang][tf] || chartsData.charts[lang]['daily'])) || [];
+                const existingMap = new Map();
+                existingList.forEach(e => {
+                    const key = (e.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                    if (key && !existingMap.has(key)) existingMap.set(key, e);
+                });
+
+                const playlistCover = entity?.coverArt?.sources?.[0]?.url || entity?.visualIdentity?.image?.[1]?.url || entity?.visualIdentity?.image?.[0]?.url || 'https://charts-images.scdn.co/assets/locale_en/regional/daily/region_in_default.jpg';
+
+                const BAD_ART = ['ab67706f00000002', 'charts-images.scdn.co'];
+                const isBadArt = (url) => !url || BAD_ART.some(p => url.includes(p));
+                const seenTracks = new Set();
+                const fresh = [];
+
+                for (let idx = 0; idx < list.length; idx++) {
+                    const t = list[idx];
+                    const rawTitle = decodeHtmlEntities(t.title || 'Unknown Title').trim() || 'Unknown Title';
+                    const norm = rawTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const spotifyTrackId = t.uri?.replace('spotify:track:', '') || '';
+                    const dedupKey = spotifyTrackId || norm;
+                    if (dedupKey && seenTracks.has(dedupKey)) continue;
+                    if (dedupKey) seenTracks.add(dedupKey);
+
+                    const matched = existingMap.get(norm) || existingList.find(e => {
+                        const eNorm = (e.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                        return eNorm && norm && (eNorm.includes(norm) || norm.includes(eNorm));
+                    });
+
+                    const individualArtwork = (matched && !isBadArt(matched.artwork)) ? matched.artwork : playlistCover;
+                    const verifiedStream = (matched && matched.streamUrl) ? matched.streamUrl : '';
+                    const albumName = (matched && matched.album && !matched.album.startsWith('Spotify Hot Hits') && !matched.album.startsWith('Hot Hits'))
+                        ? decodeHtmlEntities(matched.album)
+                        : decodeHtmlEntities(entity?.title || 'Daily Top Hits');
+
+                    fresh.push({
+                        id: (matched?.id && !String(matched.id).startsWith('sp_')) ? matched.id : `sp_${lang}_${tf}_${fresh.length + 1}`,
+                        spotifyId: spotifyTrackId,
+                        rank: fresh.length + 1,
+                        title: rawTitle,
+                        artist: decodeHtmlEntities((t.subtitle || matched?.artist || 'Unknown Artist').replace(/\u00a0/g, ' ')),
+                        album: albumName,
+                        duration: Math.round((t.duration || 0) / 1000) || (matched?.duration || 210),
+                        artwork: individualArtwork,
+                        streamUrl: verifiedStream,
+                        language: lang,
+                        quality: 'FLAC / 320kbps Hi-Fi',
+                        bitrate: 'Lossless Studio 24-bit/48kHz',
+                        source: 'Spotify Live Charts',
+                        spotifyUri: t.uri || '',
+                        previewUrl: t.audioPreview?.url || null
+                    });
+                }
+
+                if (fresh.length === 0) return false;
+                if (!chartsData.charts[lang]) chartsData.charts[lang] = {};
+                const sliceLimit = tf === 'monthly' ? 50 : 35;
+                chartsData.charts[lang][tf] = fresh.slice(0, sliceLimit);
+                return true;
+            } catch (err) {
+                console.warn('[sync-charts] Live fetch warning for ' + lang + ' (' + tf + '):', err.message);
+                return false;
+            }
+        };
+
+        const runChartSync = async (targetLangs, targetTimeframes, { force = false } = {}) => {
+            const now = Date.now();
+            if (!force) {
+                if (LAST_CHART_SYNC_AT > 0 && (now - LAST_CHART_SYNC_AT) < ONE_DAY_MS) {
+                    return { skipped: true, reason: 'fresh_within_24h', updatedCount: 0 };
+                }
+                if (LAST_CHART_SYNC_ATTEMPT_AT > 0 && (now - LAST_CHART_SYNC_ATTEMPT_AT) < SYNC_RETRY_COOLDOWN_MS) {
+                    return { skipped: true, reason: 'retry_cooldown', updatedCount: 0 };
+                }
+            }
+            if (activeChartSyncPromise) {
+                return activeChartSyncPromise;
+            }
+
+            LAST_CHART_SYNC_ATTEMPT_AT = now;
+            activeChartSyncPromise = (async () => {
+                let updatedCount = 0;
+                const BATCH_SIZE = 3;
+                for (let i = 0; i < targetLangs.length; i += BATCH_SIZE) {
+                    const batch = targetLangs.slice(i, i + BATCH_SIZE);
+                    const results = await Promise.all(
+                        batch.map(async (lang) => {
+                            const tfResults = await Promise.all(targetTimeframes.map(tf => syncSingleLang(lang, tf)));
+                            return tfResults.filter(Boolean).length;
+                        })
+                    );
+                    updatedCount += results.reduce((sum, n) => sum + n, 0);
+                }
+                if (updatedCount > 0) {
+                    LAST_CHART_SYNC_AT = Date.now();
+                    persistChartsSnapshot();
+                }
+                return { skipped: false, updatedCount };
+            })();
+
+            try {
+                return await activeChartSyncPromise;
+            } finally {
+                activeChartSyncPromise = null;
+            }
+        };
+
         if (pathname === '/api/sync-charts' || pathname === '/sync-charts' || pathname === '/api/sync-weekly' || pathname === '/sync-weekly') {
             const rawLang = u.searchParams.get('lang');
             const reqTimeframe = (u.searchParams.get('timeframe') || 'all').toLowerCase();
-            const targetLangs = (!rawLang || rawLang === 'all') 
+            const isForced = u.searchParams.get('force') === 'true' || Boolean(req.headers['x-vercel-cron']);
+            const targetLangs = (!rawLang || rawLang === 'all')
                 ? ['tamil', 'telugu', 'hindi', 'malayalam', 'kannada', 'punjabi', 'english', 'spanish', 'kpop', 'japanese', 'french']
                 : [rawLang.toLowerCase()];
 
-            const syncSingleLang = async (lang, tf = 'daily') => {
-                const pid = SPOTIFY_TIMEFRAME_PLAYLIST_MAP[lang]?.[tf] || CHART_PLAYLIST_MAP[lang];
-                if (!pid) return;
-                try {
-                    const embedRes = await fetchHttps(`https://open.spotify.com/embed/playlist/${pid}`);
-                    const match = embedRes.body.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
-                    if (match) {
-                        const nextData = JSON.parse(match[1]);
-                        const entity = nextData?.props?.pageProps?.state?.data?.entity;
-                        const list = entity?.trackList || [];
-                        if (list.length > 0) {
-                            const existingList = (chartsData.charts && chartsData.charts[lang] && (chartsData.charts[lang][tf] || chartsData.charts[lang]['daily'])) || [];
-                            const existingMap = new Map();
-                            existingList.forEach(e => {
-                                const key = (e.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                                if (key) existingMap.set(key, e);
-                            });
-
-                            const playlistCover = entity?.coverArt?.sources?.[0]?.url || entity?.visualIdentity?.image?.[1]?.url || entity?.visualIdentity?.image?.[0]?.url || 'https://charts-images.scdn.co/assets/locale_en/regional/daily/region_in_default.jpg';
-
-                            const fresh = [];
-                            for (let idx = 0; idx < list.length; idx++) {
-                                const t = list[idx];
-                                const rawTitle = t.title || 'Unknown Title';
-                                const norm = rawTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-                                const matched = existingMap.get(norm) || existingList.find(e => {
-                                    const eNorm = (e.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                                    return eNorm && norm && (eNorm.includes(norm) || norm.includes(eNorm));
-                                });
-
-                                const BAD_ART = ['ab67706f00000002', 'charts-images.scdn.co'];
-                                const isBadArt = (url) => !url || BAD_ART.some(p => url.includes(p));
-
-                                let individualArtwork = (matched && !isBadArt(matched.artwork)) ? matched.artwork : playlistCover;
-                                let verifiedStream = (matched && matched.streamUrl) ? matched.streamUrl : '';
-                                let albumName = (matched && matched.album && !matched.album.startsWith('Spotify Hot Hits') && !matched.album.startsWith('Hot Hits'))
-                                    ? matched.album
-                                    : (entity?.title || 'Daily Top Hits');
-
-                                fresh.push({
-                                    id: matched?.id || `sp_${lang}_${idx + 1}`,
-                                    spotifyId: t.uri?.replace('spotify:track:', '') || '',
-                                    rank: idx + 1,
-                                    title: rawTitle,
-                                    artist: (t.subtitle || matched?.artist || 'Unknown Artist').replace(/ /g, ' '),
-                                    album: albumName,
-                                    duration: Math.round((t.duration || 0) / 1000) || (matched?.duration || 210),
-                                    artwork: individualArtwork,
-                                    streamUrl: verifiedStream,
-                                    language: lang,
-                                    quality: 'FLAC / 320kbps Hi-Fi',
-                                    bitrate: 'Lossless Studio 24-bit/48kHz',
-                                    source: 'Spotify Live Charts',
-                                    spotifyUri: t.uri || '',
-                                    previewUrl: t.audioPreview?.url || null
-                                });
-                            }
-
-                            if (!chartsData.charts[lang]) chartsData.charts[lang] = {};
-                            const sliceLimit = tf === 'monthly' ? 50 : 35;
-                            chartsData.charts[lang][tf] = fresh.slice(0, sliceLimit);
-
-                            try {
-                                fs.writeFileSync(path.join(__dirname, 'chartsData.json'), JSON.stringify(chartsData, null, 2), 'utf8');
-                            } catch (fsErr) {}
-                        }
-                    }
-                } catch(err) {
-                    console.warn('[sync-charts] Live fetch warning for ' + lang + ':', err.message);
-                }
-            };
-
             const primaryLang = targetLangs[0] || 'tamil';
             const targetTimeframes = reqTimeframe === 'all' ? ['daily', 'weekly', 'monthly'] : [reqTimeframe];
-            // Sync requested timeframes for primary language concurrently
-            Promise.all(targetTimeframes.map(tf => syncSingleLang(primaryLang, tf))).then(() => {
+
+            try {
+                const syncResult = await runChartSync(targetLangs, targetTimeframes, { force: isForced });
                 const currentDaily = (chartsData.charts && chartsData.charts[primaryLang] && chartsData.charts[primaryLang]['daily']) || [];
+                const fallbackUsed = !syncResult.skipped && syncResult.updatedCount === 0;
                 res.writeHead(200, {
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*',
@@ -759,30 +918,28 @@ module.exports = async (req, res) => {
                 });
                 res.end(JSON.stringify({
                     success: true,
-                    message: `Charts synchronized for ${primaryLang.toUpperCase()}`,
+                    fallbackUsed,
+                    message: syncResult.skipped
+                        ? `Charts already fresh for ${primaryLang.toUpperCase()}`
+                        : (fallbackUsed
+                            ? `Spotify unavailable; preserved existing charts for ${targetLangs.length > 1 ? 'ALL LANGUAGES' : primaryLang.toUpperCase()}`
+                            : `Charts synchronized for ${targetLangs.length > 1 ? 'ALL LANGUAGES' : primaryLang.toUpperCase()}`),
                     languages: targetLangs,
                     timeframe: reqTimeframe,
+                    updatedFeeds: syncResult.updatedCount,
+                    cached: Boolean(syncResult.skipped),
                     count: currentDaily.length,
                     topTrack: currentDaily[0]?.title || '',
-                    last_sync: new Date().toISOString()
+                    last_sync: LAST_CHART_SYNC_AT ? new Date(LAST_CHART_SYNC_AT).toISOString() : null
                 }));
-
-                // Background sync remaining languages if requested
-                if (targetLangs.length > 1) {
-                    (async () => {
-                        for (let i = 1; i < targetLangs.length; i++) {
-                            await syncSingleLang(targetLangs[i]).catch(() => {});
-                        }
-                    })().catch(() => {});
-                }
-            }).catch(() => {
+            } catch (syncErr) {
                 res.writeHead(200, {
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*',
                     'Cache-Control': 'no-cache, no-store, must-revalidate'
                 });
-                res.end(JSON.stringify({ success: true, message: 'Sync complete with active cache' }));
-            });
+                res.end(JSON.stringify({ success: true, fallbackUsed: true, message: 'Sync complete with active cache', warning: syncErr.message }));
+            }
             return;
         }
         if (pathname === '/api/charts' || pathname === '/charts') {
@@ -810,6 +967,7 @@ module.exports = async (req, res) => {
                 type: chartType,
                 language: lang,
                 count: hits.length,
+                lastSyncAt: LAST_CHART_SYNC_AT ? new Date(LAST_CHART_SYNC_AT).toISOString() : null,
                 tracks: hits
             }));
             return;
@@ -1525,6 +1683,11 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     res.end('Too many redirects');
                     return;
                 }
+                if (!isSafeExternalHttpUrl(targetUrl)) {
+                    res.writeHead(403, { 'Access-Control-Allow-Origin': '*' });
+                    res.end('Forbidden stream target');
+                    return;
+                }
                 try {
                     const targetU = new URL(targetUrl);
                     const client = targetU.protocol === 'http:' ? http : https;
@@ -1540,6 +1703,11 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                             upstreamRes.resume();
                             let red = upstreamRes.headers.location;
                             try { red = new URL(red, targetUrl).href; } catch (e) {}
+                            if (!isSafeExternalHttpUrl(red)) {
+                                res.writeHead(403, { 'Access-Control-Allow-Origin': '*' });
+                                res.end('Forbidden redirect target');
+                                return;
+                            }
                             fetchAndPipe(red, redirectCount + 1);
                             return;
                         }
@@ -1580,7 +1748,7 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             });
-            res.end(JSON.stringify({ success: true, version: '8.19.12', build: 1795720200000, timestamp: 1795720200000 }));
+            res.end(JSON.stringify({ success: true, version: '8.19.13', build: 1795720200001, timestamp: Date.now() }));
             return;
         }
 
@@ -1674,6 +1842,11 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     res.end(JSON.stringify({ success: false, error: 'Too many redirects' }));
                     return;
                 }
+                if (!isSafeExternalHttpUrl(targetUrl)) {
+                    res.writeHead(403, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ success: false, error: 'Forbidden download target' }));
+                    return;
+                }
                 try {
                     if (targetUrl && targetUrl.includes('.saavncdn.com')) {
                         targetUrl = targetUrl.replace(/_(12|48|96|160)\.mp4/i, '_320.mp4');
@@ -1688,6 +1861,11 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                             dRes.resume();
                             let red = dRes.headers.location;
                             try { red = new URL(red, targetUrl).href; } catch (e) {}
+                            if (!isSafeExternalHttpUrl(red)) {
+                                res.writeHead(403, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                                res.end(JSON.stringify({ success: false, error: 'Forbidden redirect target' }));
+                                return;
+                            }
                             return pipeAudio(red, redirectCount + 1);
                         }
                         if (dRes.statusCode < 200 || dRes.statusCode >= 300) {

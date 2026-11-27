@@ -696,17 +696,60 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (mobileMatch) mobileMatch.classList.add('active');
     }
 
+    let _deepLinkRequestToken = 0;
+    let _skipNextDynamicUrlSync = false;
+
+    function getCanonicalBaseUrl() {
+        return window.location.origin + '/';
+    }
+
+    async function navigateToCanonicalHome({ pushHistory = true, render = true } = {}) {
+        _deepLinkRequestToken++;
+        const canonicalUrl = getCanonicalBaseUrl();
+        try {
+            if (window.location.href !== canonicalUrl) {
+                const stateObj = { view: 'home', isCanonicalHome: true };
+                if (pushHistory) {
+                    window.history.pushState(stateObj, 'Omonk • Hi-Res Lossless Player', canonicalUrl);
+                } else {
+                    window.history.replaceState(stateObj, 'Omonk • Hi-Res Lossless Player', canonicalUrl);
+                }
+            }
+        } catch (e) {
+            console.warn('[CanonicalHome] History update warning:', e);
+        }
+        const curTrack = (typeof AudioPlayer !== 'undefined' && AudioPlayer.getCurrentTrack) ? AudioPlayer.getCurrentTrack() : null;
+        if (!curTrack || !(AudioPlayer.isPlaying || !AudioPlayer.audio?.paused)) {
+            document.title = 'Omonk • Hi-Res Lossless Player';
+        }
+        if (render) {
+            await renderView('home');
+        }
+    }
+    window.navigateToCanonicalHome = navigateToCanonicalHome;
+
     document.querySelectorAll('.sidebar .nav-item').forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             const view = item.getAttribute('data-view');
-            renderView(view);
+            if (view === 'home') {
+                navigateToCanonicalHome({ pushHistory: true, render: true });
+            } else {
+                renderView(view);
+            }
         });
     });
 
-    document.getElementById('brandLogo').addEventListener('click', (e) => {
+    document.getElementById('brandLogo')?.addEventListener('click', (e) => {
         e.preventDefault();
-        renderView('home');
+        navigateToCanonicalHome({ pushHistory: true, render: true });
+    });
+
+    document.querySelectorAll('.mobile-brand-logo-wrap').forEach(logoEl => {
+        logoEl.addEventListener('click', (e) => {
+            e.preventDefault();
+            navigateToCanonicalHome({ pushHistory: true, render: true });
+        });
     });
 
     // PWA Install Prompt
@@ -736,34 +779,95 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Live Weekly Sync Handler (Foolproof with guaranteed button state reset)
-    const syncWeeklyBtn = document.getElementById('syncWeeklyBtn');
-    if (syncWeeklyBtn) {
-        syncWeeklyBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            if (syncWeeklyBtn.disabled) return;
-            syncWeeklyBtn.disabled = true;
-            syncWeeklyBtn.innerHTML = '<span>⏳ Syncing...</span>';
+    // Non-blocking Manual Chart Sync (Single-flight across all sync triggers; never interrupts playback or reloads PWA)
+    let _activeManualChartSyncPromise = null;
+    async function performManualChartSync({
+        timeframe = 'all',
+        lang = null,
+        buttonEl = null,
+        loadingHtml = '<span>⏳ Syncing...</span>',
+        restoreHtml = null,
+        startToast = null
+    } = {}) {
+        if (_activeManualChartSyncPromise) {
+            showToast('Chart synchronization already in progress...', '⏳');
+            return _activeManualChartSyncPromise;
+        }
+        const targetLang = (lang || getActiveLanguage() || 'tamil').toLowerCase();
+        const prevHtml = buttonEl ? (restoreHtml || buttonEl.innerHTML) : '';
+        if (buttonEl) {
+            buttonEl.disabled = true;
+            buttonEl.innerHTML = loadingHtml;
+        }
+        if (startToast) showToast(startToast, '⚡');
+
+        _activeManualChartSyncPromise = (async () => {
             try {
-                const res = await fetch(`${API_PREFIX}/api/sync-charts?timeframe=all&force=true&_t=${Date.now()}`);
+                const res = await fetch(`${API_PREFIX}/api/sync-charts?timeframe=${encodeURIComponent(timeframe)}&lang=${encodeURIComponent(targetLang)}&force=true&_t=${Date.now()}`);
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
                 const data = await res.json();
-                if (data && data.success) {
-                    showToast(`Daily, Weekly & Monthly charts synced live!`, '⚡');
+                if (data && data.fallbackUsed) {
+                    showToast('Spotify unavailable — preserved existing chart data', '⚠️');
+                } else if (data && data.success) {
+                    showToast(
+                        timeframe === 'all'
+                            ? 'Charts synchronized live without interrupting playback!'
+                            : `${targetLang.toUpperCase()} ${timeframe} charts synced live!`,
+                        '✨'
+                    );
                 } else {
-                    showToast('Charts synced live!', '⚡');
+                    showToast('Chart sync completed using active cache', '⚡');
                 }
+                return data;
             } catch (err) {
-                showToast('Weekly sync completed', '⚡');
-            } finally {
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistration().then(reg => reg?.update().catch(() => {}));
-                }
-                syncWeeklyBtn.disabled = false;
-                syncWeeklyBtn.innerHTML = '<span>⚡ Live Weekly Sync</span>';
-                if (currentView === 'weekly-hits' || currentView === 'hits' || currentView === 'home' || currentView === 'discovery') {
-                    renderView(currentView);
+                console.warn('[ManualSync] Error:', err);
+                showToast('Chart sync failed — kept existing chart data', '⚠️');
+                return { success: false, error: err?.message || 'Sync failed' };
+            }
+        })();
+
+        try {
+            return await _activeManualChartSyncPromise;
+        } finally {
+            _activeManualChartSyncPromise = null;
+            if (buttonEl) {
+                buttonEl.disabled = false;
+                if (buttonEl.id === 'syncRefreshBtn') {
+                    const hasUpdate = buttonEl.classList.contains('has-update');
+                    buttonEl.innerHTML = `<span id="syncRefreshIcon">🔄</span><span id="syncRefreshText">${hasUpdate ? 'Update' : 'Sync'}</span>`;
+                } else {
+                    buttonEl.innerHTML = prevHtml;
                 }
             }
+            if (currentView === 'weekly-hits' || currentView === 'daily-hits' || currentView === 'monthly-hits' || currentView === 'hits' || currentView === 'home' || currentView === 'discover') {
+                renderView(currentView);
+            }
+        }
+    }
+
+    function shuffleArray(items) {
+        const copy = Array.isArray(items) ? [...items] : [];
+        for (let i = copy.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        return copy;
+    }
+
+    // Live Weekly Sync Handler (Foolproof with guaranteed button state reset & concurrency lock)
+    const syncWeeklyBtn = document.getElementById('syncWeeklyBtn');
+    if (syncWeeklyBtn) {
+        syncWeeklyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            performManualChartSync({
+                timeframe: 'all',
+                lang: getActiveLanguage(),
+                buttonEl: syncWeeklyBtn,
+                loadingHtml: '<span>⏳ Syncing...</span>',
+                restoreHtml: '<span>⚡ Live Weekly Sync</span>'
+            });
         });
     }
 
@@ -774,7 +878,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const view = item.getAttribute('data-view');
             document.querySelectorAll('.mobile-bottom-nav .mobile-nav-item').forEach(n => n.classList.remove('active'));
             item.classList.add('active');
-            renderView(view);
+            if (view === 'home') {
+                navigateToCanonicalHome({ pushHistory: true, render: true });
+            } else {
+                renderView(view);
+            }
         });
     });
 
@@ -1532,28 +1640,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
 
-        // Live Active Sync Button
-        document.getElementById('syncLiveHitsBtn')?.addEventListener('click', async () => {
+        // Live Active Sync Button (Shared single-flight lock; preserves playback)
+        document.getElementById('syncLiveHitsBtn')?.addEventListener('click', () => {
             const btn = document.getElementById('syncLiveHitsBtn');
-            if (btn) btn.textContent = '⏳ Syncing...';
-            showToast(`Syncing ${activeLang.toUpperCase()} ${currentChartType} hits...`, '⚡');
-            try {
-                const res = await fetch(`${API_PREFIX}/api/sync-charts?timeframe=${currentChartType}&lang=${activeLang}&force=true&_t=${Date.now()}`);
-                const data = await res.json();
-                if (data.success) {
-                    showToast(`${activeLang.toUpperCase()} ${currentChartType} hits synced live!`, '✨');
-                } else {
-                    showToast('Hits synchronized!', '⚡');
-                }
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistration().then(reg => reg?.update().catch(() => {}));
-                }
-                renderHitsView();
-            } catch (err) {
-                console.warn('Sync error:', err);
-                showToast('Sync completed with cache', '⚡');
-                renderHitsView();
-            }
+            const tfLabel = currentChartType.toUpperCase();
+            performManualChartSync({
+                timeframe: currentChartType,
+                lang: activeLang,
+                buttonEl: btn,
+                loadingHtml: '⏳ Syncing...',
+                restoreHtml: `🔄 Sync ${tfLabel}`,
+                startToast: `Syncing ${activeLang.toUpperCase()} ${currentChartType} hits...`
+            });
         });
 
         // Play All & Download All
@@ -1717,7 +1815,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Hero Shuffle Button
         document.getElementById('shuffleDiscoverWeeklyBtn')?.addEventListener('click', () => {
             if (discoverWeekly.length > 0) {
-                const shuffled = [...discoverWeekly].sort(() => Math.random() - 0.5);
+                const shuffled = shuffleArray(discoverWeekly);
                 AudioPlayer.playTrack(shuffled[0], shuffled, 0, true);
             }
         });
@@ -2608,13 +2706,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     function decodeHtmlEntities(str) {
         if (!str || typeof str !== 'string') return '';
         return str
-            .replace(/&quot;/g, '"')
-            .replace(/&#039;/g, "'")
-            .replace(/&apos;/g, "'")
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&nbsp;/g, ' ');
+            .replace(/&quot;/gi, '"')
+            .replace(/&#0*39;/gi, "'")
+            .replace(/&apos;/gi, "'")
+            .replace(/&amp;/gi, '&')
+            .replace(/&lt;/gi, '<')
+            .replace(/&gt;/gi, '>')
+            .replace(/&nbsp;/gi, ' ')
+            .replace(/&#(\d+);/g, (_, dec) => {
+                const code = parseInt(dec, 10);
+                return Number.isFinite(code) && code > 0 ? String.fromCharCode(code) : _;
+            })
+            .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+                const code = parseInt(hex, 16);
+                return Number.isFinite(code) && code > 0 ? String.fromCharCode(code) : _;
+            });
     }
 
     function isValidUrl(url) {
@@ -2696,6 +2802,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Curated Vibe-Stream Playback Engine: Plays immediately & curates matching mood stream
     async function playTrackWithVibeStream(track) {
         if (!track) return;
+        const seedId = String(track.id || track.title || '');
         AudioPlayer.playTrack(track, [track], 0, false);
         showToast(`Playing ${track.title} • Lossless Radio active`, '✨');
 
@@ -2703,9 +2810,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const fetchFn = window.getAlgorithmicMatchingTracks || window.VibeEngine?.getAlgorithmicMatchingTracks;
             if (fetchFn) {
                 const stream = await fetchFn(track, 14);
+                const cur = AudioPlayer.getCurrentTrack();
+                const curId = String(cur?.id || cur?.title || '');
+                if (AudioPlayer.isSequentialContext || (seedId && curId !== seedId)) {
+                    return;
+                }
                 if (stream && stream.length > 0) {
                     const filtered = stream.filter(t => String(t.id) !== String(track.id));
                     AudioPlayer.queue = [track, ...filtered];
+                    AudioPlayer.currentIndex = 0;
                     if (typeof renderSideQueueContent === 'function') {
                         renderSideQueueContent();
                     }
@@ -3405,7 +3518,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const shufBtn = document.getElementById('shuffleBtn') || document.querySelector('.btn-player-action[data-action="shuffle"]');
             if (shufBtn) shufBtn.classList.remove('active');
         }
-        const toPlay = shuffle ? [...songArray].sort(() => Math.random() - 0.5) : [...songArray];
+        const toPlay = shuffle ? shuffleArray(songArray) : [...songArray];
         AudioPlayer.playTrack(toPlay[0], toPlay, 0, !shuffle);
         showToast(shuffle ? `Shuffling ${toPlay.length} songs` : `Playing ${toPlay.length} songs (Order-wise)`, '▶️');
     }
@@ -3499,7 +3612,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         AudioPlayer.isSequentialContext = true;
         AudioPlayer.currentContext = 'album';
-        const toPlay = shuffle ? [...albumTracks].sort(() => Math.random() - 0.5) : [...albumTracks];
+        const toPlay = shuffle ? shuffleArray(albumTracks) : [...albumTracks];
         AudioPlayer.playTrack(toPlay[0], toPlay, 0, !shuffle);
         showToast(shuffle ? `Shuffling movie album: ${album.title}` : `Playing movie: ${album.title} (Theatre Cinema Sound)`, '🎬');
     }
@@ -4958,9 +5071,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     AudioPlayer.onTrackChange = (track) => {
-        updateDynamicUrl(track);
-        playerTitle.textContent = track.title;
-        playerArtist.textContent = (track.artist && track.artist !== "undefined" && track.artist !== "Unknown") ? track.artist : (track.primaryArtist || track.subtitle || "Lossless Artist");
+        const cleanTitle = decodeHtmlEntities(track.title || 'Studio Lossless');
+        const cleanArtist = decodeHtmlEntities((track.artist && track.artist !== "undefined" && track.artist !== "Unknown") ? track.artist : (track.primaryArtist || track.subtitle || "Lossless Artist"));
+        track.title = cleanTitle;
+        track.artist = cleanArtist;
+        if (track.album) track.album = decodeHtmlEntities(track.album);
+        if (_skipNextDynamicUrlSync) {
+            _skipNextDynamicUrlSync = false;
+        } else {
+            updateDynamicUrl(track);
+        }
+        playerTitle.textContent = cleanTitle;
+        playerArtist.textContent = cleanArtist;
         playerArt.onerror = () => { playerArt.onerror = null; playerArt.src = 'icon-512.png'; };
         playerArt.src = track.artwork || track.image || 'assets/omonk_logo.jpg';
 
@@ -5426,7 +5548,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const q = tile.getAttribute('data-cat-query');
                 const title = tile.getAttribute('data-cat-title');
                 globalSearchInput.value = title;
-                contentScroll.innerHTML = '<div style="text-align:center; padding: 40px;"><div class="pulse-loader"></div><p style="color:var(--text-muted); margin-top:8px;">Loading ' + title + ' lossless tracks...</p></div>';
+                contentScroll.innerHTML = '<div style="text-align:center; padding: 40px;"><div class="pulse-loader"></div><p style="color:var(--text-muted); margin-top:8px;">Loading ' + escapeHtml(title) + ' lossless tracks...</p></div>';
                 try {
                     const res = await fetch(`${API_PREFIX}/api/search?q=${encodeURIComponent(q)}&limit=20`);
                     const data = await res.json();
@@ -5436,7 +5558,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     contentScroll.innerHTML = `
                         <div class="section-header">
                             <div class="section-title-wrap">
-                                <h1 class="section-title">${title}</h1>
+                                <h1 class="section-title">${escapeHtml(title)}</h1>
                                 <span class="section-subtitle">${results.length} Omonk Studio Master Tracks</span>
                             </div>
                         </div>
@@ -5578,23 +5700,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateDynamicUrl(track) {
         if (!track || !track.title) return;
         try {
-            const url = new URL(window.location.href);
+            const cleanTitle = decodeHtmlEntities(track.title);
+            const cleanArtist = (track.artist && track.artist !== 'undefined' && track.artist !== 'Unknown')
+                ? decodeHtmlEntities(track.artist)
+                : '';
+            const url = new URL(getCanonicalBaseUrl());
             if (track.id) url.searchParams.set('track', String(track.id));
-            if (track.title) url.searchParams.set('title', track.title);
-            if (track.artist && track.artist !== 'undefined' && track.artist !== 'Unknown') {
-                url.searchParams.set('artist', track.artist);
-            } else {
-                url.searchParams.delete('artist');
+            if (cleanTitle) url.searchParams.set('title', cleanTitle);
+            if (cleanArtist) {
+                url.searchParams.set('artist', cleanArtist);
             }
-            url.searchParams.delete('_v');
-            url.searchParams.delete('_t');
 
-            window.history.replaceState(
-                { trackId: track.id, title: track.title, artist: track.artist },
-                `${track.title} • Omonk`,
-                url.toString()
-            );
-            document.title = `${track.title} • ${(track.artist && track.artist !== 'undefined') ? track.artist : 'Omonk Lossless'}`;
+            const targetUrl = url.toString();
+            if (window.location.href !== targetUrl) {
+                window.history.replaceState(
+                    { trackId: track.id, title: cleanTitle, artist: cleanArtist },
+                    `${cleanTitle} • Omonk`,
+                    targetUrl
+                );
+            }
+            const nextDocTitle = `${cleanTitle} • ${cleanArtist || 'Omonk Lossless'}`;
+            if (document.title !== nextDocTitle) {
+                document.title = nextDocTitle;
+            }
         } catch (e) {
             console.warn('[DynamicURL] Update failed:', e);
         }
@@ -5670,6 +5798,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function handleDeepLinkTrack() {
+        const dlToken = ++_deepLinkRequestToken;
         let params = new URLSearchParams(window.location.search);
         if (!params.has('track') && !params.has('song') && !params.has('title') && window.location.hash.includes('?')) {
             params = new URLSearchParams(window.location.hash.substring(window.location.hash.indexOf('?')));
@@ -5700,6 +5829,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!targetTrack && title) {
             try {
                 const res = await fetch(`${API_PREFIX}/api/resolve?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist || '')}`);
+                if (dlToken !== _deepLinkRequestToken) return false;
                 if (res.ok) {
                     const data = await res.json();
                     if (data.success && data.track) {
@@ -5711,11 +5841,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
+        if (dlToken !== _deepLinkRequestToken) return false;
+
         // 4. Fallback search via /api/search
         if (!targetTrack && (title || trackId)) {
             try {
                 const q = (title && artist) ? `${title} ${artist}` : (title || trackId);
                 const res = await fetch(`${API_PREFIX}/api/search?q=${encodeURIComponent(q)}&limit=5`);
+                if (dlToken !== _deepLinkRequestToken) return false;
                 if (res.ok) {
                     const data = await res.json();
                     const list = data.results || data.songs || [];
@@ -5727,6 +5860,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.warn('[DeepLink] Search API fallback error:', e);
             }
         }
+
+        if (dlToken !== _deepLinkRequestToken) return false;
 
         // 5. Minimal resilient candidate if network was unreachable
         if (!targetTrack && title) {
@@ -5741,6 +5876,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (targetTrack) {
+            if (dlToken !== _deepLinkRequestToken) return false;
             showToast(`Playing shared song: "${targetTrack.title}"`, '🎵');
             try {
                 await AudioPlayer.playTrackWithVibeRadio(targetTrack);
@@ -5763,14 +5899,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     window.handleDeepLinkTrack = handleDeepLinkTrack;
 
-    // Popstate navigation: keep player & document title synchronized on back/forward
+    // Popstate navigation: keep view, URL & player synchronized on back/forward
     window.addEventListener('popstate', (e) => {
+        const params = new URLSearchParams(window.location.search);
+        const hasTrackParams = params.has('track') || params.has('title') || params.has('song');
         if (e.state && (e.state.trackId || e.state.title)) {
             const cur = AudioPlayer.getCurrentTrack();
             if (!cur || (String(cur.id) !== String(e.state.trackId) && cur.title !== e.state.title)) {
                 const track = findTrackById(e.state.trackId) || { id: e.state.trackId, title: e.state.title, artist: e.state.artist };
+                _skipNextDynamicUrlSync = true;
                 AudioPlayer.playTrackWithVibeRadio(track);
             }
+        } else if (hasTrackParams) {
+            handleDeepLinkTrack();
+        } else if (e.state?.isCanonicalHome || !hasTrackParams) {
+            _deepLinkRequestToken++;
+            renderView('home');
         }
     });
 
@@ -6200,7 +6344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (backupFileInfo) {
                         const exportDate = parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleString() : 'Recent';
                         const keyCount = Object.keys(parsed.data).length;
-                        backupFileInfo.innerHTML = `<strong>File:</strong> ${file.name}<br><strong>Exported:</strong> ${exportDate}<br><strong>Items:</strong> ${keyCount} storage items (Playlists, Favorites, Preferences)`;
+                        backupFileInfo.innerHTML = `<strong>File:</strong> ${escapeHtml(file.name)}<br><strong>Exported:</strong> ${escapeHtml(exportDate)}<br><strong>Items:</strong> ${keyCount} storage items (Playlists, Favorites, Preferences)`;
                     }
                     backupRestoreModal?.classList.add('active');
                 } catch (readErr) {
@@ -6266,6 +6410,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Robust Boot Sequence (Guaranteed Home Screen & Feature Availability) ---
     async function bootApp() {
+        try {
+            const bootUrl = new URL(window.location.href);
+            if (bootUrl.searchParams.has('_v') || bootUrl.searchParams.has('_t')) {
+                bootUrl.searchParams.delete('_v');
+                bootUrl.searchParams.delete('_t');
+                const cleaned = bootUrl.searchParams.toString() ? `${getCanonicalBaseUrl()}?${bootUrl.searchParams.toString()}` : getCanonicalBaseUrl();
+                window.history.replaceState(window.history.state, document.title, cleaned);
+            }
+        } catch (e) {}
+
         try {
             initBackupAndRestore();
             checkBackupStatus();
@@ -6429,12 +6583,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         sidePanel?.classList.remove('collapsed');
         switchSidePanelTab('nowplaying');
     }
-});
-
-
 
     // ================= MULTI-DEVICE AUTO-REFRESH & LIVE UPDATE SYNC =================
-    const CURRENT_APP_VERSION = "8.19.12";
+    const CURRENT_APP_VERSION = "8.19.13";
     let latestServerTimestamp = 0;
     let latestRemoteVersion = null;
     let userDismissedUpdateVersion = null;
@@ -6483,6 +6634,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (txt) txt.textContent = 'Update';
         }
     }
+    window.showUpdateAvailableUI = showUpdateAvailableUI;
 
     function hideUpdateUI() {
         if (updateBanner) updateBanner.style.display = 'none';
@@ -6513,7 +6665,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await fetch(`${API_PREFIX}/api/sync-charts?lang=${lang}&timeframe=all&_t=${Date.now()}`);
         } catch (e) {}
 
-        // 2. Clear all Service Worker caches and notify active workers
+        // 2. Clear all Service Worker caches and update registrations cleanly
         try {
             if ('caches' in window) {
                 const keys = await caches.keys();
@@ -6522,7 +6674,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if ('serviceWorker' in navigator) {
                 const regs = await navigator.serviceWorker.getRegistrations();
                 for (const reg of regs) {
-                    await reg.unregister().catch(() => {});
+                    if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    await reg.update().catch(() => {});
                 }
             }
         } catch (e) {}
@@ -6541,15 +6694,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             syncBroadcast?.postMessage({ type: 'APP_UPDATED', timestamp: Date.now() });
         } catch (e) {}
 
-        // 4. Force hard reload with timestamp parameter to bypass iOS standalone PWA cache
+        // 4. Reload cleanly to canonical base URL
         setTimeout(() => {
-            const base = window.location.href.split('?')[0];
-            window.location.replace(`${base}?_v=${Date.now()}`);
+            window.location.replace(getCanonicalBaseUrl());
         }, 400);
     }
 
     syncRefreshBtn?.addEventListener('click', () => {
-        triggerInstantRefresh();
+        const isAudioPlayingNow = Boolean(
+            typeof AudioPlayer !== 'undefined' &&
+            (AudioPlayer.isPlaying || (AudioPlayer.audio && !AudioPlayer.audio.paused))
+        );
+        if (syncRefreshBtn.classList.contains('has-update') && !isAudioPlayingNow) {
+            triggerInstantRefresh();
+            return;
+        }
+        performManualChartSync({
+            timeframe: 'all',
+            lang: getActiveLanguage(),
+            buttonEl: syncRefreshBtn,
+            loadingHtml: '<span>⏳ Syncing...</span>',
+            restoreHtml: `<span id="syncRefreshIcon">🔄</span><span id="syncRefreshText">${syncRefreshBtn.classList.contains('has-update') ? 'Update' : 'Sync'}</span>`
+        });
     });
 
     updateNowBtn?.addEventListener('click', () => {
@@ -6591,3 +6757,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Run check immediately on load, and periodic poll
     checkForStudioUpdates();
     setInterval(checkForStudioUpdates, 30000);
+});

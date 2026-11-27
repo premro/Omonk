@@ -147,6 +147,8 @@ class LyricsManager {
     }
 
     async loadLyricsForTrack(track) {
+        if (!track) return;
+        const reqToken = (this._lyricsRequestToken = (this._lyricsRequestToken || 0) + 1);
         this.currentTrack = track;
         this.currentLyrics = [];
         this.plainLyrics = "";
@@ -166,6 +168,7 @@ class LyricsManager {
             const cached = localStorage.getItem(cacheKey);
             if (cached) {
                 const data = JSON.parse(cached);
+                if (reqToken !== this._lyricsRequestToken) return;
                 this.applyFetchedData(data);
                 return;
             }
@@ -177,11 +180,13 @@ class LyricsManager {
             const langParam = encodeURIComponent(track.language || 'tamil');
             const durParam = Math.round(Number(track.duration) || 0);
             const res = await fetch(`${prefix}/api/lyrics?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}&duration=${durParam}&language=${langParam}`);
+            if (reqToken !== this._lyricsRequestToken) return;
             if (res.ok) {
                 fetchedData = await res.json();
             }
         } catch (err) {}
 
+        if (reqToken !== this._lyricsRequestToken) return;
         if (fetchedData && (fetchedData.syncedLyrics || fetchedData.plainLyrics || fetchedData.hasDual)) {
             this.applyFetchedData(fetchedData);
             try {
@@ -201,9 +206,12 @@ class LyricsManager {
             ];
 
             for (const sq of searchQueries) {
+                if (reqToken !== this._lyricsRequestToken) return;
                 const sRes = await fetch(`${prefix}/api/lyrics/search?q=${encodeURIComponent(sq)}&language=${encodeURIComponent(track.language || 'tamil')}&duration=${durParam}`);
+                if (reqToken !== this._lyricsRequestToken) return;
                 if (!sRes.ok) continue;
                 const sData = await sRes.json();
+                if (reqToken !== this._lyricsRequestToken) return;
                 const candidates = (sData.results || []).filter(c => !c.scriptLabel?.startsWith('⚠️'));
                 if (candidates.length > 0) {
                     const chosen = candidates.find(c => (c.syncedLyrics || c.hasSynced) && (durParam === 0 || Math.abs((c.duration || 0) - durParam) <= 10))
@@ -217,6 +225,7 @@ class LyricsManager {
             }
         } catch (e) {}
 
+        if (reqToken !== this._lyricsRequestToken) return;
         this.renderError("No lyrics found for this song.");
     }
 

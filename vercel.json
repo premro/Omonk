@@ -57,5 +57,11 @@
       "source": "/((?!api/|server/|client/|_vercel/).*)",
       "destination": "/client/$1"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/sync-charts?lang=all&timeframe=all",
+      "schedule": "0 0 * * *"
+    }
   ]
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lossless-studio-v8.19.12';
+const CACHE_NAME = 'lossless-studio-v8.19.13';
 const ASSETS = [
   './',
   './index.html',
@@ -34,18 +34,24 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  self.skipWaiting();
+  e.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => Promise.all(ASSETS.map((asset) => cache.add(asset).catch(() => null))))
+      .then(() => {
+        // Activate immediately only on fresh installs; updates wait for SKIP_WAITING so active playback is never interrupted
+        if (!self.registration || !self.registration.active) {
+          return self.skipWaiting();
+        }
+      })
+  );
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((k) => caches.delete(k))
-      );
-    })
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('message', (e) => {
@@ -61,36 +67,50 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== self.location.origin || e.request.headers.has('range') || e.request.destination === 'audio' || e.request.destination === 'video') {
     return;
   }
-  // Pass API, streaming, server, and Vercel Analytics requests straight to network
-  if (url.pathname.includes('/api/') || url.pathname.includes('/server/') || url.pathname.startsWith('/_vercel/')) {
+  // Pass API, streaming, download, server, and Vercel Analytics requests straight to network
+  if (
+    url.pathname.includes('/api/') ||
+    url.pathname.includes('/server/') ||
+    url.pathname.startsWith('/_vercel/') ||
+    url.pathname.includes('/stream') ||
+    url.pathname.includes('/download') ||
+    url.pathname.endsWith('.flac') ||
+    url.pathname.endsWith('.wav')
+  ) {
     return;
   }
   // Network first for core scripts, html, css, and json so updates take effect immediately
+  const isNavigation = e.request.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('/app') || url.pathname.endsWith('.html');
   if (
+    isNavigation ||
     url.pathname.endsWith('.js') ||
-    url.pathname.endsWith('.html') ||
     url.pathname.endsWith('.css') ||
-    url.pathname.endsWith('.json') ||
-    url.pathname.endsWith('/') ||
-    url.pathname.endsWith('/app')
+    url.pathname.endsWith('.json')
   ) {
     e.respondWith(
       fetch(e.request)
         .then((response) => {
           if (response && response.status === 200) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+            const cacheTarget = isNavigation ? './index.html' : e.request;
+            caches.open(CACHE_NAME).then((cache) => cache.put(cacheTarget, clone));
           }
           return response;
         })
-        .catch(() => caches.match(e.request))
+        .catch(() => caches.match(e.request).then((hit) => hit || (isNavigation ? caches.match('./index.html') : undefined)))
     );
     return;
   }
   // Cache first for heavy images/media assets
   e.respondWith(
     caches.match(e.request).then((response) => {
-      return response || fetch(e.request);
+      return response || fetch(e.request).then((netRes) => {
+        if (netRes && netRes.status === 200) {
+          const clone = netRes.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+        }
+        return netRes;
+      });
     })
   );
 });

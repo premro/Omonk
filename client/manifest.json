@@ -2,7 +2,7 @@
   "name": "Omonk Lossless Audio Player",
   "short_name": "Omonk",
   "description": "Studio Master Lossless FLAC & 320kbps Music Player with Smart Discovery",
-  "start_url": "./index.html?v=8.19.6",
+  "start_url": "./",
   "scope": "./",
   "id": "omonk-lossless-app",
   "display": "standalone",

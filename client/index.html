@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Omonk • Hi-Res Lossless Player</title>
-    <link rel="stylesheet" href="styles.css?v=8.19.12">
-        <link rel="icon" type="image/x-icon" href="favicon.ico?v=8.19.12">
-    <link rel="icon" type="image/png" sizes="64x64" href="favicon.png?v=8.19.12">
-    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=8.19.12">
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=8.19.12">
-    <link rel="manifest" href="manifest.json?v=8.19.12">
+    <link rel="stylesheet" href="styles.css?v=8.19.13">
+        <link rel="icon" type="image/x-icon" href="favicon.ico?v=8.19.13">
+    <link rel="icon" type="image/png" sizes="64x64" href="favicon.png?v=8.19.13">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=8.19.13">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=8.19.13">
+    <link rel="manifest" href="manifest.json?v=8.19.13">
     <meta name="theme-color" content="#090817">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,21 +17,15 @@
     <meta name="mobile-web-app-capable" content="yes">
     <script>
         (function() {
-            const CURRENT_BUILD = '8.19.12';
+            const CURRENT_BUILD = '8.19.13';
             const storedBuild = localStorage.getItem('omonk_build_v');
             if (storedBuild !== CURRENT_BUILD) {
                 localStorage.setItem('omonk_build_v', CURRENT_BUILD);
                 if ('caches' in window) {
-                    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))));
+                    caches.keys().then(keys => Promise.all(
+                        keys.filter(k => k !== 'lossless-studio-v8.19.13').map(k => caches.delete(k))
+                    ));
                 }
-                try {
-                    const toRemove = [];
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const k = localStorage.key(i);
-                        if (k && k.includes('playback_state')) toRemove.push(k);
-                    }
-                    toRemove.forEach(k => localStorage.removeItem(k));
-                } catch(e) {}
             }
 
 
@@ -57,9 +51,24 @@
     </script>
     <!-- Vercel Web Analytics -->
     <script>
-        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+        if (!window.__omonkVaInitialized) {
+            window.__omonkVaInitialized = true;
+            window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+            window.va('beforeSend', function (event) {
+                try {
+                    if (event && event.url) {
+                        const u = new URL(event.url, window.location.origin);
+                        ['token', 'auth', 'key', 'apikey', 'api_key', 'password', 'secret', 'session', 'sid'].forEach(function (p) {
+                            u.searchParams.delete(p);
+                        });
+                        event.url = u.toString();
+                    }
+                } catch (e) {}
+                return event;
+            });
+        }
     </script>
-    <script defer src="/_vercel/insights/script.js"></script>
+    <script defer src="/_vercel/insights/script.js" onerror="window.__omonkVaLoadFailed=true"></script>
 </head>
 <body>
     <div class="ambient-glow"></div>
@@ -67,7 +76,7 @@
     <div class="app-container">
         <!-- Sidebar (Desktop) -->
         <aside class="sidebar">
-            <a href="#" class="brand" id="brandLogo">
+            <a href="/" class="brand" id="brandLogo">
                 <div class="brand-icon-wrap">
                     <img src="assets/omonk_logo.jpg" alt="Omonk" class="brand-logo-img">
                 </div>
@@ -331,7 +340,7 @@
                     </button>
                     <button class="ctrl-btn" id="nextBtn" title="Next Track">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                            <path d="M18 5a1 1 0 0 1 1 1v12a1 1 0 1 1-2 0V6a1 1 0 0 1 1-1zM5.65 6.15A1 1 0 0 1 7 6.56v10.88a1 1 0 0 1-1.65.74L15 12.97a1 1 0 0 0 0-1.62L5.35 6.14a1 1 0 0 1-.7-.99z"/>
+                            <path d="M18 5a1 1 0 0 1 1 1v12a1 1 0 1 1-2 0V6a1 1 0 0 1 1-1zM5.65 6.15a1 1 0 0 1 1.05.09L15 11.45a1 1 0 0 1 0 1.62l-8.3 5.21A1 1 0 0 1 5 17.44V6.56a1 1 0 0 1 .65-.41z"/>
                         </svg>
                     </button>
                     <button class="ctrl-btn" id="repeatBtn" title="Repeat Mode">
@@ -772,21 +781,42 @@
     </div>
 
     <!-- Core Application & Subsystem Scripts -->
-    <script src="offline.js?v=8.19.12"></script>
-    <script src="algorithm.js?v=8.19.12"></script>
-    <script src="profile.js?v=8.19.12"></script>
-    <script src="vibeEngine.js?v=8.19.12"></script>
-    <script src="player.js?v=8.19.12"></script>
-    <script src="lyrics.js?v=8.19.12"></script>
-    <script src="importer.js?v=8.19.12"></script>
-    <script src="miniplayer.js?v=8.19.12"></script>
+    <script src="offline.js?v=8.19.13"></script>
+    <script src="algorithm.js?v=8.19.13"></script>
+    <script src="profile.js?v=8.19.13"></script>
+    <script src="vibeEngine.js?v=8.19.13"></script>
+    <script src="player.js?v=8.19.13"></script>
+    <script src="lyrics.js?v=8.19.13"></script>
+    <script src="importer.js?v=8.19.13"></script>
+    <script src="miniplayer.js?v=8.19.13"></script>
     <script src="pianoRoll.js?v=7.9.0"></script>
-    <script src="app.js?v=8.19.12"></script>
+    <script src="app.js?v=8.19.13"></script>
     <!-- Service Worker Auto-Update & Offline PWA Engine -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js?v=8.19.12').then((reg) => {
+                const hadController = !!navigator.serviceWorker.controller;
+                let refreshing = false;
+
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (!hadController) return;
+                    const isPlayingNow = Boolean(
+                        window.AudioPlayer &&
+                        (window.AudioPlayer.isPlaying || (window.AudioPlayer.audio && !window.AudioPlayer.audio.paused))
+                    );
+                    if (isPlayingNow) {
+                        if (typeof window.showUpdateAvailableUI === 'function') {
+                            window.showUpdateAvailableUI('8.19.13');
+                        }
+                        return;
+                    }
+                    if (!refreshing) {
+                        refreshing = true;
+                        window.location.reload();
+                    }
+                });
+
+                navigator.serviceWorker.register('./sw.js?v=8.19.13').then((reg) => {
                     console.log('[PWA] Service Worker registered:', reg.scope);
                     reg.update().catch(() => {});
                     reg.addEventListener('updatefound', () => {
@@ -794,23 +824,25 @@
                         if (newWorker) {
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    console.log('[PWA] New version ready! Refreshing app...');
-                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
-                                    window.location.reload();
+                                    const isPlayingNow = Boolean(
+                                        window.AudioPlayer &&
+                                        (window.AudioPlayer.isPlaying || (window.AudioPlayer.audio && !window.AudioPlayer.audio.paused))
+                                    );
+                                    if (isPlayingNow) {
+                                        console.log('[PWA] New version ready; deferring reload while audio is playing.');
+                                        if (typeof window.showUpdateAvailableUI === 'function') {
+                                            window.showUpdateAvailableUI();
+                                        }
+                                    } else {
+                                        console.log('[PWA] New version ready! Activating...');
+                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                    }
                                 }
                             });
                         }
                     });
                 }).catch((err) => {
                     console.warn('[PWA] Service Worker registration failed:', err);
-                });
-
-                let refreshing = false;
-                navigator.serviceWorker.addEventListener('controllerchange', () => {
-                    if (!refreshing) {
-                        refreshing = true;
-                        window.location.reload();
-                    }
                 });
             });
         }

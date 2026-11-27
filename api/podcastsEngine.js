@@ -49,6 +49,30 @@ function fetchWithRedirects(url, maxRedirects = 5, timeoutMs = 8000) {
     });
 }
 
+function decodeXmlEntities(str) {
+    if (typeof str !== 'string' || !str.includes('&')) return str || '';
+    const map = {
+        '&amp;': '&',
+        '&lt;': '<',
+        '&gt;': '>',
+        '&quot;': '"',
+        '&#39;': "'",
+        '&#039;': "'",
+        '&apos;': "'",
+        '&nbsp;': ' '
+    };
+    return str
+        .replace(/&(amp|lt|gt|quot|apos|nbsp|#0*39);/gi, (m) => map[m.toLowerCase()] || map[m] || m)
+        .replace(/&#(\d+);/g, (_, code) => {
+            const n = parseInt(code, 10);
+            return Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : _;
+        })
+        .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+            const n = parseInt(hex, 16);
+            return Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : _;
+        });
+}
+
 function hashCode(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -69,9 +93,9 @@ function parseRss(xml, fallbackShow) {
     if (itunesImgMatch) chArt = itunesImgMatch[1];
 
     const channelMeta = {
-        title: (chTitleMatch ? chTitleMatch[1].trim() : (fallbackShow?.name || 'Podcast')),
-        description: (chDescMatch ? chDescMatch[1].replace(/<[^>]+>/g, '').trim().slice(0, 400) : (fallbackShow?.description || '')),
-        author: (chAuthorMatch ? chAuthorMatch[1].trim() : (fallbackShow?.publisher || 'Studio Host')),
+        title: decodeXmlEntities(chTitleMatch ? chTitleMatch[1].trim() : (fallbackShow?.name || 'Podcast')),
+        description: decodeXmlEntities(chDescMatch ? chDescMatch[1].replace(/<[^>]+>/g, '').trim() : (fallbackShow?.description || '')).slice(0, 400),
+        author: decodeXmlEntities(chAuthorMatch ? chAuthorMatch[1].trim() : (fallbackShow?.publisher || 'Studio Host')),
         artwork: chArt
     };
 
@@ -81,13 +105,13 @@ function parseRss(xml, fallbackShow) {
     while ((match = itemRegex.exec(xml)) !== null && idx < 100) {
         const itemXml = match[0];
         const titleMatch = itemXml.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
-        const title = titleMatch ? titleMatch[1].trim() : `Episode #${idx + 1}`;
+        const title = decodeXmlEntities(titleMatch ? titleMatch[1].trim() : `Episode #${idx + 1}`);
 
         const encMatch = itemXml.match(/<enclosure[\s\S]*?url=[\"']([^\"']+)[\"']/i);
         const streamUrl = encMatch ? encMatch[1] : '';
 
         const descMatch = itemXml.match(/<description>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i);
-        const desc = descMatch ? descMatch[1].replace(/<[^>]+>/g, '').trim().slice(0, 320) : '';
+        const desc = decodeXmlEntities(descMatch ? descMatch[1].replace(/<[^>]+>/g, '').trim() : '').slice(0, 320);
 
         const pubDateMatch = itemXml.match(/<pubDate>([\s\S]*?)<\/pubDate>/i);
         let cleanDate = 'Recent';

@@ -18,6 +18,7 @@ function fetchJson(url, maxRedirects = 4) {
         if (!url || maxRedirects < 0) return resolve(null);
         try {
             const parsed = new URL(url);
+            if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return resolve(null);
             const mod = parsed.protocol === 'https:' ? https : http;
             const req = mod.get(url, {
                 headers: {
@@ -50,6 +51,7 @@ function fetchText(url, maxRedirects = 5, customHeaders = {}) {
         if (!url || maxRedirects < 0) return resolve('');
         try {
             const parsed = new URL(url);
+            if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return resolve('');
             const mod = parsed.protocol === 'https:' ? https : http;
             const req = mod.get(url, {
                 headers: {
