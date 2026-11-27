@@ -184,27 +184,52 @@
     return true;
   }
 
+  function isPodcastTrack(track) {
+    if (!track) return false;
+    return Boolean(
+      track.isPodcast ||
+      track.quality === 'Podcast Audio Stream' ||
+      track.type === 'podcast' ||
+      String(track.id || '').startsWith('pod_')
+    );
+  }
+
   function detectLanguage(track) {
-    if (!track) return 'tamil';
+    if (!track) return '';
     let lang = (track.language || '').toLowerCase().trim();
-    if (lang && lang !== 'unknown') return lang;
+    if (lang && lang !== 'unknown' && lang !== 'all' && lang !== 'mixed') return lang;
 
     const text = `${track.title || ''} ${track.artist || ''} ${track.album || ''}`.toLowerCase();
-    if (/[஀-௿]/.test(text)) return 'tamil';
-    if (/[ऀ-ॿ]/.test(text)) return 'hindi';
-    if (/[ఀ-౿]/.test(text)) return 'telugu';
-    if (/[ഀ-ൿ]/.test(text)) return 'malayalam';
+    if (/[\u0b80-\u0bff]/.test(text)) return 'tamil';
+    if (/[\u0900-\u097f]/.test(text)) return 'hindi';
+    if (/[\u0c00-\u0c7f]/.test(text)) return 'telugu';
+    if (/[\u0d00-\u0d7f]/.test(text)) return 'malayalam';
+    if (/[\u0c80-\u0cff]/.test(text)) return 'kannada';
+    if (/[\u0a00-\u0a7f]/.test(text)) return 'punjabi';
 
-    const hindiArtists = ['arijit singh', 'neha kakkar', 'badshah', 'diljit', 'kumar sanu', 'lata mangeshkar', 'pritam', 'shreya ghoshal', 'atif aslam', 'vishal mishra', 'kk', 'sonu nigam'];
+    const punjabiArtists = ['karan aujla', 'diljit dosanjh', 'ap dhillon', 'sidhu moose wala', 'guru randhawa', 'shubh', 'ammy virk', 'punjabi'];
+    if (punjabiArtists.some(pa => text.includes(pa))) return 'punjabi';
+
+    const hindiArtists = ['arijit singh', 'neha kakkar', 'badshah', 'diljit', 'kumar sanu', 'lata mangeshkar', 'pritam', 'shreya ghoshal', 'atif aslam', 'vishal mishra', 'kk', 'sonu nigam', 'tanishk bagchi', 'mithoon', 'jubin nautiyal', 'mohit chauhan', 'sachin-jigar', 'bollywood', 'hindi'];
     if (hindiArtists.some(ha => text.includes(ha))) return 'hindi';
 
-    const englishArtists = ['taylor swift', 'the weeknd', 'ed sheeran', 'dua lipa', 'drake', 'post malone', 'billie eilish', 'justin bieber', 'coldplay', 'bruno mars', 'eminem'];
+    const teluguArtists = ['devi sri prasad', 'thaman', 'm.m. keeravani', 'keeravani', 'mani sharma', 'tollywood', 'telugu'];
+    if (teluguArtists.some(ta => text.includes(ta))) return 'telugu';
+
+    const malayalamArtists = ['sushin shyam', 'hesham abdul wahab', 'vineeth sreenivasan', 'shaan rahman', 'mollywood', 'malayalam'];
+    if (malayalamArtists.some(ma => text.includes(ma))) return 'malayalam';
+
+    const englishArtists = ['taylor swift', 'the weeknd', 'ed sheeran', 'dua lipa', 'drake', 'post malone', 'billie eilish', 'justin bieber', 'coldplay', 'bruno mars', 'eminem', 'sabrina carpenter', 'madcon', 'ariana grande', 'charlie puth', 'imagine dragons'];
     if (englishArtists.some(ea => text.includes(ea))) return 'english';
 
-    const tamilArtists = ['anirudh', 'rahman', 'harris jayaraj', 'yuvan', 'ilaiyaraaja', 'ilayaraja', 'sid sriram', 'pradeep kumar', 'santhosh narayanan', 'gv prakash', 'hiphop tamizha', 'dharan', 'd. imman', 'sean roldan'];
+    if (text.includes('blackpink') || text.includes('jungkook') || text.includes('bts')) return 'korean';
+    if (text.includes('yoasobi')) return 'japanese';
+    if (text.includes('bad bunny')) return 'spanish';
+
+    const tamilArtists = ['anirudh', 'a.r. rahman', 'ar rahman', 'rahman', 'harris jayaraj', 'yuvan', 'ilaiyaraaja', 'ilayaraja', 'sid sriram', 'pradeep kumar', 'santhosh narayanan', 'g.v. prakash', 'gv prakash', 'hiphop tamizha', 'dharan', 'd. imman', 'sean roldan', 'sai abhyankkar', 'vidyasagar', 'kollywood', 'tamil'];
     if (tamilArtists.some(ta => text.includes(ta))) return 'tamil';
 
-    return 'tamil';
+    return '';
   }
 
   function isTamilTrack(track) {
@@ -217,7 +242,7 @@
    */
   function inferAcoustics(track) {
     if (!track) {
-      return { bpm: 105, energy: 0.60, mood: 'melodic', tempo: 'medium', genre: 'pop', language: 'tamil' };
+      return { bpm: 105, energy: 0.60, mood: 'melodic', tempo: 'medium', genre: 'pop', language: '' };
     }
 
     let bpm = track.bpm || track.audioFeatures?.tempo || track.tempo;
@@ -345,11 +370,12 @@
 
   /**
    * Resilient Vibe Distance Calculation.
-   * Compares 5 acoustic and synergy dimensions. Never returns NaN.
+   * Compares acoustic, language, genre, era, repeat/skip penalties, and user likes. Never returns NaN.
    */
   function calculateVibeDistance(currentTrack, candidateTrack, taste = null) {
     if (!currentTrack || !candidateTrack) return 1.0;
-    if (currentTrack.id === candidateTrack.id) return 9999.0;
+    if (String(currentTrack.id) === String(candidateTrack.id)) return 9999.0;
+    if (isPodcastTrack(candidateTrack)) return 9999.0;
 
     // 1. Blocked Filters check (Taste)
     if (taste) {
@@ -367,13 +393,13 @@
     const curAc = inferAcoustics(currentTrack);
     const candAc = inferAcoustics(candidateTrack);
 
-    // Feature A: BPM Distance (Weight 0.30)
+    // Feature A: BPM Distance (Weight 0.25)
     const bpmDiff = Math.abs(curAc.bpm - candAc.bpm) / 160.0;
-    const bpmScore = Math.min(1.0, bpmDiff) * 0.30;
+    const bpmScore = Math.min(1.0, bpmDiff) * 0.25;
 
-    // Feature B: Energy Distance (Weight 0.35)
+    // Feature B: Energy Distance (Weight 0.30)
     const energyDiff = Math.abs(curAc.energy - candAc.energy);
-    const energyScore = Math.min(1.0, energyDiff) * 0.35;
+    const energyScore = Math.min(1.0, energyDiff) * 0.30;
 
     // Feature C: Strict Vibe Consistency & Mood Alignment
     const curVibe = detectVibeCategory(currentTrack);
@@ -397,15 +423,16 @@
     } else if (curVibe === 'sad' && (candVibe === 'romantic' || candVibe === 'chill')) {
       moodScore = 0.10;
     } else {
-      moodScore = 0.35;
+      moodScore = 0.32;
     }
 
-    // Feature D: Tempo match (Weight 0.15)
-    const tempoScore = (curAc.tempo === candAc.tempo) ? 0.0 : 0.15;
+    // Feature D: Tempo & Genre Alignment
+    const tempoScore = (curAc.tempo === candAc.tempo) ? 0.0 : 0.12;
+    const genreBonus = (curAc.genre && candAc.genre && curAc.genre !== 'pop' && curAc.genre === candAc.genre) ? -0.04 : 0.0;
 
-    let normalizedDist = bpmScore + energyScore + moodScore + tempoScore;
+    let normalizedDist = bpmScore + energyScore + moodScore + tempoScore + genreBonus;
 
-    // Feature E: Light Metadata Synergy (mix composers freely while giving tiny soundtrack affinity)
+    // Feature E: Metadata, Language, Era & User Behavior Signals
     let synergyModifier = 0.0;
     const curArtist = (currentTrack.artist || '').toLowerCase().trim();
     const candArtist = (candidateTrack.artist || '').toLowerCase().trim();
@@ -413,27 +440,71 @@
     const candAlbum = (candidateTrack.album || candidateTrack.category || '').toLowerCase().trim();
     const isGenericAlbum = (alb) => !alb || /\b(best of|hits of|top hits|romantic|melody|chill|single|collection|playlist|evergreen|greatest)\b/i.test(alb);
 
-    // 1. Modest same-movie soundtrack affinity (only for real film soundtracks, not compilation albums)
-    if (curAlbum && candAlbum && curAlbum.length >= 3 && !isGenericAlbum(curAlbum) && !isGenericAlbum(candAlbum) &&
-        (curAlbum === candAlbum || curAlbum.includes(candAlbum) || candAlbum.includes(curAlbum))) {
-      synergyModifier -= 0.08;
+    const sameSoundtrack = Boolean(
+      curAlbum && candAlbum && curAlbum.length >= 3 && !isGenericAlbum(curAlbum) && !isGenericAlbum(candAlbum) &&
+      (curAlbum === candAlbum || curAlbum.includes(candAlbum) || candAlbum.includes(curAlbum))
+    );
+    const curPrimary = cleanArtistPrimaryKey(curArtist);
+    const candPrimary = cleanArtistPrimaryKey(candArtist);
+    const sameArtist = Boolean(curPrimary && candPrimary && curPrimary === candPrimary);
+    const isFavArtist = Boolean(taste && Array.isArray(taste.favoriteArtists) && taste.favoriteArtists.some(fa => candArtist.includes(fa.toLowerCase())));
+
+    // 1. Language relevance (strong signal, while allowing cross-language when same artist/album/favorite)
+    const curLang = curAc.language || detectLanguage(currentTrack);
+    const candLang = candAc.language || detectLanguage(candidateTrack);
+    if (curLang && candLang) {
+      if (curLang === candLang) {
+        synergyModifier -= 0.10;
+      } else if (!sameArtist && !sameSoundtrack && !isFavArtist) {
+        synergyModifier += 0.50;
+      } else {
+        synergyModifier += 0.15;
+      }
+    } else if (curLang && !candLang) {
+      synergyModifier += 0.12;
     }
 
-    // 2. Allow composers to mix freely: tiny affinity instead of heavy single-composer lock-in
-    if (curArtist && candArtist) {
-      const curPrimary = cleanArtistPrimaryKey(curArtist);
-      const candPrimary = cleanArtistPrimaryKey(candArtist);
-      if (curPrimary && candPrimary && curPrimary === candPrimary) {
-        synergyModifier -= 0.02;
-      }
+    // 2. Era proximity
+    const seedYear = extractTrackYear(currentTrack);
+    const candYear = extractTrackYear(candidateTrack);
+    if (seedYear && candYear) {
+      const yearGap = Math.abs(seedYear - candYear);
+      if (yearGap <= 5) synergyModifier -= 0.04;
+      else if (yearGap >= 20) synergyModifier += 0.16;
     }
 
-    // 3. User favorite artists affinity bonus
-    if (taste && Array.isArray(taste.favoriteArtists)) {
-      if (taste.favoriteArtists.some(fa => candArtist.includes(fa.toLowerCase()))) {
-        synergyModifier -= 0.08;
+    // 3. Same-movie soundtrack & artist affinity
+    if (sameSoundtrack) synergyModifier -= 0.08;
+    if (sameArtist) synergyModifier -= 0.03;
+    if (isFavArtist) synergyModifier -= 0.08;
+
+    // 4. Liked track preference
+    try {
+      if (typeof window !== 'undefined' && window.likedTrackIds && window.likedTrackIds.has(String(candidateTrack.id))) {
+        synergyModifier -= 0.06;
       }
-    }
+    } catch (e) {}
+
+    // 5. Recent repeat & skipped track penalties (non-permanent, decayable)
+    try {
+      const recentHist = (typeof window !== 'undefined' && window.AudioPlayer && Array.isArray(window.AudioPlayer.history))
+        ? window.AudioPlayer.history.slice(-20)
+        : [];
+      if (recentHist.some(h => h && String(h.id) === String(candidateTrack.id))) {
+        synergyModifier += 0.45;
+      }
+      const spProfile = (typeof window !== 'undefined' && window.SpotifyEngine && typeof window.SpotifyEngine.getProfile === 'function')
+        ? window.SpotifyEngine.getProfile()
+        : null;
+      const skippedList = Array.isArray(taste?.skippedTracks) ? taste.skippedTracks : (spProfile?.skippedTracks || []);
+      const skipEntry = skippedList.find(s => s && String(s.id) === String(candidateTrack.id));
+      if (skipEntry) {
+        const ageHours = Math.max(0, (Date.now() - (skipEntry.skippedAt || 0)) / (1000 * 60 * 60));
+        if (ageHours < 24) {
+          synergyModifier += Math.max(0.15, 0.50 * (1 - ageHours / 24));
+        }
+      }
+    } catch (e) {}
 
     return Math.max(0.01, normalizedDist + synergyModifier);
   }
@@ -471,26 +542,31 @@
    * Helper: Asynchronously fetches related online tracks by artist or album.
    * Results are cached for 30 minutes.
    */
-  async function fetchRelatedOnlineTracks(track) {
-    if (!track) return [];
+  async function fetchRelatedOnlineTracks(track, externalSignal = null) {
+    if (!track || isPodcastTrack(track) || externalSignal?.aborted) return [];
     const queries = [];
     const alb = (track.album || "").replace(/\(From.*?\)/i, "").trim();
     const art = pickComposerOrPrimaryArtist(track.artist || "");
     const seedVibe = detectVibeCategory(track);
     const vibeKeyword = getVibeSearchKeyword(seedVibe);
-    const lang = detectLanguage(track) || 'tamil';
+    const lang = detectLanguage(track);
 
-    if (art && art.length >= 3) {
-      queries.push(`${art} ${vibeKeyword}`);
+    if (art && art.length >= 3 && !/unknown|various/i.test(art)) {
+      queries.push(`${art} ${vibeKeyword}`.trim());
     }
-    queries.push(`${lang} ${vibeKeyword} songs`);
-    if (alb && alb.length >= 3 && !/\b(single|hits|best of|collection|romantic|melody)\b/i.test(alb)) {
+    if (lang) {
+      queries.push(`${lang} ${vibeKeyword} songs`.trim());
+    } else if (track.title) {
+      queries.push(`${track.title} ${vibeKeyword}`.trim());
+    }
+    if (alb && alb.length >= 3 && !/\b(single|hits|best of|collection|romantic|melody|unknown)\b/i.test(alb)) {
       queries.push(alb);
     }
 
     const fetchedTracks = [];
 
     for (const query of queries) {
+      if (externalSignal?.aborted) break;
       const cacheKey = query.toLowerCase().trim();
       if (relatedTracksCache.has(cacheKey)) {
         fetchedTracks.push(...relatedTracksCache.get(cacheKey));
@@ -501,16 +577,19 @@
         const endpoint = `${getVibeApiPrefix()}/api/search?q=${encodeURIComponent(query)}&limit=15`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const onExtAbort = () => controller.abort();
+        if (externalSignal) externalSignal.addEventListener('abort', onExtAbort, { once: true });
 
         const res = await fetch(endpoint, { signal: controller.signal });
         clearTimeout(timeoutId);
+        if (externalSignal) externalSignal.removeEventListener('abort', onExtAbort);
 
         if (res.ok) {
           const json = await res.json();
-          const rawSongs = json?.results || json?.tracks || json?.data || [];
-          const formatted = rawSongs.map(item => {
+          const rawSongs = json?.songs || json?.results || json?.tracks || json?.data || [];
+          const formatted = rawSongs.map((item, idx) => {
             const formattedTrack = {
-              id: item.id || `rel_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+              id: item.id || `rel_${Date.now()}_${idx}`,
               title: item.title,
               artist: item.artist,
               album: item.album || '',
@@ -518,7 +597,7 @@
               artwork: item.artwork || item.image || '',
               streamUrl: item.streamUrl || '',
               quality: item.quality || 'FLAC / 320kbps Lossless',
-              language: item.language || lang
+              language: item.language || lang || ''
             };
             const ac = inferAcoustics(formattedTrack);
             formattedTrack.bpm = item.bpm || ac.bpm;
@@ -551,6 +630,7 @@
           favoriteArtists: Object.keys(p.artists || {}).filter(k => (p.artists[k] || 0) >= 15),
           blockedArtists: [],
           blockedTracks: [],
+          skippedTracks: Array.isArray(p.skippedTracks) ? p.skippedTracks : [],
           acousticPreferences: p.acousticPreferences || null
         };
       }
@@ -560,22 +640,18 @@
 
   /**
    * Main Standalone Vibe Recommendation Function:
-   * Selects the next song to play based on dynamic Vibe-Matching against the currently playing track.
+   * Selects the next song deterministically using multi-signal Vibe-Matching against the currently playing track.
    */
   function getNextVibeTrack(currentTrack, catalog, history = [], targetLanguage = null) {
-    if (!currentTrack && (!catalog || catalog.length === 0)) return null;
+    if ((!currentTrack && (!catalog || catalog.length === 0)) || isPodcastTrack(currentTrack)) return null;
 
     const taste = getSafeUserTaste();
     const appState = (typeof window !== 'undefined' && window.State) ? window.State : null;
 
-    // 1. Language Enforcement: Strictly preserve current track's language
-    let enforcedLang = detectLanguage(currentTrack) || targetLanguage;
-    if (!enforcedLang && taste && Array.isArray(taste.languages) && taste.languages.length > 0) {
-      enforcedLang = taste.languages[0];
-    } else if (!enforcedLang && appState) {
-      enforcedLang = (appState.preferredLanguages && appState.preferredLanguages[0]) || appState.activeLanguage;
-    }
-    enforcedLang = (enforcedLang || "tamil").toLowerCase().trim();
+    // 1. Language signal from current track (or explicit targetLanguage)
+    let enforcedLang = detectLanguage(currentTrack) || targetLanguage || '';
+    enforcedLang = String(enforcedLang || '').toLowerCase().trim();
+    if (enforcedLang === 'unknown') enforcedLang = '';
 
     // 2. Build Multi-Source Candidate Pool:
     const searchPool = (appState && Array.isArray(appState.lastSearchResults)) ? appState.lastSearchResults : [];
@@ -593,7 +669,7 @@
     // Merge and deduplicate candidates by ID
     const mergedMap = new Map();
     for (const t of [...relatedPool, ...searchPool, ...catalogPool]) {
-      if (t && t.id && !mergedMap.has(t.id)) {
+      if (t && t.id && !isPodcastTrack(t) && !mergedMap.has(t.id)) {
         mergedMap.set(t.id, t);
       }
     }
@@ -601,12 +677,12 @@
 
     // 3. Exclude last 25 history tracks + current track
     const excludeIds = new Set();
-    if (currentTrack?.id) excludeIds.add(currentTrack.id);
+    if (currentTrack?.id) excludeIds.add(String(currentTrack.id));
 
     const historySlice = (Array.isArray(history) ? history : []).slice(-25);
     for (const h of historySlice) {
       const id = (typeof h === 'string') ? h : h?.id;
-      if (id) excludeIds.add(id);
+      if (id) excludeIds.add(String(id));
     }
 
     // 4. Avoid same artist more than 2 times in a row
@@ -621,49 +697,46 @@
     }
 
     const seedVibe = detectVibeCategory(currentTrack);
+    const seedArtKey = cleanArtistPrimaryKey(currentTrack?.artist || '');
 
-    // 5. Filter candidates (strict language + strict bidirectional vibe)
+    const passesLanguage = (cand) => {
+      if (!enforcedLang) return true;
+      const trackLang = detectLanguage(cand);
+      if (!trackLang) return true;
+      if (trackLang === enforcedLang) return true;
+      const candArtKey = cleanArtistPrimaryKey(cand.artist || '');
+      return Boolean(seedArtKey && candArtKey && seedArtKey === candArtKey);
+    };
+
+    // 5. Filter candidates (language + strict bidirectional vibe + anti-repeat)
     let candidatePool = allCandidates.filter(t => {
-      if (!t || !t.id || excludeIds.has(t.id)) return false;
+      if (!t || !t.id || excludeIds.has(String(t.id)) || isPodcastTrack(t)) return false;
       if (t.duration && t.duration <= 45) return false;
       if (currentTrack && isSameSongOrReprise(t.title, currentTrack.title)) return false;
 
-      // Blocked artist filter
       if (taste && Array.isArray(taste.blockedArtists)) {
         const candArt = (t.artist || '').toLowerCase();
         if (taste.blockedArtists.some(ba => candArt.includes(ba.toLowerCase()))) return false;
       }
-
-      // Blocked tracks filter
       if (taste && Array.isArray(taste.blockedTracks) && taste.blockedTracks.includes(t.id)) {
         return false;
       }
 
-      // Avoid 3rd consecutive play of same artist
       if (consecutiveArtist) {
         const candArt = cleanArtistPrimaryKey(t.artist || '');
         if (candArt && candArt === consecutiveArtist) return false;
       }
 
-      // Strict language match
-      const trackLang = detectLanguage(t);
-      if (enforcedLang === 'tamil') {
-        if (trackLang !== 'tamil') return false;
-      } else if (trackLang !== enforcedLang) {
-        return false;
-      }
-
-      // Strict vibe compatibility match
+      if (!passesLanguage(t)) return false;
       return isVibeCompatible(seedVibe, detectVibeCategory(t), true);
     });
 
-    // Relax only vibe strictness (keep language & anti-clash) before falling back further
+    // Relax only vibe strictness (keep language & anti-clash)
     if (candidatePool.length === 0) {
       candidatePool = allCandidates.filter(t => {
-        if (!t || !t.id || excludeIds.has(t.id)) return false;
+        if (!t || !t.id || excludeIds.has(String(t.id)) || isPodcastTrack(t)) return false;
         if (currentTrack && isSameSongOrReprise(t.title, currentTrack.title)) return false;
-        const trackLang = detectLanguage(t);
-        if (trackLang !== enforcedLang) return false;
+        if (!passesLanguage(t)) return false;
         return isVibeCompatible(seedVibe, detectVibeCategory(t), false);
       });
     }
@@ -671,57 +744,35 @@
     // Relax exclusions only when strict pool is completely empty
     if (candidatePool.length === 0) {
       candidatePool = allCandidates.filter(t => {
-        if (!t || !t.id || (currentTrack && t.id === currentTrack.id)) return false;
-        const trackLang = detectLanguage(t);
-        return trackLang === enforcedLang && isVibeCompatible(seedVibe, detectVibeCategory(t), false);
+        if (!t || !t.id || isPodcastTrack(t) || (currentTrack && String(t.id) === String(currentTrack.id))) return false;
+        return passesLanguage(t) && isVibeCompatible(seedVibe, detectVibeCategory(t), false);
       });
     }
 
+    // Cross-language / relaxed vibe fallback only when same-language strict candidates are exhausted
     if (candidatePool.length === 0) {
       candidatePool = allCandidates.filter(t => {
-        if (!t || !t.id || (currentTrack && t.id === currentTrack.id)) return false;
-        const trackLang = detectLanguage(t);
-        return trackLang === enforcedLang;
+        if (!t || !t.id || isPodcastTrack(t) || (currentTrack && String(t.id) === String(currentTrack.id))) return false;
+        return passesLanguage(t);
       });
     }
 
     if (candidatePool.length === 0) {
-      candidatePool = allCandidates.filter(t => t && t.id && (!currentTrack || t.id !== currentTrack.id));
+      candidatePool = allCandidates.filter(t => t && t.id && !isPodcastTrack(t) && (!currentTrack || String(t.id) !== String(currentTrack.id)));
     }
 
     if (candidatePool.length === 0) {
       return null;
     }
 
-    // 6. Score all candidates using calculateVibeDistance
-    const curAcoustics = inferAcoustics(currentTrack);
-
-    const scored = candidatePool.map(cand => {
+    // 6. Score all candidates deterministically using calculateVibeDistance
+    const scored = candidatePool.map((cand, idx) => {
       const dist = calculateVibeDistance(currentTrack, cand, taste);
-      return { track: cand, distance: dist };
+      return { track: cand, distance: dist + (idx * 0.0001) };
     });
 
-    // Sort by lowest distance (closest vibe match)
     scored.sort((a, b) => a.distance - b.distance);
-
-    // 7. Weighted-Random selection from TOP 5 candidates
-    const top5 = scored.slice(0, Math.min(5, scored.length));
-    if (top5.length === 0) return candidatePool[0] || null;
-
-    const weights = top5.map(item => 1.0 / (item.distance + 0.05));
-    const totalWeight = weights.reduce((acc, w) => acc + w, 0);
-    let rand = Math.random() * totalWeight;
-    let chosenIndex = 0;
-
-    for (let i = 0; i < weights.length; i++) {
-      rand -= weights[i];
-      if (rand <= 0) {
-        chosenIndex = i;
-        break;
-      }
-    }
-
-    const chosenItem = top5[chosenIndex] || top5[0];
+    const chosenItem = scored[0];
     const chosenTrack = chosenItem.track;
 
     // Construct "Why this song?" hint
@@ -752,15 +803,17 @@
   /**
    * Async variant that proactively queries online related tracks if the candidate pool is sparse.
    */
-  async function resolveNextVibeTrackAsync(currentTrack, candidates = [], history = [], targetLanguage = null) {
-    if (!currentTrack) return null;
+  async function resolveNextVibeTrackAsync(currentTrack, candidates = [], history = [], targetLanguage = null, options = {}) {
+    if (!currentTrack || isPodcastTrack(currentTrack) || options?.signal?.aborted) return null;
 
-    const lang = targetLanguage || currentTrack.language || detectLanguage(currentTrack) || 'tamil';
+    const lang = targetLanguage || detectLanguage(currentTrack) || '';
 
     // Proactively fetch and populate related tracks for current song
     try {
-      await fetchRelatedOnlineTracks(currentTrack);
+      await fetchRelatedOnlineTracks(currentTrack, options?.signal || null);
     } catch (e) {}
+
+    if (options?.signal?.aborted) return null;
 
     const pool = (typeof window !== 'undefined' && window.AllSongPool && window.AllSongPool.length > 0)
       ? window.AllSongPool
@@ -779,13 +832,13 @@
 
   /**
    * Spotify-Grade Continuous Radio Track Fetcher
-   * Fetches the next best acoustic/vibe match when the current song completes.
-   * Mixes composers naturally while strictly enforcing vibe compatibility.
+   * Fetches the next best acoustic/vibe match deterministically when the current song completes.
    */
-  async function getContinuousRadioTrack(currentTrack, history = []) {
-    if (!currentTrack) return null;
+  async function getContinuousRadioTrack(currentTrack, history = [], options = {}) {
+    if (!currentTrack || isPodcastTrack(currentTrack) || options?.signal?.aborted) return null;
     const prefix = getVibeApiPrefix();
     const taste = getSafeUserTaste();
+    const signal = options?.signal || null;
 
     const recentHistory = (Array.isArray(history) ? history : []).slice(-35);
     const historyIds = new Set(recentHistory.map(h => typeof h === 'string' ? h : String(h?.id)).filter(Boolean));
@@ -796,7 +849,6 @@
     const curCanon = normalizeCanonicalTitle(currentTrack.title);
     if (curCanon) historyCanon.add(curCanon);
 
-    // Avoid 3rd consecutive track by the exact same primary artist/composer
     let consecutiveArtist = null;
     if (recentHistory.length >= 2) {
       const a1 = cleanArtistPrimaryKey(recentHistory[recentHistory.length - 1]?.artist || '');
@@ -804,7 +856,6 @@
       if (a1 && a1 === a2) consecutiveArtist = a1;
     }
 
-    // Queue deduplication
     const queueTracks = (typeof window !== 'undefined' && window.AudioPlayer && Array.isArray(window.AudioPlayer.queue))
       ? window.AudioPlayer.queue
       : [];
@@ -815,13 +866,14 @@
     const seedLang = detectLanguage(currentTrack);
     const seedVibe = detectVibeCategory(currentTrack);
     const seedArtistKey = cleanArtistPrimaryKey(currentTrack.artist || '');
+    const seedAlbumKey = (currentTrack.album || '').toLowerCase().trim();
     const seedYear = extractTrackYear(currentTrack);
 
     const isValidCandidate = (cand, strictVibe = true, fromLocal = false) => {
-      if (!cand || !cand.id || !cand.title) return false;
+      if (!cand || !cand.id || !cand.title || isPodcastTrack(cand)) return false;
       const candStr = `${cand.title} ${cand.artist || ''} ${cand.album || ''}`;
       if (NON_SONG_RE.test(candStr)) return false;
-      if (fromLocal && !isEraCompatible(seedYear, extractTrackYear(cand))) return false;
+      if (fromLocal && !isEraCompatible(seedYear, extractTrackYear(cand), currentTrack, cand)) return false;
       const titleKey = cand.title.toLowerCase().trim();
       const canonKey = normalizeCanonicalTitle(cand.title);
       if (isSameSongOrReprise(cand.title, currentTrack.title)) return false;
@@ -838,11 +890,17 @@
       const candArtKey = cleanArtistPrimaryKey(cand.artist || '');
       if (consecutiveArtist && candArtKey && candArtKey === consecutiveArtist) return false;
 
-      // Language check
-      if (seedLang && cand.language && cand.language !== 'unknown' && cand.language.toLowerCase().trim() !== seedLang) {
+      // Language relevance check: prevent unrelated cross-language hits unless strong artist/album/favorite synergy
+      const candLang = detectLanguage(cand);
+      const isFavArtist = Boolean(taste && Array.isArray(taste.favoriteArtists) && taste.favoriteArtists.some(fa => (cand.artist || '').toLowerCase().includes(fa.toLowerCase())));
+      const sameArt = Boolean(seedArtistKey && candArtKey && seedArtistKey === candArtKey);
+      const candAlb = (cand.album || '').toLowerCase().trim();
+      const sameAlb = Boolean(seedAlbumKey && candAlb && seedAlbumKey === candAlb);
+      if (seedLang && candLang && candLang !== seedLang && !sameArt && !sameAlb && !isFavArtist) {
         return false;
       }
-      // Strict bidirectional vibe check
+      if (fromLocal && seedLang && !candLang) return false;
+
       const candVibe = detectVibeCategory(cand);
       return isVibeCompatible(seedVibe, candVibe, strictVibe);
     };
@@ -857,7 +915,7 @@
       }
     };
 
-    // Step 1: Upstream Vibe Radio candidates (collect all compatible, don't just take index 0)
+    // Step 1: Upstream Vibe Radio candidates
     try {
       const qParams = new URLSearchParams({
         id: currentTrack.id || '',
@@ -865,38 +923,45 @@
         artist: currentTrack.artist || '',
         album: currentTrack.album || '',
         year: seedYear ? String(seedYear) : '',
-        lang: currentTrack.language || seedLang || 'tamil'
+        lang: currentTrack.language || seedLang || ''
       });
-      const res = await fetch(`${prefix}/api/radio?${qParams.toString()}`);
+      const res = await fetch(`${prefix}/api/radio?${qParams.toString()}`, signal ? { signal } : undefined);
+      if (signal?.aborted) return null;
       if (res.ok) {
         const json = await res.json();
         const candidateTracks = json.tracks || [];
         candidateTracks.forEach(c => pushIfValid(c, false));
       }
     } catch (e) {
+      if (e?.name === 'AbortError') return null;
       console.warn('[VibeEngine] getContinuousRadioTrack fetch failed:', e);
     }
 
     // Step 2: Supplement with vibe-matched search if sparse
-    if (collected.length < 5) {
+    if (collected.length < 5 && !signal?.aborted) {
       try {
         const vibeKeyword = getVibeSearchKeyword(seedVibe);
         const composer = pickComposerOrPrimaryArtist(currentTrack.artist || '');
         const searchQueries = [];
-        searchQueries.push(`${seedLang || 'tamil'} ${vibeKeyword} hits`);
-        if (composer) searchQueries.push(`${composer} ${vibeKeyword}`);
+        if (seedLang) searchQueries.push(`${seedLang} ${vibeKeyword} hits`);
+        if (composer && !/unknown|various/i.test(composer)) searchQueries.push(`${composer} ${vibeKeyword}`);
+        if (searchQueries.length === 0 && currentTrack.title) searchQueries.push(`${currentTrack.title} ${vibeKeyword}`);
 
         for (const sq of searchQueries) {
-          if (collected.length >= 10) break;
-          const sRes = await fetch(`${prefix}/api/search?q=${encodeURIComponent(sq)}&limit=12`);
+          if (collected.length >= 10 || signal?.aborted) break;
+          const sRes = await fetch(`${prefix}/api/search?q=${encodeURIComponent(sq)}&limit=12`, signal ? { signal } : undefined);
           if (sRes.ok) {
             const sJson = await sRes.json();
             const sTracks = sJson.results || sJson.songs || [];
             sTracks.forEach(c => pushIfValid(c, false));
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        if (e?.name === 'AbortError') return null;
+      }
     }
+
+    if (signal?.aborted) return null;
 
     // Step 3: Supplement from local catalog / related pool only when remote recommendations are sparse
     const pool = (typeof window !== 'undefined' && window.AllSongPool && window.AllSongPool.length > 0)
@@ -907,38 +972,31 @@
     }
 
     if (collected.length > 0) {
-      const scored = collected.map(cand => {
+      const scored = collected.map((cand, idx) => {
         let dist = calculateVibeDistance(currentTrack, cand, taste);
-        if (cand._fromLocal) dist += 0.35;
-        // Gentle diversity nudge so next auto-played track mixes composers nicely
+        if (cand._fromLocal) dist += 0.45;
         const candArtKey = cleanArtistPrimaryKey(cand.artist || '');
         if (seedArtistKey && candArtKey && candArtKey === seedArtistKey && collected.length >= 4) {
           dist += 0.03;
         }
-        return { track: cand, distance: dist };
+        return { track: cand, distance: dist + (idx * 0.0001) };
       });
       scored.sort((a, b) => a.distance - b.distance);
-      const top5 = scored.slice(0, Math.min(5, scored.length));
-      const weights = top5.map(item => 1.0 / (item.distance + 0.06));
-      const totalWeight = weights.reduce((acc, w) => acc + w, 0);
-      let rand = Math.random() * totalWeight;
-      for (let i = 0; i < weights.length; i++) {
-        rand -= weights[i];
-        if (rand <= 0) return top5[i].track;
-      }
-      return top5[0].track;
+      return scored[0].track;
     }
 
     // Fallback: local pool with full vibe scoring
-    return getNextVibeTrack(currentTrack, pool, history);
+    return getNextVibeTrack(currentTrack, pool, history, seedLang);
   }
 
   /**
    * Builds an instant Spotify Autoplay / Track Radio Queue seeded by a track.
-   * Prioritizes upstream /api/radio track recommendations, mixes composers naturally, and prevents search-pool clutter.
+   * Respects language relevance, multi-signal scoring, AbortSignal race guards, and strict podcast isolation.
    */
-  async function getVibeRadioQueue(seedTrack, count = 20, history = null) {
-    if (!seedTrack) return [];
+  async function getVibeRadioQueue(seedTrack, count = 20, history = null, options = {}) {
+    if (!seedTrack || isPodcastTrack(seedTrack)) return seedTrack ? [seedTrack] : [];
+    const signal = options?.signal || null;
+    if (signal?.aborted) return [];
     const prefix = getVibeApiPrefix();
     const taste = getSafeUserTaste();
 
@@ -960,12 +1018,14 @@
     const seedLang = detectLanguage(seedTrack);
     const seedVibe = detectVibeCategory(seedTrack);
     const seedYear = extractTrackYear(seedTrack);
+    const seedArtKey = cleanArtistPrimaryKey(seedTrack.artist || '');
+    const seedAlbRaw = (seedTrack.album || '').toLowerCase().trim();
 
     const rawCandidates = [];
     const rawSeenIds = new Set();
 
     const collectRaw = (t, fromRadio = false) => {
-      if (!t || !t.title) return;
+      if (!t || !t.title || isPodcastTrack(t)) return;
       const candStr = `${t.title} ${t.artist || ''} ${t.album || ''}`;
       if (NON_SONG_RE.test(candStr)) return;
       if (!t._fromUpstream && !isEraCompatible(seedYear, extractTrackYear(t), seedTrack, t)) return;
@@ -984,8 +1044,15 @@
       }
       if (taste && Array.isArray(taste.blockedTracks) && tid && taste.blockedTracks.includes(t.id)) return;
 
+      // Strong language relevance check (prevents unrelated tracks like Hindi charts infiltrating Tamil radio or vice versa)
       const tLang = detectLanguage(t);
-      if (seedLang && t.language && t.language !== 'unknown' && tLang !== seedLang) return;
+      const tArtKey = cleanArtistPrimaryKey(t.artist || '');
+      const tAlbRaw = (t.album || '').toLowerCase().trim();
+      const isFavArt = Boolean(taste && Array.isArray(taste.favoriteArtists) && taste.favoriteArtists.some(fa => (t.artist || '').toLowerCase().includes(fa.toLowerCase())));
+      const sameArt = Boolean(seedArtKey && tArtKey && seedArtKey === tArtKey);
+      const sameAlb = Boolean(seedAlbRaw && tAlbRaw && seedAlbRaw === tAlbRaw);
+      if (seedLang && tLang && tLang !== seedLang && !sameArt && !sameAlb && !isFavArt) return;
+      if (!fromRadio && seedLang && !tLang && !sameArt && !sameAlb) return;
 
       if (tid) rawSeenIds.add(tid);
       rawCandidates.push({ ...t, _fromRadio: fromRadio });
@@ -998,19 +1065,23 @@
         artist: seedTrack.artist || '',
         album: seedTrack.album || '',
         year: seedYear ? String(seedYear) : '',
-        lang: seedTrack.language || seedLang || 'tamil'
+        lang: seedTrack.language || seedLang || ''
       });
-      const res = await fetch(`${prefix}/api/radio?${qParams.toString()}`);
+      const res = await fetch(`${prefix}/api/radio?${qParams.toString()}`, signal ? { signal } : undefined);
+      if (signal?.aborted) return [];
       if (res.ok) {
         const json = await res.json();
         const tracks = json.tracks || [];
         tracks.forEach(t => collectRaw(t, true));
       }
     } catch (e) {
+      if (e?.name === 'AbortError') return [];
       console.warn('[VibeEngine] getVibeRadioQueue error:', e);
     }
 
-    // Only supplement with related/local pool if upstream /api/radio returned fewer than count tracks
+    if (signal?.aborted) return [];
+
+    // Supplement with related/local pool only when upstream /api/radio returned fewer than count tracks
     if (rawCandidates.length < count) {
       const localPool = (typeof window !== 'undefined' && window.AllSongPool && window.AllSongPool.length > 0)
         ? window.AllSongPool
@@ -1027,10 +1098,10 @@
       vibeMatched = rawCandidates;
     }
 
-    // Score with acoustic vibe distance while preserving upstream /api/radio priority over fallback
+    // Deterministic multi-signal scoring preserving upstream priority over local fallback
     const scored = vibeMatched.map((t, idx) => ({
       track: t,
-      distance: calculateVibeDistance(seedTrack, t, taste) + (t._fromUpstream ? (idx * 0.003) : (t._fromRadio ? 0.18 + (idx * 0.004) : 0.45)) + (Math.random() * 0.02)
+      distance: calculateVibeDistance(seedTrack, t, taste) + (t._fromUpstream ? (idx * 0.003) : (t._fromRadio ? 0.16 + (idx * 0.004) : 0.55 + (idx * 0.002)))
     }));
     scored.sort((a, b) => a.distance - b.distance);
 
@@ -1050,8 +1121,7 @@
 
       const albKey = (t.album || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/soundtrack|theme|single|ost|ep/gi, '').trim();
       if (albKey && albKey.length > 2 && !/\b(best of|hits of|top hits|romantic|melody|collection)\b/i.test(albKey)) {
-        if (albKey !== seedAlbKey && (albumCounts.get(albKey) || 0) >= 1) continue;
-        if (albKey === seedAlbKey && (albumCounts.get(albKey) || 0) >= 1) continue;
+        if ((albumCounts.get(albKey) || 0) >= 1) continue;
       }
 
       if (tid) seen.add(tid);
@@ -1073,16 +1143,12 @@
    */
   /**
    * High-Precision Spotify & YouTube Recommendation Algorithmic Matcher
-   * Fetches upstream suggestions, artist vibe streams, and ranks using 5D acoustic vectors.
+   * Fetches upstream suggestions, artist vibe streams, and ranks using multi-signal acoustic & language vectors.
    */
-  async function getAlgorithmicMatchingTracks(seedTrack, count = 15) {
-    if (!seedTrack) return [];
-    const isCatalyst = typeof window !== 'undefined' && (
-      window.location.hostname.includes('catalystserverless') ||
-      window.location.hostname.includes('zohocatalyst') ||
-      window.location.pathname.startsWith('/app')
-    );
-    const prefix = isCatalyst ? '/server/music_api' : '';
+  async function getAlgorithmicMatchingTracks(seedTrack, count = 15, options = {}) {
+    if (!seedTrack || isPodcastTrack(seedTrack) || options?.signal?.aborted) return [];
+    const prefix = getVibeApiPrefix();
+    const signal = options?.signal || null;
 
     const candidates = [];
     const seen = new Set();
@@ -1098,9 +1164,12 @@
     }
 
     const seedVibe = detectVibeCategory(seedTrack);
+    const seedLang = detectLanguage(seedTrack);
+    const seedArtKey = cleanArtistPrimaryKey(seedTrack.artist || '');
+    const taste = getSafeUserTaste();
 
     function addCandidate(raw) {
-      if (!raw) return;
+      if (!raw || isPodcastTrack(raw)) return;
       const title = raw.title || raw.name || '';
       if (!title) return;
       if (isSameSongOrReprise(title, seedTrack.title)) return;
@@ -1117,6 +1186,10 @@
       const candVibe = detectVibeCategory({ title, artist: rawArt, album: rawAlb, mood: raw.mood, vibe: raw.vibe });
       if (!isVibeCompatible(seedVibe, candVibe, true)) return;
 
+      const candLang = detectLanguage({ title, artist: rawArt, album: rawAlb, language: raw.language });
+      const artKey = cleanArtistPrimaryKey(rawArt);
+      if (seedLang && candLang && candLang !== seedLang && (!seedArtKey || artKey !== seedArtKey)) return;
+
       // Diversity Rule 1: Strict Album Diversity (max 1 track per movie/album across queue)
       const albKey = rawAlb.toLowerCase().replace(/\(.*?\)/g, '').replace(/soundtrack|theme|single|ost|ep/gi, '').trim();
       if (albKey && albKey.length > 2) {
@@ -1125,15 +1198,14 @@
       }
 
       // Diversity Rule 2: Artist Diversity (max 2 tracks per artist)
-      const artKey = cleanArtistPrimaryKey(rawArt);
       if (artKey) {
         const artCnt = artistCount.get(artKey) || 0;
         if (artCnt >= 2) return;
       }
 
-      const key = (title + ' ' + (raw.artist || (raw.artists?.primary?.[0]?.name) || '')).toLowerCase().trim();
+      const key = (title + ' ' + rawArt).toLowerCase().trim();
       if (seen.has(key)) return;
-      const id = String(raw.id || ('cand_' + Math.random().toString(36).slice(2, 9)));
+      const id = String(raw.id || ('cand_' + candidates.length + '_' + title.slice(0, 6).replace(/[^a-z0-9]/gi, '')));
       if (seen.has(id)) return;
 
       let artist = '';
@@ -1172,7 +1244,7 @@
         artwork: artwork || 'icon-512.png',
         streamUrl,
         quality: raw.quality || 'FLAC / 320kbps Lossless',
-        language: raw.language || seedTrack.language || 'tamil'
+        language: raw.language || candLang || seedLang || ''
       };
 
       seen.add(key);
@@ -1184,20 +1256,23 @@
     }
 
     const fetchFast = async (url, ms = 2200) => {
+      if (signal?.aborted) return null;
       try {
         const ctrl = new AbortController();
         const tid = setTimeout(() => ctrl.abort(), ms);
+        const onExtAbort = () => ctrl.abort();
+        if (signal) signal.addEventListener('abort', onExtAbort, { once: true });
         const res = await fetch(url, { signal: ctrl.signal });
         clearTimeout(tid);
+        if (signal) signal.removeEventListener('abort', onExtAbort);
         return res;
       } catch(e) {
         return null;
       }
     };
 
-    // Step 1: Query Search API for Composer / Primary Artist vibe hits (Never query raw song title!)
+    // Step 1: Query Search API for Composer / Primary Artist vibe hits
     const primaryArt = pickComposerOrPrimaryArtist(seedTrack.artist || '');
-    const seedLang = detectLanguage(seedTrack);
     const vibeKeyword = getVibeSearchKeyword(seedVibe);
     if (primaryArt && primaryArt.length > 2 && !/unknown|soundtrack|va|various/i.test(primaryArt)) {
       const q = `${primaryArt} ${vibeKeyword}`;
@@ -1213,11 +1288,10 @@
       }
     }
 
-    // Step 2: Query companion vibe tracks in the same language (mixes composers)
-    if (candidates.length < count) {
+    // Step 2: Query companion vibe tracks in the same language (only when language is known or artist empty)
+    if (candidates.length < count && !signal?.aborted) {
       try {
-        const searchQ = `${seedLang} ${vibeKeyword} hits`;
-
+        const searchQ = seedLang ? `${seedLang} ${vibeKeyword} hits` : `${seedTrack.title || ''} ${vibeKeyword}`.trim();
         const res = await fetchFast(prefix + '/api/search?q=' + encodeURIComponent(searchQ) + '&limit=15');
         if (res && res.ok) {
           try {
@@ -1231,46 +1305,30 @@
       } catch (e) {}
     }
 
-    // Step 3: In-Memory / Window Catalog Pool Fallback
+    if (signal?.aborted) return [];
+
+    // Step 3: In-Memory Catalog Pool Fallback
     if (candidates.length < count) {
       const pool = (typeof window !== 'undefined' && window.AllSongPool && window.AllSongPool.length > 0)
         ? window.AllSongPool
         : [];
+      const maxPoolCandidates = Math.max(count * 3, 45);
       for (const p of pool) {
         addCandidate(p);
-        if (candidates.length >= count) break;
+        if (candidates.length >= maxPoolCandidates) break;
       }
     }
 
-    // Step 4: 5D Acoustic Vector Ranking via SpotifyEngine
-    if (typeof window !== 'undefined' && window.SpotifyEngine && candidates.length > 0) {
-      try {
-        const seedFeat = window.SpotifyEngine.deriveAcousticFeatures(seedTrack);
-        candidates.sort((a, b) => {
-          const featA = window.SpotifyEngine.deriveAcousticFeatures(a);
-          const featB = window.SpotifyEngine.deriveAcousticFeatures(b);
-          const distA = Math.hypot(
-            featA.energy - seedFeat.energy,
-            featA.danceability - seedFeat.danceability,
-            featA.valence - seedFeat.valence,
-            featA.acousticness - seedFeat.acousticness
-          );
-          const distB = Math.hypot(
-            featB.energy - seedFeat.energy,
-            featB.danceability - seedFeat.danceability,
-            featB.valence - seedFeat.valence,
-            featB.acousticness - seedFeat.acousticness
-          );
-          return distA - distB;
-        });
-      } catch (e) {}
+    // Step 4: Multi-signal deterministic ranking
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => calculateVibeDistance(seedTrack, a, taste) - calculateVibeDistance(seedTrack, b, taste));
     }
 
     return candidates.slice(0, count);
   }
 
   async function curateMatchingVibeStream(sourceTrack, pool = [], count = 12) {
-    if (!sourceTrack) return [];
+    if (!sourceTrack || isPodcastTrack(sourceTrack)) return [];
     const sourceVibe = detectVibeCategory(sourceTrack);
     const sourceLang = detectLanguage(sourceTrack);
 
@@ -1280,33 +1338,32 @@
 
     // 1. Gather all pool candidates matching this vibe and language
     for (const c of candidates) {
-      if (!c || seen.has(c.id || c.title)) continue;
+      if (!c || isPodcastTrack(c) || seen.has(c.id || c.title)) continue;
       const cVibe = detectVibeCategory(c);
       const cLang = detectLanguage(c);
 
-      // Same language and strictly compatible vibe
-      if (isVibeCompatible(sourceVibe, cVibe, true) && (cLang === sourceLang || sourceLang === 'unknown')) {
+      if (isVibeCompatible(sourceVibe, cVibe, true) && (!sourceLang || !cLang || cLang === sourceLang)) {
         seen.add(c.id || c.title);
         matched.push(c);
       }
     }
 
-    // Sort matched by vibe distance to sourceTrack
     matched.sort((a, b) => calculateVibeDistance(sourceTrack, a) - calculateVibeDistance(sourceTrack, b));
 
-    // 2. If pool has fewer than count matching tracks, fetch more online asynchronously!
     if (matched.length < count && typeof fetch !== 'undefined') {
       try {
         const vibeKeyword = getVibeSearchKeyword(sourceVibe);
-        const searchQ = `${sourceLang || 'tamil'} ${vibeKeyword} hits`.trim();
+        const searchQ = sourceLang ? `${sourceLang} ${vibeKeyword} hits` : `${sourceTrack.title || ''} ${vibeKeyword}`.trim();
         const res = await fetch(`${getVibeApiPrefix()}/api/search?q=${encodeURIComponent(searchQ)}&limit=15`);
         if (res.ok) {
           const data = await res.json();
-          const onlineResults = data.results || [];
+          const onlineResults = data.songs || data.results || data.tracks || [];
           for (const ot of onlineResults) {
+            if (isPodcastTrack(ot)) continue;
             if (!seen.has(ot.id || ot.title)) {
               const otVibe = detectVibeCategory(ot);
-              if (isVibeCompatible(sourceVibe, otVibe, true)) {
+              const otLang = detectLanguage(ot);
+              if (isVibeCompatible(sourceVibe, otVibe, true) && (!sourceLang || !otLang || otLang === sourceLang)) {
                 seen.add(ot.id || ot.title);
                 matched.push(ot);
                 if (matched.length >= count) break;

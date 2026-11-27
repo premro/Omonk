@@ -1151,7 +1151,10 @@ function isSameSongOrReprise(candTitle, seedTitle) {
             const seedTitle = u.searchParams.get('title') || '';
             const seedArtist = u.searchParams.get('artist') || '';
             const seedAlbum = u.searchParams.get('album') || '';
-            const lang = u.searchParams.get('lang') || 'tamil';
+            const rawLangParam = (u.searchParams.get('lang') || '').toLowerCase().trim();
+            const lang = rawLangParam && rawLangParam !== 'unknown' ? rawLangParam : '';
+            const excludeIds = new Set(String(u.searchParams.get('excludeIds') || '').split(',').map(s => s.trim()).filter(Boolean));
+            const skippedIds = new Set(String(u.searchParams.get('skippedIds') || '').split(',').map(s => s.trim()).filter(Boolean));
             const rawSeedYear = parseInt(u.searchParams.get('year') || '0', 10);
             const parsedYearMatch = `${seedTitle} ${seedAlbum}`.match(/\b(19[4-9]\d|20[0-2]\d)\b/);
             let seedYear = (rawSeedYear >= 1940 && rawSeedYear <= 2030) ? rawSeedYear : (parsedYearMatch ? parseInt(parsedYearMatch[1], 10) : 0);
@@ -1265,12 +1268,12 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                 }
 
                 function addCandidate(s, strictVibe = true, fromUpstream = false) {
-                    if (!s || !s.title || !s.streamUrl) return false;
+                    if (!s || !s.title || !s.streamUrl || s.isPodcast) return false;
                     const sId = String(s.id || '');
                     const titleKey = (s.title || '').toLowerCase().trim();
                     const canon = normalizeCanonicalTitle(s.title);
 
-                    if (sId && seen.has(sId)) return false;
+                    if (sId && (seen.has(sId) || excludeIds.has(sId) || skippedIds.has(sId))) return false;
                     if (seen.has(titleKey)) return false;
                     if (canon && seenCanon.has(canon)) return false;
                     if (isSameSongOrReprise(s.title, seedTitle)) return false;
@@ -1282,19 +1285,18 @@ function isSameSongOrReprise(candTitle, seedTitle) {
 
                     // Era guard on non-upstream fallback tracks so modern seeds don't get 1960s/80s clutter and classic seeds keep classic vibes
                     const effectiveSeedYear = isClassicSeed ? (seedYear > 0 && seedYear <= 1995 ? seedYear : 1978) : seedYear;
-                    if (!fromUpstream && effectiveSeedYear) {
-                        const rawCY = parseInt(s.year || '0', 10);
-                        const albYearMatch = String(s.album || s.title || '').match(/\b(19[4-9]\d|20[0-2]\d)\b/);
-                        const candYear = (rawCY >= 1940 && rawCY <= 2030)
-                            ? rawCY
-                            : (albYearMatch ? parseInt(albYearMatch[1], 10) : (String(s.id || '').startsWith('sp_') ? 2025 : 0));
-                        if (candYear) {
-                            if (effectiveSeedYear >= 2000 && candYear < 1995) return false;
-                            if (effectiveSeedYear <= 1995 && candYear >= 2015) return false;
-                        }
-                        if (isClassicSeed && !candYear && /anirudh|sai abhyankkar|hiphop tamizha|g\.?\s*v\.?\s*prakash|sam c\.?\s*s\.?|leon james|sean roldan|asal kolaar/i.test(s.artist || '')) {
-                            return false;
-                        }
+                    let candYear = 0;
+                    const rawCY = parseInt(s.year || '0', 10);
+                    const albYearMatch = String(s.album || s.title || '').match(/\b(19[4-9]\d|20[0-2]\d)\b/);
+                    candYear = (rawCY >= 1940 && rawCY <= 2030)
+                        ? rawCY
+                        : (albYearMatch ? parseInt(albYearMatch[1], 10) : (String(s.id || '').startsWith('sp_') ? 2025 : 0));
+                    if (!fromUpstream && effectiveSeedYear && candYear) {
+                        if (effectiveSeedYear >= 2000 && candYear < 1995) return false;
+                        if (effectiveSeedYear <= 1995 && candYear >= 2015) return false;
+                    }
+                    if (!fromUpstream && isClassicSeed && !candYear && /anirudh|sai abhyankkar|hiphop tamizha|g\.?\s*v\.?\s*prakash|sam c\.?\s*s\.?|leon james|sean roldan|asal kolaar/i.test(s.artist || '')) {
+                        return false;
                     }
 
                     const candVibe = detectTrackVibe(s.title, s.artist, s.album);
@@ -1302,11 +1304,21 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                         return false;
                     }
 
-                    // Strict Language Match
+                    // Language relevance: strongly favor same language; reject language conflicts unless strong upstream/artist similarity
+                    const sLang = (s.language || '').toLowerCase().trim();
+                    let langScore = 0;
                     if (lang && lang !== 'unknown') {
-                        const sLang = (s.language || '').toLowerCase().trim();
-                        if (sLang && sLang !== 'unknown' && sLang !== lang.toLowerCase().trim()) {
-                            return false;
+                        if (sLang === lang) {
+                            langScore = 100;
+                        } else if (!sLang || sLang === 'unknown') {
+                            langScore = fromUpstream ? 25 : 0;
+                        } else {
+                            // Cross-language candidate only kept if upstream suggestion AND shares composer/artist signal
+                            const sharedArtist = Boolean(seedArtKey && cleanArtistKey(s.artist) === seedArtKey);
+                            if (!(fromUpstream && sharedArtist)) {
+                                return false;
+                            }
+                            langScore = -20;
                         }
                     }
 
@@ -1329,8 +1341,26 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     if (canon) seenCanon.add(canon);
                     if (albKey && albKey.length > 2) albumCount.set(albKey, (albumCount.get(albKey) || 0) + 1);
                     if (artKey) artistCount.set(artKey, (artistCount.get(artKey) || 0) + 1);
+
+                    // Deterministic multi-signal score
+                    let score = langScore;
+                    if (fromUpstream) score += 90;
+                    if (candVibe === seedVibe) score += 80;
+                    else score += 35;
+                    if (seedArtKey && artKey === seedArtKey) score += 45;
+                    else if (artKey && KNOWN_COMPOSERS.some(c => (s.artist || '').toLowerCase().includes(c.replace(/\./g, '')))) score += 15;
+                    if (effectiveSeedYear && candYear) {
+                        const diff = Math.abs(effectiveSeedYear - candYear);
+                        if (diff <= 4) score += 35;
+                        else if (diff <= 10) score += 15;
+                        else if (diff > 20) score -= 25;
+                    }
+                    const pop = Number(s.popularity || s.playCount || 0);
+                    if (pop > 0) score += Math.min(20, Math.log10(pop + 1) * 3);
+
                     s._vibeCategory = candVibe;
                     s._fromUpstream = fromUpstream;
+                    s._vibeScore = Math.round(score * 10) / 10;
                     list.push(s);
                     return true;
                 }
@@ -1436,38 +1466,35 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     ]
                 };
 
-                const langLower = (lang || 'tamil').toLowerCase().trim();
+                const langLower = (lang || '').toLowerCase().trim();
                 let queryPool = (langLower === 'tamil' && TAMIL_VIBE_POOLS[seedVibe])
                     ? [...TAMIL_VIBE_POOLS[seedVibe]]
-                    : [`${langLower} ${vibeKeyword} songs`, `${langLower} ${vibeKeyword} hits`];
+                    : (langLower ? [`${langLower} ${vibeKeyword} songs`, `${langLower} ${vibeKeyword} hits`] : [`${seedTitle} ${vibeKeyword}`, `${cleanArtist || ''} ${vibeKeyword}`.trim()].filter(Boolean));
 
-                // Exclude query focusing on the exact same artist we already queried, then shuffle for freshness
+                // Exclude query focusing on the exact same artist we already queried, deterministically ordered by seed hash
                 queryPool = queryPool.filter(q => !cleanArtist || !q.toLowerCase().includes(cleanArtist.toLowerCase().split(' ')[0]));
-                for (let i = queryPool.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [queryPool[i], queryPool[j]] = [queryPool[j], queryPool[i]];
+                const seedHash = Array.from(`${songId}:${seedTitle}`).reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 0);
+                if (queryPool.length > 1) {
+                    const offset = seedHash % queryPool.length;
+                    queryPool = [...queryPool.slice(offset), ...queryPool.slice(0, offset)];
                 }
 
                 for (const vq of queryPool.slice(0, 3)) {
                     if (list.length >= 20) break;
                     try {
-                        const vRes = await searchEngine.searchAll(vq, 8, lang);
+                        const vRes = await searchEngine.searchAll(vq, 8, langLower);
                         if (vRes && vRes.songs) {
                             vRes.songs.forEach(s => addCandidate(s, true, false));
                         }
                     } catch (e) {}
                 }
 
-                // 5. Filtered Chart Hits (Only for modern/contemporary seeds when upstream & vibe queries returned < 8 tracks)
-                if (list.length < 8 && !isClassicSeed && (!seedYear || seedYear >= 2010)) {
+                // 5. Filtered Chart Hits (Only when language is explicitly known & contemporary)
+                if (list.length < 8 && langLower && !isClassicSeed && (!seedYear || seedYear >= 2010)) {
                     try {
-                        const dailyHits = (chartsData.charts && chartsData.charts[lang] && chartsData.charts[lang].daily) || [];
-                        const weeklyHits = (chartsData.charts && chartsData.charts[lang] && chartsData.charts[lang].weekly) || [];
+                        const dailyHits = (chartsData.charts && chartsData.charts[langLower] && chartsData.charts[langLower].daily) || [];
+                        const weeklyHits = (chartsData.charts && chartsData.charts[langLower] && chartsData.charts[langLower].weekly) || [];
                         const chartPool = [...dailyHits, ...weeklyHits];
-                        for (let i = chartPool.length - 1; i > 0; i--) {
-                            const j = Math.floor(Math.random() * (i + 1));
-                            [chartPool[i], chartPool[j]] = [chartPool[j], chartPool[i]];
-                        }
                         for (const ch of chartPool) {
                             addCandidate(ch, true, false);
                             if (list.length >= 20) break;
@@ -1475,14 +1502,11 @@ function isSameSongOrReprise(candTitle, seedTitle) {
                     } catch (e) {}
                 }
 
-                // Prioritize upstream native suggestions first, then exact vibe matches, preserving composer variety
+                // Deterministic ranking by multi-signal _vibeScore (upstream relevance + vibe + language + artist + era)
                 list.sort((a, b) => {
-                    const aUp = a._fromUpstream ? 0 : 1;
-                    const bUp = b._fromUpstream ? 0 : 1;
-                    if (aUp !== bUp) return aUp - bUp;
-                    const aExact = a._vibeCategory === seedVibe ? 0 : 1;
-                    const bExact = b._vibeCategory === seedVibe ? 0 : 1;
-                    return aExact - bExact;
+                    const scoreDiff = (b._vibeScore || 0) - (a._vibeScore || 0);
+                    if (scoreDiff !== 0) return scoreDiff;
+                    return String(a.title || '').localeCompare(String(b.title || ''));
                 });
 
                 // Special vibe re-ranking for classic pairing
@@ -1976,6 +2000,31 @@ function isSameSongOrReprise(candTitle, seedTitle) {
             } else {
                 handleSp(u.searchParams.get('url') || '');
             }
+            return;
+        }
+
+        if (pathname === '/api/import/repair-artwork' || pathname === '/import/repair-artwork') {
+            if (req.method !== 'POST') {
+                res.writeHead(405, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ success: false, error: 'POST required' }));
+                return;
+            }
+            let body = '';
+            req.on('data', c => body += c);
+            req.on('end', async () => {
+                try {
+                    const json = JSON.parse(body || '{}');
+                    const tracks = Array.isArray(json.tracks) ? json.tracks.slice(0, 100) : [];
+                    const playlistCover = typeof json.playlistCover === 'string' ? json.playlistCover : '';
+                    const force = Boolean(json.force);
+                    const repaired = await importEngine.repairTracksArtwork(tracks, playlistCover, { force });
+                    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ success: true, tracks: repaired }));
+                } catch (e) {
+                    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ success: false, error: e.message }));
+                }
+            });
             return;
         }
 

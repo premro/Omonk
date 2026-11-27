@@ -698,6 +698,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let _deepLinkRequestToken = 0;
     let _skipNextDynamicUrlSync = false;
+    let _canonicalHomePinned = false;
 
     function getCanonicalBaseUrl() {
         return window.location.origin + '/';
@@ -705,6 +706,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function navigateToCanonicalHome({ pushHistory = true, render = true } = {}) {
         _deepLinkRequestToken++;
+        _canonicalHomePinned = true;
         const canonicalUrl = getCanonicalBaseUrl();
         try {
             if (window.location.href !== canonicalUrl) {
@@ -1536,8 +1538,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 AudioPlayer.currentContext = 'playlist';
                 const shuffleBtn = document.getElementById('shuffleBtn');
                 if (shuffleBtn) shuffleBtn.classList.add('active');
-                const rnd = Math.floor(Math.random() * tracks.length);
-                AudioPlayer.playTrack(tracks[rnd], tracks, rnd, true);
+                const shuffled = shuffleArray(tracks);
+                AudioPlayer.playTrack(shuffled[0], shuffled, 0, true);
                 showToast(`Shuffling songs by ${artist.name}`, '🔀');
             }
         };
@@ -1994,12 +1996,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                         <!-- Modern Playlist Hero Banner (Matching User Reference) -->
             <div class="hero-banner playlist-hero" style="background: linear-gradient(135deg, rgba(29, 185, 84, 0.2) 0%, rgba(15, 23, 42, 0.85) 100%), var(--bg-surface); padding: 32px 36px; border-radius: 16px;">
-                <img class="playlist-hero-art" src="${playlist.artwork || 'assets/foryou_latest_tamil.jpg'}" alt="${escapeHtml(playlist.name)}" style="width: 190px; height: 190px; min-width: 190px; border-radius: 8px; box-shadow: 0 12px 36px rgba(0,0,0,0.6); object-fit: cover;">
+                <img class="playlist-hero-art" src="${playlist.artwork || 'assets/foryou_latest_tamil.jpg'}" alt="${escapeHtml(decodeHtmlEntities(playlist.name))}" style="width: 190px; height: 190px; min-width: 190px; border-radius: 8px; box-shadow: 0 12px 36px rgba(0,0,0,0.6); object-fit: cover;">
                 <div class="hero-info" style="display: flex; flex-direction: column; justify-content: flex-end; gap: 8px;">
                     <span class="hero-tag" style="background: transparent; color: #fff; font-size: 12px; font-weight: 800; letter-spacing: 1px; padding: 0; text-transform: uppercase;">PUBLIC PLAYLIST</span>
-                    <h1 class="hero-title" style="font-size: clamp(28px, 4vw, 52px); font-weight: 900; line-height: 1.1; margin: 0; letter-spacing: -0.5px;">${escapeHtml(playlist.name)}</h1>
-                    <p class="hero-desc" style="color: rgba(255,255,255,0.7); font-size: 14px; margin: 4px 0 2px;">${escapeHtml(playlist.description || 'New Music from Kollywood. Cover : Scene')}</p>
-                    <p class="hero-submeta" style="color: rgba(255,255,255,0.5); font-size: 13px; margin: 0; font-weight: 500;">${playlist.subtitle || `• 769,220 saves • ${tracks.length} songs, about 1 hr 45 min`}</p>
+                    <h1 class="hero-title" style="font-size: clamp(28px, 4vw, 52px); font-weight: 900; line-height: 1.1; margin: 0; letter-spacing: -0.5px;">${escapeHtml(decodeHtmlEntities(playlist.name))}</h1>
+                    <p class="hero-desc" style="color: rgba(255,255,255,0.7); font-size: 14px; margin: 4px 0 2px;">${escapeHtml(decodeHtmlEntities(playlist.description || 'New Music from Kollywood. Cover : Scene'))}</p>
+                    <p class="hero-submeta" style="color: rgba(255,255,255,0.5); font-size: 13px; margin: 0; font-weight: 500;">${playlist.subtitle || `• ${tracks.length} songs`}</p>
                 </div>
             </div>
 
@@ -2022,6 +2024,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <line x1="12" y1="8" x2="12" y2="16"></line>
                     </svg>
                 </button>
+                ${tracks.length > 0 && Importer.getPlaylistById(playlist.id) ? `<button class="btn-chip" id="repairPlaylistArtBtn" title="Refresh individual track artwork without changing order or likes" style="padding: 6px 12px; font-size: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); color: #fff;">🖼️ Refresh Art</button>` : ''}
                 <button class="action-circle-btn" id="morePlaylistBtn" title="More Options">
                     •••
                 </button>
@@ -2058,26 +2061,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const startPlaylistPlayAll = () => {
             if (tracks.length > 0) {
+                _canonicalHomePinned = false;
                 AudioPlayer.isShuffled = false;
                 AudioPlayer.isSequentialContext = true;
                 AudioPlayer.currentContext = 'playlist';
                 const shuffleBtn = document.getElementById('shuffleBtn');
                 if (shuffleBtn) shuffleBtn.classList.remove('active');
                 AudioPlayer.playTrack(tracks[0], tracks, 0, true);
-                showToast(`Playing ${playlist.name}`, '▶️');
+                showToast(`Playing ${decodeHtmlEntities(playlist.name)}`, '▶️');
             }
         };
 
         const startPlaylistShuffle = () => {
             if (tracks.length > 0) {
+                _canonicalHomePinned = false;
                 AudioPlayer.isShuffled = true;
                 AudioPlayer.isSequentialContext = true;
                 AudioPlayer.currentContext = 'playlist';
                 const shuffleBtn = document.getElementById('shuffleBtn');
                 if (shuffleBtn) shuffleBtn.classList.add('active');
-                const rnd = Math.floor(Math.random() * tracks.length);
-                AudioPlayer.playTrack(tracks[rnd], tracks, rnd, true);
-                showToast(`Shuffling ${playlist.name}`, '🔀');
+                const shuffled = shuffleArray(tracks);
+                AudioPlayer.playTrack(shuffled[0], shuffled, 0, true);
+                showToast(`Shuffling ${decodeHtmlEntities(playlist.name)}`, '🔀');
             }
         };
 
@@ -2116,6 +2121,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('playlistSectionPlayAllBtn')?.addEventListener('click', startPlaylistPlayAll);
         document.getElementById('shufflePlaylistBtn')?.addEventListener('click', startPlaylistShuffle);
         document.getElementById('playlistSectionShuffleBtn')?.addEventListener('click', startPlaylistShuffle);
+
+        const repairArtBtn = document.getElementById('repairPlaylistArtBtn');
+        if (repairArtBtn && typeof Importer.repairPlaylistArtwork === 'function') {
+            repairArtBtn.addEventListener('click', async () => {
+                repairArtBtn.disabled = true;
+                repairArtBtn.textContent = '⏳ Refreshing...';
+                try {
+                    const res = await Importer.repairPlaylistArtwork(playlist.id, { force: false });
+                    if (res.updated > 0) {
+                        showToast(`Updated individual artwork for ${res.updated} tracks!`, '🖼️');
+                        renderPlaylistDetailView(playlist.id);
+                    } else {
+                        showToast('All tracks already use best available individual artwork.', '✅');
+                        repairArtBtn.disabled = false;
+                        repairArtBtn.textContent = '🖼️ Refresh Art';
+                    }
+                } catch (err) {
+                    showToast('Artwork refresh failed: ' + (err.message || 'Retry later'), '⚠️');
+                    repairArtBtn.disabled = false;
+                    repairArtBtn.textContent = '🖼️ Refresh Art';
+                }
+            });
+        }
+
+        // Automatically repair existing Spotify imported playlists if multiple tracks share the playlist cover
+        if (
+            String(playlist.id || '').startsWith('pl_sp_') &&
+            tracks.length > 1 &&
+            playlist.artwork &&
+            !playlist._autoArtworkRepaired &&
+            typeof Importer.repairPlaylistArtwork === 'function'
+        ) {
+            const sharedCount = tracks.filter(t => (t.artwork || t.image || '') === playlist.artwork).length;
+            if (sharedCount >= Math.min(2, tracks.length)) {
+                playlist._autoArtworkRepaired = true;
+                Importer.repairPlaylistArtwork(playlist.id, { force: false }).then(res => {
+                    if (res.updated > 0 && currentView === 'playlist-detail') {
+                        renderPlaylistDetailView(playlist.id);
+                    }
+                }).catch(() => {});
+            }
+        }
 
         const savePlBtn = document.getElementById('savePlaylistBtn');
         if (savePlBtn) {
@@ -2231,33 +2278,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Real-time Debounced Search
         const searchInput = document.getElementById('podcastSearchInput');
         let podSearchDebounce = null;
+        let podSearchAbortCtrl = null;
+        let podSearchToken = 0;
 
         const performPodcastSearch = async (q) => {
-            if (!q) {
-                try {
-                    const res = await fetch(`${API_PREFIX}/api/podcasts`);
-                    const data = await res.json();
-                    const grid = document.getElementById('podcastsGrid');
-                    if (grid && data.podcasts) {
-                        data.podcasts.forEach(p => { window.PodcastCatalogCache[p.id] = p; });
-                        grid.innerHTML = renderPodcastCardsHtml(data.podcasts);
-                        bindPodcastGridClicks();
-                    }
-                } catch (err) {}
-                return;
+            const thisToken = ++podSearchToken;
+            if (podSearchAbortCtrl) {
+                try { podSearchAbortCtrl.abort(); } catch (e) {}
             }
+            podSearchAbortCtrl = new AbortController();
+            const signal = podSearchAbortCtrl.signal;
+
+            const endpoint = q
+                ? `${API_PREFIX}/api/podcasts?q=${encodeURIComponent(q)}`
+                : `${API_PREFIX}/api/podcasts`;
 
             try {
-                const res = await fetch(`${API_PREFIX}/api/podcasts?q=${encodeURIComponent(q)}`);
+                const res = await fetch(endpoint, { signal });
+                if (thisToken !== podSearchToken || !res.ok) return;
                 const data = await res.json();
+                if (thisToken !== podSearchToken) return;
                 const grid = document.getElementById('podcastsGrid');
-                if (grid && data.podcasts) {
+                if (grid && Array.isArray(data.podcasts)) {
                     data.podcasts.forEach(p => { window.PodcastCatalogCache[p.id] = p; });
                     grid.innerHTML = renderPodcastCardsHtml(data.podcasts);
                     bindPodcastGridClicks();
                 }
             } catch (err) {
-                console.warn('Podcast search err:', err);
+                if (err?.name !== 'AbortError') {
+                    console.warn('Podcast search err:', err);
+                }
             }
         };
 
@@ -2280,17 +2330,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!podcastList || podcastList.length === 0) {
             return '<div style="color: var(--text-muted); padding: 40px; grid-column: 1 / -1; text-align: center;">No podcasts found. Try another search term.</div>';
         }
-        return podcastList.map(p => `
-            <div class="podcast-card" data-podcast-id="${p.id}">
+        return podcastList.map(p => {
+            const cleanName = escapeHtml(decodeHtmlEntities(p.name || 'Podcast'));
+            const cleanPublisher = escapeHtml(decodeHtmlEntities(p.publisher || 'Studio Host'));
+            const cleanDesc = escapeHtml(decodeHtmlEntities(p.description || ''));
+            const cleanBadge = escapeHtml(decodeHtmlEntities(p.badge || 'Podcast'));
+            return `
+            <div class="podcast-card" data-podcast-id="${escapeHtml(String(p.id || ''))}">
                 <div class="podcast-cover-wrap">
-                    <img class="podcast-cover-img" src="${p.avatar}" alt="${p.name}" loading="lazy" onerror="this.onerror=null;this.src=\'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=500\';">
-                    <span class="podcast-badge-tag">${p.badge || 'Podcast'}</span>
+                    <img class="podcast-cover-img" src="${p.avatar}" alt="${cleanName}" loading="lazy" onerror="this.onerror=null;this.src=\'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=500\';">
+                    <span class="podcast-badge-tag">${cleanBadge}</span>
                 </div>
-                <div class="podcast-title">${p.name}</div>
-                <div class="podcast-publisher">${p.publisher || 'Studio Host'}</div>
-                <div class="podcast-desc">${p.description || ''}</div>
+                <div class="podcast-title">${cleanName}</div>
+                <div class="podcast-publisher">${cleanPublisher}</div>
+                <div class="podcast-desc">${cleanDesc}</div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 
     function bindPodcastGridClicks() {
@@ -2358,25 +2414,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         const currentPlayingTrack = AudioPlayer.getCurrentTrack();
         const playingEpId = currentPlayingTrack?.isPodcast ? currentPlayingTrack.id : null;
 
-        const cleanAbout = (showInfo.description || 'Streaming official podcast audio.')
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
+        const cleanShowName = decodeHtmlEntities(showInfo.name || 'Podcast Show');
+        const cleanPublisher = decodeHtmlEntities(showInfo.publisher || 'Studio Audio');
+        const cleanAbout = escapeHtml(decodeHtmlEntities(showInfo.description || 'Streaming official podcast audio.'))
             .replace(/\n/g, '<br>');
 
+        const normalizedEpisodes = (episodes || []).map(ep => {
+            const epArt = ep.artwork || ep.image || showInfo.avatar || 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=500';
+            return {
+                ...ep,
+                title: decodeHtmlEntities(ep.title || 'Podcast Episode'),
+                artist: decodeHtmlEntities(ep.artist || cleanPublisher || cleanShowName),
+                author: decodeHtmlEntities(ep.author || cleanPublisher || cleanShowName),
+                album: decodeHtmlEntities(ep.album || cleanShowName),
+                podcastTitle: cleanShowName,
+                description: decodeHtmlEntities(ep.description || ''),
+                artwork: epArt,
+                image: epArt,
+                isPodcast: true,
+                type: 'podcast',
+                quality: ep.quality || 'Podcast Audio Stream'
+            };
+        });
+        episodes = normalizedEpisodes;
+
         const genresList = (showInfo.genres && showInfo.genres.length > 0)
-            ? showInfo.genres
-            : [showInfo.category || 'Podcast', 'Talk Show'];
+            ? showInfo.genres.map(g => decodeHtmlEntities(String(g)))
+            : [decodeHtmlEntities(showInfo.category || 'Podcast'), 'Talk Show'];
 
         let html = `
             <!-- Spotify-Style Header Banner (Screenshot 4) -->
             <div class="podcast-spotify-header">
                 <div class="podcast-header-content">
-                    <img class="podcast-header-art" src="${showInfo.avatar}" alt="${showInfo.name}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=500';">
+                    <img class="podcast-header-art" src="${showInfo.avatar}" alt="${escapeHtml(cleanShowName)}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=500';">
                     <div class="podcast-header-details">
                         <span class="podcast-header-pill">Podcast</span>
-                        <h1 class="podcast-header-title">${showInfo.name}</h1>
-                        <div class="podcast-header-host">${showInfo.publisher}</div>
+                        <h1 class="podcast-header-title">${escapeHtml(cleanShowName)}</h1>
+                        <div class="podcast-header-host">${escapeHtml(cleanPublisher)}</div>
                         <div class="podcast-header-actions">
                             <button class="podcast-follow-btn ${isFollowed ? 'following' : ''}" id="podcastFollowBtn">
                                 ${isFollowed ? 'Following ✓' : 'Follow'}
@@ -2402,10 +2476,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <h2 class="podcast-section-heading">About</h2>
                 <p class="podcast-about-text">${cleanAbout}</p>
                 <div class="podcast-tags-row">
-                    <span class="podcast-rating-pill">${showInfo.rating || '4.9 ★ (7.3k)'}</span>
+                    <span class="podcast-rating-pill">${escapeHtml(showInfo.rating || '4.9 ★ (7.3k)')}</span>
                     <span class="podcast-dot">•</span>
                     ${genresList.map((g, i) => `
-                        <span class="podcast-genre-pill">${g}</span>
+                        <span class="podcast-genre-pill">${escapeHtml(g)}</span>
                         ${i < genresList.length - 1 ? '<span class="podcast-dot">•</span>' : ''}
                     `).join('')}
                 </div>
@@ -2425,14 +2499,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ${episodes.map((ep, idx) => {
                         const isThisPlaying = playingEpId === ep.id;
                         const epThumb = ep.artwork || showInfo.avatar || 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=500';
+                        const cleanEpTitle = escapeHtml(ep.title);
+                        const cleanEpDesc = escapeHtml(ep.description || 'Full audio episode.');
                         return `
-                            <div class="episode-row ${isThisPlaying ? 'is-playing-episode' : ''}" data-episode-id="${ep.id}" data-idx="${idx}">
-                                <img class="episode-thumb" src="${epThumb}" alt="${ep.title}" loading="lazy" onerror="this.onerror=null;this.src='${showInfo.avatar}';">
+                            <div class="episode-row ${isThisPlaying ? 'is-playing-episode' : ''}" data-episode-id="${escapeHtml(String(ep.id || ''))}" data-idx="${idx}">
+                                <img class="episode-thumb" src="${epThumb}" alt="${cleanEpTitle}" loading="lazy" onerror="this.onerror=null;this.src='${showInfo.avatar}';">
                                 <div class="episode-info">
-                                    <div class="episode-title ${isThisPlaying ? 'playing' : ''}">${ep.title}</div>
-                                    <div class="episode-snippet">${ep.description || 'Full audio episode.'}</div>
+                                    <div class="episode-title ${isThisPlaying ? 'playing' : ''}">${cleanEpTitle}</div>
+                                    <div class="episode-snippet">${cleanEpDesc}</div>
                                     <div class="episode-meta">
-                                        <span>📅 ${ep.pubDate || 'Recent'}</span>
+                                        <span>📅 ${escapeHtml(ep.pubDate || 'Recent')}</span>
                                         <span class="podcast-dot">•</span>
                                         <span>⏱️ ${formatPodcastDuration(ep.duration)}</span>
                                         <span class="podcast-dot">•</span>
@@ -2457,26 +2533,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         const followBtn = document.getElementById('podcastFollowBtn');
         followBtn?.addEventListener('click', () => {
             let list = JSON.parse(localStorage.getItem('followed_podcasts') || '[]');
-            const key = showInfo.id || showInfo.name;
+            const key = showInfo.id || cleanShowName;
             if (list.includes(key)) {
-                list = list.filter(k => k !== key && k !== showInfo.id && k !== showInfo.name);
+                list = list.filter(k => k !== key && k !== showInfo.id && k !== cleanShowName);
                 followBtn.classList.remove('following');
                 followBtn.textContent = 'Follow';
-                showToast(`Unfollowed ${showInfo.name}`, '🎙️');
+                showToast(`Unfollowed ${cleanShowName}`, '🎙️');
             } else {
                 list.push(key);
                 followBtn.classList.add('following');
                 followBtn.textContent = 'Following ✓';
-                showToast(`Following ${showInfo.name}`, '❤️');
+                showToast(`Following ${cleanShowName}`, '❤️');
             }
             localStorage.setItem('followed_podcasts', JSON.stringify(list));
         });
 
+        const playPodcastEpisode = (epIdx) => {
+            const ep = episodes[epIdx];
+            if (!ep) return;
+            _canonicalHomePinned = false;
+            AudioPlayer.isShuffled = false;
+            AudioPlayer.isSequentialContext = true;
+            AudioPlayer.currentContext = 'podcast';
+            window.currentPlaylistContextName = cleanShowName;
+            AudioPlayer.playTrack(ep, episodes, epIdx, true);
+            showToast(`Playing: ${ep.title}`, '🎙️');
+        };
+
         // Play Latest Episode
         document.getElementById('playLatestEpisodeBtn')?.addEventListener('click', () => {
             if (episodes.length > 0) {
-                AudioPlayer.playTrack(episodes[0], episodes, 0, true);
-                showToast(`Playing: ${episodes[0].title}`, '🎙️');
+                playPodcastEpisode(0);
             }
         });
 
@@ -2485,20 +2572,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const idx = parseInt(btn.getAttribute('data-play-ep'), 10);
-                if (episodes[idx]) {
-                    AudioPlayer.playTrack(episodes[idx], episodes, idx, true);
-                    showToast(`Playing: ${episodes[idx].title}`, '🎙️');
-                }
+                playPodcastEpisode(idx);
             });
         });
 
         document.querySelectorAll('.episode-row').forEach(row => {
             row.addEventListener('click', () => {
                 const idx = parseInt(row.getAttribute('data-idx'), 10);
-                if (episodes[idx]) {
-                    AudioPlayer.playTrack(episodes[idx], episodes, idx, true);
-                    showToast(`Playing: ${episodes[idx].title}`, '🎙️');
-                }
+                playPodcastEpisode(idx);
             });
         });
     }
@@ -2636,13 +2717,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
             const raw = (t.artwork && t.artwork.trim()) || (t.image && t.image.trim()) || '';
             const artUrl = (raw && raw !== 'undefined' && !raw.includes('null') && !raw.includes('image-cdn-fa.spotifycdn.com/playlist')) ? raw : fallbackArt;
-            const safeTitle = (t.title || 'Song').replace(/"/g, '&quot;');
+            const cleanTitle = decodeHtmlEntities(t.title || 'Song');
+            const cleanArtist = decodeHtmlEntities((t.artist && t.artist !== 'undefined') ? t.artist : (t.primaryArtist || 'Lossless Artist'));
+            const cleanAlbum = decodeHtmlEntities(t.album || 'Lossless Single');
+            const safeTitle = escapeHtml(cleanTitle);
 
             return `
-                <div class="track-row ${isPlayingThis ? 'playing' : ''} ${isCurrentTrack ? 'active-track' : ''}" data-track-id="${t.id}" data-song-id="${t.id}" data-index="${idx}">
+                <div class="track-row ${isPlayingThis ? 'playing' : ''} ${isCurrentTrack ? 'active-track' : ''}" data-track-id="${escapeHtml(String(t.id || ''))}" data-song-id="${escapeHtml(String(t.id || ''))}" data-index="${idx}">
                     <div class="track-rank ${rankClass}">
                         <span class="rank-number" style="${isPlayingThis ? 'display: none;' : ''}">${rank}</span>
-                        <button class="row-play-btn ${isPlayingThis ? 'is-playing' : ''}" data-song-id="${t.id}" aria-label="${isPlayingThis ? 'Pause ' + safeTitle : 'Play ' + safeTitle}" title="${isPlayingThis ? 'Pause' : 'Play'}">
+                        <button class="row-play-btn ${isPlayingThis ? 'is-playing' : ''}" data-song-id="${escapeHtml(String(t.id || ''))}" aria-label="${isPlayingThis ? 'Pause ' + safeTitle : 'Play ' + safeTitle}" title="${isPlayingThis ? 'Pause' : 'Play'}">
                             <svg class="icon-play" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
                                 <path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l11.08-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14z"/>
                             </svg>
@@ -2660,12 +2744,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <img class="track-thumb" src="${artUrl}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${fallbackArt}';">
                     <div class="track-details">
                         <div class="track-name" style="display: flex; align-items: center; gap: 8px;">
-                            <span>${t.title}</span>
+                            <span>${safeTitle}</span>
                             ${currentView === 'search' ? '<span class="search-badge-tag" style="margin-left: 0; padding: 1px 6px; font-size: 10px;">Song</span>' : ''}
                         </div>
-                        <div class="track-artist clickable-artist" data-artist="${(t.artist && t.artist !== 'undefined') ? t.artist : (t.primaryArtist || 'Lossless Artist')}">${(t.artist && t.artist !== 'undefined') ? t.artist : (t.primaryArtist || 'Lossless Artist')}</div>
+                        <div class="track-artist clickable-artist" data-artist="${escapeHtml(cleanArtist)}">${escapeHtml(cleanArtist)}</div>
                     </div>
-                    <div class="track-album">${t.album || 'Lossless Single'}</div>
+                    <div class="track-album">${escapeHtml(cleanAlbum)}</div>
                     <div class="track-duration">${formatTime(t.duration || 210)}</div>
                     <div class="track-actions">
                         <button class="action-icon-btn ${isLiked ? 'liked' : ''}" data-action="like" title="Like">
@@ -2705,22 +2789,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Stream URL Resolution & Metadata Normalization
     function decodeHtmlEntities(str) {
         if (!str || typeof str !== 'string') return '';
-        return str
-            .replace(/&quot;/gi, '"')
-            .replace(/&#0*39;/gi, "'")
-            .replace(/&apos;/gi, "'")
-            .replace(/&amp;/gi, '&')
-            .replace(/&lt;/gi, '<')
-            .replace(/&gt;/gi, '>')
-            .replace(/&nbsp;/gi, ' ')
-            .replace(/&#(\d+);/g, (_, dec) => {
-                const code = parseInt(dec, 10);
-                return Number.isFinite(code) && code > 0 ? String.fromCharCode(code) : _;
-            })
-            .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
-                const code = parseInt(hex, 16);
-                return Number.isFinite(code) && code > 0 ? String.fromCharCode(code) : _;
-            });
+        let cleaned = str.replace(/@@+/g, ' ');
+        if (cleaned.includes('&')) {
+            const named = {
+                '&quot;': '"',
+                '&#39;': "'",
+                '&#039;': "'",
+                '&apos;': "'",
+                '&#x27;': "'",
+                '&amp;': '&',
+                '&lt;': '<',
+                '&gt;': '>',
+                '&nbsp;': ' '
+            };
+            cleaned = cleaned.replace(/&(?:quot|apos|amp|lt|gt|nbsp|#0*39|#x27);/gi, (m) => named[m.toLowerCase()] || m);
+            cleaned = cleaned
+                .replace(/&#(\d+);/g, (_, dec) => {
+                    const code = parseInt(dec, 10);
+                    return Number.isFinite(code) && code > 0 ? String.fromCharCode(code) : _;
+                })
+                .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+                    const code = parseInt(hex, 16);
+                    return Number.isFinite(code) && code > 0 ? String.fromCharCode(code) : _;
+                });
+        }
+        return cleaned.replace(/\s{2,}/g, ' ').trim();
     }
 
     function isValidUrl(url) {
@@ -2802,6 +2895,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Curated Vibe-Stream Playback Engine: Plays immediately & curates matching mood stream
     async function playTrackWithVibeStream(track) {
         if (!track) return;
+        _canonicalHomePinned = false;
         const seedId = String(track.id || track.title || '');
         AudioPlayer.playTrack(track, [track], 0, false);
         showToast(`Playing ${track.title} • Lossless Radio active`, '✨');
@@ -3313,16 +3407,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.body.appendChild(searchTypeaheadDropdown);
         }
         const rect = globalSearchInput.getBoundingClientRect();
+        if (rect.width <= 0 && rect.height <= 0) return;
         const winW = window.innerWidth;
-        const width = Math.min(Math.max(rect.width, 480), winW - 24);
-        let left = rect.left;
+        const viewportH = (window.visualViewport && window.visualViewport.height) ? window.visualViewport.height : window.innerHeight;
+        const isMobileViewport = winW <= 768;
+        const width = isMobileViewport ? Math.max(240, winW - 24) : Math.min(Math.max(rect.width, 480), winW - 24);
+        let left = isMobileViewport ? 12 : rect.left;
         if (left + width > winW - 12) {
             left = Math.max(12, winW - width - 12);
         }
+        const topPx = Math.max(8, Math.round(rect.bottom + 6));
+        const maxH = Math.max(160, Math.round(viewportH - topPx - (isMobileViewport ? 16 : 24)));
         searchTypeaheadDropdown.style.setProperty("position", "fixed", "important");
-        searchTypeaheadDropdown.style.setProperty("top", Math.round(rect.bottom + 6) + "px", "important");
+        searchTypeaheadDropdown.style.setProperty("top", topPx + "px", "important");
         searchTypeaheadDropdown.style.setProperty("left", Math.round(left) + "px", "important");
         searchTypeaheadDropdown.style.setProperty("width", Math.round(width) + "px", "important");
+        searchTypeaheadDropdown.style.setProperty("max-height", maxH + "px", "important");
+        searchTypeaheadDropdown.style.setProperty("overflow-y", "auto", "important");
         searchTypeaheadDropdown.style.setProperty("z-index", "2147483647", "important");
     }
 
@@ -3331,7 +3432,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         focusedDropdownIndex = -1;
         if (suggestions.tracks) {
             suggestions.tracks.forEach(t => {
-                if (t && t.id) window.TypeaheadTrackMap.set(String(t.id), t);
+                if (t) {
+                    t.title = decodeHtmlEntities(t.title || 'Unknown Track');
+                    t.artist = decodeHtmlEntities(t.artist || 'Lossless Artist');
+                    if (t.album) t.album = decodeHtmlEntities(t.album);
+                    if (t.id) window.TypeaheadTrackMap.set(String(t.id), t);
+                }
             });
         }
 
@@ -3367,17 +3473,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 1. Query Suggestions Section (with 🔍 / 🕒 icon)
         (suggestions.queries || []).forEach(qs => {
+            const cleanQs = decodeHtmlEntities(qs);
             const iconSvg = isHistory ? `
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
             ` : `
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M10.533 1.27893C5.42321 1.27893 1.27893 5.42321 1.27893 10.533C1.27893 15.6428 5.42321 19.7871 10.533 19.7871C12.8331 19.7871 14.9351 18.9482 16.5547 17.5508L21.498 22.4941L22.502 21.4902L17.5586 16.5469C18.956 14.9272 19.7871 12.8252 19.7871 10.533C19.7871 5.42321 15.6428 1.27893 10.533 1.27893ZM2.77893 10.533C2.77893 6.25052 6.25052 2.77893 10.533 2.77893C14.8155 2.77893 18.2871 6.25052 18.2871 10.533C18.2871 14.8155 14.8155 18.2871 10.533 18.2871C6.25052 18.2871 2.77893 14.8155 2.77893 10.533Z"/></svg>
             `;
             html += `
-                <div class="typeahead-item typeahead-query-item" data-type="query" data-query="${encodeURIComponent(qs)}" data-index="${globalIdx}">
+                <div class="typeahead-item typeahead-query-item" data-type="query" data-query="${encodeURIComponent(cleanQs)}" data-index="${globalIdx}">
                     <span class="typeahead-query-icon">
                         ${iconSvg}
                     </span>
-                    <span class="typeahead-query-text">${isHistory ? escapeHtml(qs) : formatSpotifyQuerySuggestion(qs, rawQuery)}</span>
+                    <span class="typeahead-query-text">${isHistory ? escapeHtml(cleanQs) : formatSpotifyQuerySuggestion(cleanQs, rawQuery)}</span>
                 </div>
             `;
             globalIdx++;
@@ -3386,12 +3493,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 2. Playlists Section (matching Spotify Screenshot 1)
         (suggestions.playlists || []).forEach(pl => {
             const art = pl.artwork || 'icon-512.png';
+            const cleanPlTitle = escapeHtml(decodeHtmlEntities(pl.title || 'Playlist'));
+            const cleanPlSub = escapeHtml(decodeHtmlEntities(pl.subtitle || 'Playlist • Curated'));
             html += `
-                <div class="typeahead-item typeahead-playlist-item" data-type="playlist" data-playlist-id="${pl.id}" data-index="${globalIdx}">
-                    <img class="typeahead-track-art" src="${art}" alt="${escapeHtml(pl.title)}" loading="lazy" style="border-radius: 6px;">
+                <div class="typeahead-item typeahead-playlist-item" data-type="playlist" data-playlist-id="${escapeHtml(String(pl.id || ''))}" data-index="${globalIdx}">
+                    <img class="typeahead-track-art" src="${art}" alt="${cleanPlTitle}" loading="lazy" style="border-radius: 6px;" onerror="this.onerror=null;this.src='icon-512.png';">
                     <div class="typeahead-track-info">
-                        <div class="typeahead-track-title">${escapeHtml(pl.title)}</div>
-                        <div class="typeahead-track-sub">${escapeHtml(pl.subtitle || 'Playlist • Curated')}</div>
+                        <div class="typeahead-track-title">${cleanPlTitle}</div>
+                        <div class="typeahead-track-sub">${cleanPlSub}</div>
                     </div>
                     <span class="search-badge-tag">Playlist</span>
                 </div>
@@ -3402,14 +3511,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 3. Tracks Section (matching Spotify Screenshot 1)
         (suggestions.tracks || []).forEach(tr => {
             const art = tr.artwork || tr.image || 'icon-512.png';
+            const cleanTrTitle = escapeHtml(decodeHtmlEntities(tr.title || 'Track'));
+            const cleanTrArtist = escapeHtml(decodeHtmlEntities(tr.artist || 'Lossless'));
             html += `
-                <div class="typeahead-item typeahead-track-item" data-type="track" data-track-id="${tr.id}" data-index="${globalIdx}">
-                    <img class="typeahead-track-art" src="${art}" alt="${escapeHtml(tr.title)}" loading="lazy">
+                <div class="typeahead-item typeahead-track-item" data-type="track" data-track-id="${escapeHtml(String(tr.id || ''))}" data-index="${globalIdx}">
+                    <img class="typeahead-track-art" src="${art}" alt="${cleanTrTitle}" loading="lazy" onerror="this.onerror=null;this.src='icon-512.png';">
                     <div class="typeahead-track-info">
-                        <div class="typeahead-track-title">${escapeHtml(tr.title)}</div>
-                        <div class="typeahead-track-sub">Song • ${escapeHtml(tr.artist || 'Lossless')}</div>
+                        <div class="typeahead-track-title">${cleanTrTitle}</div>
+                        <div class="typeahead-track-sub">Song • ${cleanTrArtist}</div>
                     </div>
-                    <button class="typeahead-queue-btn" data-queue-id="${tr.id}" title="Add to Queue">
+                    <button class="typeahead-queue-btn" data-queue-id="${escapeHtml(String(tr.id || ''))}" title="Add to Queue">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
                     </button>
                 </div>
@@ -3460,6 +3571,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const trId = item.getAttribute('data-track-id');
                 const found = window.TypeaheadTrackMap?.get(String(trId)) || (window.AllSongPool || []).find(t => String(t.id) === String(trId));
                 if (found) {
+                    _canonicalHomePinned = false;
                     hideTypeahead();
                     AudioPlayer.isSequentialContext = false;
                     AudioPlayer.currentContext = 'vibe';
@@ -3513,13 +3625,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast('No tracks to play', 'ℹ️');
             return;
         }
-        if (!shuffle) {
-            AudioPlayer.isShuffled = false;
-            const shufBtn = document.getElementById('shuffleBtn') || document.querySelector('.btn-player-action[data-action="shuffle"]');
-            if (shufBtn) shufBtn.classList.remove('active');
-        }
+        _canonicalHomePinned = false;
+        AudioPlayer.isShuffled = Boolean(shuffle);
+        AudioPlayer.isSequentialContext = true;
+        const shufBtn = document.getElementById('shuffleBtn') || document.querySelector('.btn-player-action[data-action="shuffle"]');
+        if (shufBtn) shufBtn.classList.toggle('active', Boolean(shuffle));
         const toPlay = shuffle ? shuffleArray(songArray) : [...songArray];
-        AudioPlayer.playTrack(toPlay[0], toPlay, 0, !shuffle);
+        AudioPlayer.playTrack(toPlay[0], toPlay, 0, true);
         showToast(shuffle ? `Shuffling ${toPlay.length} songs` : `Playing ${toPlay.length} songs (Order-wise)`, '▶️');
     }
 
@@ -3746,14 +3858,64 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let searchTokenSeq = 0;
 
+    function normalizeSearchText(str = '') {
+        return decodeHtmlEntities(String(str || ''))
+            .toLowerCase()
+            .replace(/[\(\)\[\]\{\}]/g, ' ')
+            .replace(/[^a-z0-9\u0900-\u0DFF\s]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function scoreSearchTrackRelevance(track, query, sourceIndex = 0) {
+        if (!track) return -9999;
+        const nq = normalizeSearchText(query);
+        const nqCompact = nq.replace(/\s+/g, '');
+        const qTokens = nq.split(' ').filter(Boolean);
+        const title = normalizeSearchText(track.title || '');
+        const titleCompact = title.replace(/\s+/g, '');
+        const artist = normalizeSearchText(track.artist || track.primaryArtist || '');
+        const album = normalizeSearchText(track.album || '');
+
+        let score = 0;
+        if (title === nq) score += 1200;
+        else if (titleCompact && nqCompact && titleCompact === nqCompact) score += 1100;
+        else if (title.startsWith(nq + ' ') || title.startsWith(nq)) score += 750;
+        else if (titleCompact && nqCompact && titleCompact.startsWith(nqCompact)) score += 680;
+        else if (qTokens.length > 0 && qTokens.every(tok => title.includes(tok))) score += 450;
+        else if (nq && title.includes(nq)) score += 280;
+
+        if (artist === nq) score += 320;
+        else if (nq && artist.includes(nq)) score += 160;
+        else if (qTokens.length > 0 && qTokens.every(tok => artist.includes(tok))) score += 110;
+
+        if (nq && album.includes(nq)) score += 70;
+
+        const wantsVariant = /karaoke|instrumental|lofi|lo-fi|8d|slowed|reverb|sped up|cover|tribute|ringtone/i.test(nq);
+        if (!wantsVariant && /\b(karaoke|instrumental|lo-fi|lofi|8d|slowed|sped up|ringtone|tribute)\b/i.test(title)) {
+            score -= 400;
+        }
+        return score - (sourceIndex * 0.5);
+    }
+
     async function executeLiveSearch(query) {
         if (!query) {
+            if (activeSearchAbortController) {
+                try { activeSearchAbortController.abort(); } catch (e) {}
+                activeSearchAbortController = null;
+            }
             renderView(previousViewBeforeSearch || 'home');
             return;
         }
 
         saveSearchHistory(query);
         const thisToken = ++searchTokenSeq;
+        if (activeSearchAbortController) {
+            try { activeSearchAbortController.abort(); } catch (e) {}
+        }
+        activeSearchAbortController = new AbortController();
+        const searchSignal = activeSearchAbortController.signal;
+
         currentView = 'search';
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
@@ -3763,7 +3925,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 1. Immediately ensure UI reflects current query in 0ms
         renderSearchSkeletonImmediate(query);
 
-        // 2. Instant Local Search (<2ms)
+        // 2. Instant Local Search (<2ms) - never suppress matching local catalog songs
         const localMatches = [];
         const seenLocal = new Set();
         const candidatePool = [
@@ -3772,19 +3934,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             ...((window.TypeaheadTrackMap && Array.from(window.TypeaheadTrackMap.values())) || [])
         ];
 
-        const currentActiveLang = (getActiveLanguage() || 'english').toLowerCase();
-        for (const t of candidatePool) {
-            if (!t) continue;
-            const tLang = (t.language || '').toLowerCase();
-            if (currentActiveLang === 'english' && tLang === 'tamil' && !queryLower.includes('tamil') && !queryLower.includes('gana')) {
-                continue;
-            }
-            const normKey = ((t.title || '') + ' ' + (t.artist || '')).toLowerCase().trim();
+        for (const rawTrack of candidatePool) {
+            if (!rawTrack) continue;
+            const cleanTitle = decodeHtmlEntities(rawTrack.title || '');
+            const cleanArtist = decodeHtmlEntities(rawTrack.artist || rawTrack.primaryArtist || '');
+            const cleanAlbum = decodeHtmlEntities(rawTrack.album || '');
+            const normKey = (cleanTitle + ' ' + cleanArtist).toLowerCase().trim();
             if (seenLocal.has(normKey)) continue;
 
-            const title = (t.title || '').toLowerCase();
-            const artist = (t.artist || '').toLowerCase();
-            const album = (t.album || '').toLowerCase();
+            const title = cleanTitle.toLowerCase();
+            const artist = cleanArtist.toLowerCase();
+            const album = cleanAlbum.toLowerCase();
 
             let matched = title.includes(queryLower) || artist.includes(queryLower) || album.includes(queryLower);
             if (!matched && tokenized.text) {
@@ -3792,39 +3952,52 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (matched) {
                 seenLocal.add(normKey);
-                localMatches.push(t);
+                localMatches.push({
+                    ...rawTrack,
+                    title: cleanTitle || 'Unknown Track',
+                    artist: cleanArtist || 'Lossless Artist',
+                    album: cleanAlbum || 'Lossless Album'
+                });
             }
         }
+        localMatches.sort((a, b) => scoreSearchTrackRelevance(b, query) - scoreSearchTrackRelevance(a, query));
 
         const existingContainer = document.getElementById('searchResultsContainer');
         const existingSubtitle = document.getElementById('searchSubtitle');
         const existingTitle = document.querySelector('.section-title');
 
-        if (existingTitle) existingTitle.textContent = `🔍 Search: "${query}"`;
+        if (existingTitle) existingTitle.textContent = `🔍 Search: "${decodeHtmlEntities(query)}"`;
         if (existingSubtitle) {
-            existingSubtitle.textContent = localMatches.length > 0 ? `${localMatches.length} Instant Anthems (Resolving worldwide lossless & albums...)` : `Resolving "${query}" across lossless catalog...`;
+            existingSubtitle.textContent = localMatches.length > 0 ? `${localMatches.length} Instant Anthems (Resolving worldwide lossless & albums...)` : `Resolving "${decodeHtmlEntities(query)}" across lossless catalog...`;
         }
         if (existingContainer && localMatches.length > 0 && currentSearchCategory === 'all') {
             existingContainer.innerHTML = `<div class="track-table">${renderTrackRowsHtml(localMatches)}</div>`;
             bindTrackRowEvents(localMatches);
         }
 
-        // 3. Live Online Search (direct fetch guarded by thisToken)
+        // 3. Live Online Search (AbortController + token race guard)
         try {
             const activeLang = (getActiveLanguage() || 'english').toLowerCase();
             const searchUrl = `${API_PREFIX}/api/search?q=${encodeURIComponent(query)}&limit=30&lang=${encodeURIComponent(activeLang)}`;
-            const res = await fetch(searchUrl);
+            const res = await fetch(searchUrl, { signal: searchSignal });
             if (thisToken !== searchTokenSeq) return; // Stale response, ignore
             if (!res.ok) return;
             const data = await res.json();
             if (thisToken !== searchTokenSeq) return;
 
-            const albums = data.albums || [];
-            let playlists = data.playlists || [];
+            const albums = (data.albums || []).map(a => ({
+                ...a,
+                title: decodeHtmlEntities(a.title || a.name || 'Album'),
+                artist: decodeHtmlEntities(a.artist || 'Soundtrack')
+            }));
+            let playlists = (data.playlists || []).map(p => ({
+                ...p,
+                title: decodeHtmlEntities(p.title || p.name || 'Playlist'),
+                subtitle: decodeHtmlEntities(p.subtitle || '')
+            }));
             let rawOnline = data.results || data.songs || data.data?.results || [];
 
             // Language filtering: Universal search without dropping authentic tracks
-            const prefLang = activeLang;
             const isExplicitRegionalSearch = /tamil|gana|kuthu|hindi|telugu|malayalam|kannada|punjabi/i.test(queryLower);
 
             if (isExplicitRegionalSearch) {
@@ -3846,8 +4019,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return true;
                 });
             } else {
-                // Universal search: NEVER discard authentic matches (like Beggin by Madcon, English/international tracks, etc.)
-                // Filter out soundalike spam (e.g. Serene Songs, ProSource, Ameritz) unless explicitly requested
+                // Filter out soundalike spam unless explicitly requested
                 rawOnline = rawOnline.filter(r => {
                     const rArtist = (r.artist || r.singers || '').toLowerCase();
                     if (/serene songs|prosource|ameritz/i.test(rArtist) && !/serene songs|prosource|ameritz/i.test(queryLower)) {
@@ -3857,20 +4029,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
 
-            const onlineResults = rawOnline.map(r => ({
-                id: r.id || ('online_' + Math.random().toString(36).substr(2, 9)),
-                title: r.title || r.name || 'Unknown Track',
-                artist: r.artist || r.singers || r.subtitle || 'Lossless Artist',
-                album: r.album || 'Lossless Album',
-                duration: parseDurationToSeconds(r.duration),
-                artwork: r.image || r.artwork || 'icon-512.png',
-                source: r.source || 'JioSaavn',
-                audioQuality: 'FLAC 24-bit/96kHz',
-                streamUrl: r.streamUrl || r.url || '',
-                year: r.year || ''
-            }));
+            const onlineResults = rawOnline.map(r => {
+                const art = r.image || r.artwork || 'icon-512.png';
+                return {
+                    id: r.id || ('online_' + Math.random().toString(36).substr(2, 9)),
+                    title: decodeHtmlEntities(r.title || r.name || 'Unknown Track'),
+                    artist: decodeHtmlEntities(r.artist || r.singers || r.subtitle || 'Lossless Artist'),
+                    album: decodeHtmlEntities(r.album || 'Lossless Album'),
+                    duration: parseDurationToSeconds(r.duration),
+                    artwork: art,
+                    image: art,
+                    language: (r.language || '').toLowerCase(),
+                    source: r.source || 'JioSaavn',
+                    audioQuality: 'FLAC 24-bit/96kHz',
+                    streamUrl: r.streamUrl || r.url || '',
+                    year: r.year || ''
+                };
+            });
 
-            // Smart Deduplication: Online authoritative results come FIRST
+            // Smart Deduplication + Deterministic Exact-Match Ranking
             const seen = new Set();
             const combined = [];
             for (const ot of onlineResults) {
@@ -3888,21 +4065,46 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            allLoadedSongs = [...combined];
+            const rankedCombined = combined
+                .map((item, idx) => ({ item, rankScore: scoreSearchTrackRelevance(item, query, idx) }))
+                .sort((a, b) => b.rankScore - a.rankScore)
+                .map(entry => entry.item);
+
+            allLoadedSongs = [...rankedCombined];
             window.AllSongPool = allLoadedSongs;
+
+            let normalizedTopResult = data.topResult ? {
+                ...data.topResult,
+                title: decodeHtmlEntities(data.topResult.title || data.topResult.name || ''),
+                name: decodeHtmlEntities(data.topResult.name || data.topResult.title || ''),
+                artist: decodeHtmlEntities(data.topResult.artist || data.topResult.subtitle || ''),
+                album: decodeHtmlEntities(data.topResult.album || '')
+            } : null;
+
+            if (rankedCombined[0]) {
+                const topSongScore = scoreSearchTrackRelevance(rankedCombined[0], query, 0);
+                const serverTopScore = normalizedTopResult ? scoreSearchTrackRelevance(normalizedTopResult, query, 0) : -9999;
+                if (!normalizedTopResult || topSongScore > serverTopScore + 150) {
+                    normalizedTopResult = { ...rankedCombined[0], type: 'song' };
+                }
+            }
 
             currentSearchPayload = {
                 query,
-                songs: combined,
+                songs: rankedCombined,
                 albums: albums,
                 playlists: playlists,
-                artists: data.artists || [],
-                topResult: data.topResult || null
+                artists: (data.artists || []).map(art => ({
+                    ...art,
+                    name: decodeHtmlEntities(art.name || art.title || 'Artist'),
+                    title: decodeHtmlEntities(art.title || art.name || 'Artist')
+                })),
+                topResult: normalizedTopResult
             };
 
             const sub = document.getElementById('searchSubtitle');
             if (sub) {
-                const parts = [`${combined.length} Songs`];
+                const parts = [`${rankedCombined.length} Songs`];
                 if (playlists.length > 0) parts.push(`${playlists.length} Playlists`);
                 if (albums.length > 0) parts.push(`${albums.length} Albums`);
                 sub.textContent = parts.join(' • ') + ' • Lossless Studio Audio';
@@ -3910,6 +4112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             renderCurrentSearchTab();
         } catch (err) {
+            if (err?.name === 'AbortError' || thisToken !== searchTokenSeq) return;
             console.warn('Phase 2 search error:', err);
             const container = document.getElementById('searchResultsContainer');
             if (container && container.querySelector('.pulse-loader')) {
@@ -3919,7 +4122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else {
                     container.innerHTML = `
                         <div style="text-align: center; padding: 48px 20px; color: var(--text-muted);">
-                            <p style="font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 8px;">No lossless songs found for "${escapeHtml(query)}"</p>
+                            <p style="font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 8px;">No lossless songs found for "${escapeHtml(decodeHtmlEntities(query))}"</p>
                             <p style="font-size: 13.5px;">Try searching for artist names like Anirudh, AR Rahman, Deva, or song titles.</p>
                         </div>
                     `;
@@ -3948,19 +4151,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             container.innerHTML = `
                 <div class="search-playlists-grid">
-                    ${playlists.map(pl => `
-                        <div class="search-playlist-card" data-playlist-id="${pl.id}">
-                            <img class="search-playlist-art" src="${pl.artwork || 'icon-512.png'}" alt="${pl.title}" loading="lazy" onerror="this.onerror=null;this.src='icon-512.png';">
-                            <div class="search-playlist-title">${pl.title}</div>
-                            <div class="search-playlist-sub">${pl.subtitle || 'Playlist • Curated'}</div>
+                    ${playlists.map(pl => {
+                        const plTitle = escapeHtml(decodeHtmlEntities(pl.title || 'Playlist'));
+                        const plSub = escapeHtml(decodeHtmlEntities(pl.subtitle || 'Playlist • Curated'));
+                        return `
+                        <div class="search-playlist-card" data-playlist-id="${escapeHtml(String(pl.id || ''))}">
+                            <img class="search-playlist-art" src="${pl.artwork || 'icon-512.png'}" alt="${plTitle}" loading="lazy" onerror="this.onerror=null;this.src='icon-512.png';">
+                            <div class="search-playlist-title">${plTitle}</div>
+                            <div class="search-playlist-sub">${plSub}</div>
                         </div>
-                    `).join('')}
+                    `;
+                    }).join('')}
                 </div>
             `;
             container.querySelectorAll('.search-playlist-card').forEach(card => {
                 card.addEventListener('click', () => {
                     const plId = card.getAttribute('data-playlist-id');
-                    const pl = playlists.find(p => p.id === plId);
+                    const pl = playlists.find(p => String(p.id) === String(plId));
                     if (pl) openAndPlayPlaylist(pl, false);
                 });
             });
@@ -3998,13 +4205,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             container.innerHTML = `
                 <div class="search-playlists-grid">
-                    ${albums.map(alb => `
-                        <div class="search-playlist-card" data-album-id="${alb.id}">
-                            <img class="search-playlist-art" src="${alb.artwork || 'icon-512.png'}" alt="${alb.title}" loading="lazy">
-                            <div class="search-playlist-title">${alb.title}</div>
-                            <div class="search-playlist-sub">${alb.artist || 'Movie Soundtrack'} • ${alb.year || 'Album'}</div>
+                    ${albums.map(alb => {
+                        const albTitle = escapeHtml(decodeHtmlEntities(alb.title || 'Album'));
+                        const albSub = escapeHtml(decodeHtmlEntities(alb.artist || 'Movie Soundtrack'));
+                        return `
+                        <div class="search-playlist-card" data-album-id="${escapeHtml(String(alb.id || ''))}">
+                            <img class="search-playlist-art" src="${alb.artwork || 'icon-512.png'}" alt="${albTitle}" loading="lazy" onerror="this.onerror=null;this.src='icon-512.png';">
+                            <div class="search-playlist-title">${albTitle}</div>
+                            <div class="search-playlist-sub">${albSub} • ${escapeHtml(String(alb.year || 'Album'))}</div>
                         </div>
-                    `).join('')}
+                    `;
+                    }).join('')}
                 </div>
             `;
             container.querySelectorAll('.search-playlist-card').forEach(card => {
@@ -4100,15 +4311,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isArtist = topResultType === 'artist';
             const isPlaylist = topResultType === 'playlist';
 
-            const itemTitle = topResultItem.title || topResultItem.name;
+            const itemTitle = escapeHtml(decodeHtmlEntities(topResultItem.title || topResultItem.name || 'Track'));
             const itemArt = topResultItem.artwork || topResultItem.image || 'icon-512.png';
-            const itemSub = isSong 
-                ? `${topResultItem.artist} • ${topResultItem.album || 'Single'}`
+            const rawSub = isSong
+                ? `${decodeHtmlEntities(topResultItem.artist || 'Lossless Artist')} • ${decodeHtmlEntities(topResultItem.album || 'Single')}`
                 : isArtist
-                ? `${topResultItem.role || 'Artist'} • Studio Verified`
-                : isAlbum 
-                ? `${topResultItem.artist || 'Soundtrack'} • ${topResultItem.year || 'Album'}`
-                : `${topResultItem.creator || 'Curated Collection'} • ${topResultItem.songCount ? topResultItem.songCount + ' Tracks' : 'Lossless Playlist'}`;
+                ? `${decodeHtmlEntities(topResultItem.role || 'Artist')} • Studio Verified`
+                : isAlbum
+                ? `${decodeHtmlEntities(topResultItem.artist || 'Soundtrack')} • ${topResultItem.year || 'Album'}`
+                : `${decodeHtmlEntities(topResultItem.creator || 'Curated Collection')} • ${topResultItem.songCount ? topResultItem.songCount + ' Tracks' : 'Lossless Playlist'}`;
+            const itemSub = escapeHtml(rawSub);
             const badgeLabel = isSong ? 'Song' : isArtist ? 'Artist' : isAlbum ? 'Album' : 'Playlist';
 
             const topSongs = (topResultType === 'song' && songs.length > 1) ? songs.filter(s => String(s.id) !== String(topResultItem.id)).slice(0, 4) : songs.slice(0, 4);
@@ -4152,17 +4364,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <button class="btn-chip" id="seeAllSongsHeaderBtn" style="font-size: 12px; padding: 4px 12px; background: transparent; border: none; color: #b3b3b3; font-weight: 700; cursor: pointer;">See all</button>
                             </div>
                             <div class="spotify-top-songs-list">
-                                ${topSongs.map(s => `
-                                    <div class="spotify-song-row" data-song-id="${s.id}">
+                                ${topSongs.map(s => {
+                                    const sTitle = escapeHtml(decodeHtmlEntities(s.title || 'Song'));
+                                    const sArtist = escapeHtml(decodeHtmlEntities(s.artist || 'Lossless Artist'));
+                                    return `
+                                    <div class="spotify-song-row" data-song-id="${escapeHtml(String(s.id || ''))}">
                                         <div class="spotify-song-thumb-wrap">
-                                            <img class="spotify-song-thumb" src="${s.artwork || 'icon-512.png'}" alt="${s.title}" loading="lazy" onerror="this.onerror=null;this.src='icon-512.png';">
+                                            <img class="spotify-song-thumb" src="${s.artwork || 'icon-512.png'}" alt="${sTitle}" loading="lazy" onerror="this.onerror=null;this.src='icon-512.png';">
                                             <div class="spotify-song-play-icon">
                                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l11.08-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14z"/></svg>
                                             </div>
                                         </div>
                                         <div class="spotify-song-info">
-                                            <div class="spotify-song-name">${s.title}</div>
-                                            <div class="spotify-song-artist">${s.artist}</div>
+                                            <div class="spotify-song-name">${sTitle}</div>
+                                            <div class="spotify-song-artist">${sArtist}</div>
                                         </div>
                                         <button class="action-icon-btn spotify-song-share-btn" data-action="share" title="Share Song" aria-label="Share Song" style="margin-right: 8px;">
                                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -4175,7 +4390,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                                         </button>
                                         <div class="spotify-song-duration">${formatTime(s.duration || 210)}</div>
                                     </div>
-                                `).join('')}
+                                `;
+                                }).join('')}
                             </div>
                         </div>
                     ` : ''}
@@ -4192,13 +4408,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <button class="btn-chip" id="seeAllPlaylistsBtn" style="font-size: 12px; padding: 4px 12px;">See all</button>
                     </div>
                     <div class="search-playlists-grid" style="grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));">
-                        ${playlists.slice(0, 6).map(pl => `
-                            <div class="search-playlist-card" data-playlist-id="${pl.id}">
-                                <img class="search-playlist-art" src="${pl.artwork || 'icon-512.png'}" alt="${pl.title}" loading="lazy" onerror="this.onerror=null;this.src='icon-512.png';">
-                                <div class="search-playlist-title">${pl.title}</div>
-                                <div class="search-playlist-sub">${pl.subtitle || 'Playlist • Curated'}</div>
+                        ${playlists.slice(0, 6).map(pl => {
+                            const plTitle = escapeHtml(decodeHtmlEntities(pl.title || 'Playlist'));
+                            const plSub = escapeHtml(decodeHtmlEntities(pl.subtitle || 'Playlist • Curated'));
+                            return `
+                            <div class="search-playlist-card" data-playlist-id="${escapeHtml(String(pl.id || ''))}">
+                                <img class="search-playlist-art" src="${pl.artwork || 'icon-512.png'}" alt="${plTitle}" loading="lazy" onerror="this.onerror=null;this.src='icon-512.png';">
+                                <div class="search-playlist-title">${plTitle}</div>
+                                <div class="search-playlist-sub">${plSub}</div>
                             </div>
-                        `).join('')}
+                        `;
+                        }).join('')}
                     </div>
                 </div>
             `;
@@ -4230,16 +4450,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
         }
         if (topAlbum) {
+            const topAlbTitle = escapeHtml(decodeHtmlEntities(topAlbum.title || 'Album'));
+            const topAlbArtist = escapeHtml(decodeHtmlEntities(topAlbum.artist || 'Soundtrack'));
             html += `
                 <div style="margin-bottom: 24px;">
                     <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 12px;">Album Soundtrack</h3>
                     <div class="album-showcase-card">
                         <div class="album-showcase-header">
-                            <img class="album-showcase-art" src="${topAlbum.artwork || 'icon-512.png'}" alt="${topAlbum.title}" onerror="this.onerror=null;this.src='icon-512.png';">
+                            <img class="album-showcase-art" src="${topAlbum.artwork || 'icon-512.png'}" alt="${topAlbTitle}" onerror="this.onerror=null;this.src='icon-512.png';">
                             <div class="album-showcase-meta">
                                 <span class="album-badge">🎬 MOVIE / ALBUM SOUNDTRACK</span>
-                                <h2 class="album-showcase-title">${topAlbum.title}</h2>
-                                <div class="album-showcase-info">${topAlbum.artist || 'Soundtrack'} • ${topAlbum.year || ''} • Lossless Hi-Fi</div>
+                                <h2 class="album-showcase-title">${topAlbTitle}</h2>
+                                <div class="album-showcase-info">${topAlbArtist} • ${escapeHtml(String(topAlbum.year || ''))} • Lossless Hi-Fi</div>
                                 <div class="album-showcase-actions" style="margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap;">
                                     <button class="btn-chip primary" id="playAllAlbumBtn" style="padding: 10px 22px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; background: #00d2ff; color: #000; border: none; border-radius: 20px; cursor: pointer;">
                                         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l11.08-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14z"/></svg>
@@ -4423,9 +4645,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (rawTracks.length > 0) {
                     const liveTracks = rawTracks.slice(0, 4).map(r => ({
                         id: String(r.id || ('online_' + Math.random().toString(36).substr(2, 9))),
-                        title: r.title || r.name || 'Unknown Track',
-                        artist: r.artist || r.singers || r.subtitle || 'Lossless Artist',
-                        album: r.album || 'Lossless Album',
+                        title: decodeHtmlEntities(r.title || r.name || 'Unknown Track'),
+                        artist: decodeHtmlEntities(r.artist || r.singers || r.subtitle || 'Lossless Artist'),
+                        album: decodeHtmlEntities(r.album || 'Lossless Album'),
                         duration: parseDurationToSeconds(r.duration),
                         artwork: r.artwork || r.image || 'icon-512.png',
                         source: r.source || 'JioSaavn',
@@ -4439,7 +4661,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 const rawPlaylists = sData?.playlists || [];
                 if (rawPlaylists.length > 0) {
-                    local.playlists = rawPlaylists.slice(0, 2);
+                    local.playlists = rawPlaylists.slice(0, 2).map(p => ({
+                        ...p,
+                        title: decodeHtmlEntities(p.title || p.name || 'Playlist'),
+                        subtitle: decodeHtmlEntities(p.subtitle || '')
+                    }));
                     local.playlists.forEach(p => window.TypeaheadPlaylistMap.set(p.id, p));
                 }
 
@@ -4455,17 +4681,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    let _dropdownPosRaf = null;
+    function scheduleDropdownPositionUpdate() {
+        if (!searchTypeaheadDropdown || searchTypeaheadDropdown.style.display === 'none') return;
+        if (_dropdownPosRaf) return;
+        _dropdownPosRaf = requestAnimationFrame(() => {
+            _dropdownPosRaf = null;
+            updateDropdownPosition();
+        });
+    }
+
     globalSearchInput.addEventListener('focus', () => {
         triggerSearchSuggestions();
-        updateDropdownPosition();
+        scheduleDropdownPositionUpdate();
     });
     globalSearchInput.addEventListener('click', (e) => {
         e.stopPropagation();
         triggerSearchSuggestions();
-        updateDropdownPosition();
+        scheduleDropdownPositionUpdate();
     });
-    window.addEventListener('resize', updateDropdownPosition);
-    window.addEventListener('scroll', updateDropdownPosition, true);
+    window.addEventListener('resize', scheduleDropdownPositionUpdate);
+    window.addEventListener('scroll', scheduleDropdownPositionUpdate, { passive: true, capture: true });
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', scheduleDropdownPositionUpdate);
+        window.visualViewport.addEventListener('scroll', scheduleDropdownPositionUpdate);
+    }
 
     globalSearchInput.addEventListener('input', () => {
         const query = globalSearchInput.value.trim();
@@ -4643,12 +4883,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (current) {
             const art = current.artwork || current.image || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100';
+            const curTitle = escapeHtml(decodeHtmlEntities(current.title || 'Track'));
+            const curArtist = escapeHtml(decodeHtmlEntities(current.artist || 'Lossless Artist'));
             html += `
                 <div class="side-queue-item active" style="margin-bottom: 18px;">
-                    <img class="side-queue-art" src="${art}" alt="${current.title}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100';">
+                    <img class="side-queue-art" src="${art}" alt="${curTitle}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100';">
                     <div class="side-queue-details">
-                        <div class="side-queue-title">${current.title}</div>
-                        <div class="side-queue-sub">${current.artist}</div>
+                        <div class="side-queue-title">${curTitle}</div>
+                        <div class="side-queue-sub">${curArtist}</div>
                     </div>
                     <div class="playing-bars" style="margin-right: 6px; flex-shrink: 0;">
                         <span class="playing-bar"></span>
@@ -4673,17 +4915,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
 
         if (upcoming.length === 0) {
-            html += `<div style="font-size: 13px; color: var(--text-muted); padding: 24px 0; text-align: center;">Curating Vibe Radio matches...<br><span style="font-size: 12px; opacity: 0.7;">Matching energy & mood for ${current ? current.title : 'song'}</span></div>`;
+            const isPod = current && typeof AudioPlayer.isPodcastTrack === 'function' && AudioPlayer.isPodcastTrack(current);
+            const curName = current ? escapeHtml(decodeHtmlEntities(current.title || 'song')) : 'song';
+            if (isPod) {
+                html += `<div style="font-size: 13px; color: var(--text-muted); padding: 24px 0; text-align: center;">Podcast playback • No upcoming episodes in queue</div>`;
+            } else if (AudioPlayer.isSequentialContext) {
+                html += `<div style="font-size: 13px; color: var(--text-muted); padding: 24px 0; text-align: center;">End of playlist / album queue</div>`;
+            } else {
+                html += `<div style="font-size: 13px; color: var(--text-muted); padding: 24px 0; text-align: center;">Curating Vibe Radio matches...<br><span style="font-size: 12px; opacity: 0.7;">Matching energy & mood for ${curName}</span></div>`;
+            }
         } else {
             upcoming.forEach((t, i) => {
                 const globalIdx = currentIdx + 1 + i;
                 const art = t.artwork || t.image || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100';
+                const tTitle = escapeHtml(decodeHtmlEntities(t.title || 'Track'));
+                const tArtist = escapeHtml(decodeHtmlEntities(t.artist || 'Lossless Artist'));
                 html += `
                     <div class="side-queue-item" data-queue-idx="${globalIdx}">
-                        <img class="side-queue-art" src="${art}" alt="${t.title}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100';">
+                        <img class="side-queue-art" src="${art}" alt="${tTitle}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100';">
                         <div class="side-queue-details">
-                            <div class="side-queue-title">${t.title}</div>
-                            <div class="side-queue-sub">${t.artist}</div>
+                            <div class="side-queue-title">${tTitle}</div>
+                            <div class="side-queue-sub">${tArtist}</div>
                         </div>
                         <button class="side-queue-remove-btn" data-remove-queue="${globalIdx}" title="Remove track from queue">✕</button>
                     </div>
@@ -4854,6 +5106,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
+    let _lastSideTrackKey = '';
     function updateSidePanel(track) {
         if (!sidePanel || !sideNowPlayingContent) return;
         if (!track) {
@@ -4870,6 +5123,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         sideNowPlayingContent.style.display = 'flex';
 
         const art = track.artwork || track.image || 'assets/foryou_radar.jpg';
+        const cleanTitle = decodeHtmlEntities(track.title || 'Studio Lossless');
+        const cleanArtist = decodeHtmlEntities((track.artist && track.artist !== 'undefined' && track.artist !== 'Unknown') ? track.artist : (track.primaryArtist || track.subtitle || 'Lossless Artist'));
+        const isPodcast = typeof AudioPlayer.isPodcastTrack === 'function' ? AudioPlayer.isPodcastTrack(track) : Boolean(track.isPodcast);
         const isLiked = likedTrackIds.has(String(track.id));
         const queue = AudioPlayer.queue || [];
         const currentIdx = AudioPlayer.currentIndex || 0;
@@ -4877,27 +5133,84 @@ document.addEventListener('DOMContentLoaded', async () => {
         const nextTrack = upcoming[0];
 
         const sideQueueCount = document.getElementById('sideQueueCount');
-        if (sideQueueCount) sideQueueCount.textContent = upcoming.length || queue.length || '15';
+        if (sideQueueCount) sideQueueCount.textContent = String(upcoming.length);
 
-        const artistMeta = getArtistMetadata(track.artist || track.primaryArtist);
-
-        // Authentic Spotify Desktop Now Playing Layout
-        // Update side panel context title dynamically
         const sideCtxTitle = document.getElementById('sidePanelContextTitle');
         if (sideCtxTitle) {
-            sideCtxTitle.textContent = window.currentPlaylistContextName || 'Trending Now Tamil';
+            sideCtxTitle.textContent = isPodcast
+                ? (track.podcastTitle || track.album || 'Podcast Episode')
+                : (window.currentPlaylistContextName || 'Now Playing');
         }
+
+        const trackKey = `${track.id}|${cleanTitle}|${cleanArtist}|${art}|${isPodcast ? 'pod' : 'mus'}`;
+        if (trackKey === _lastSideTrackKey && sideNowPlayingContent.querySelector('#sideNowArt')) {
+            const addBtn = document.getElementById('sideNowAddBtn');
+            if (addBtn) addBtn.classList.toggle('active', isLiked);
+            const nextCard = document.getElementById('sideNextTrackCard');
+            if (nextTrack) {
+                const nextArt = nextTrack.artwork || nextTrack.image || 'assets/omonk_logo.jpg';
+                const nextTitle = decodeHtmlEntities(nextTrack.title || 'Track');
+                const nextArtist = decodeHtmlEntities(nextTrack.artist || 'Lossless');
+                if (nextCard) {
+                    const img = nextCard.querySelector('.side-next-thumb');
+                    const tEl = nextCard.querySelector('.side-next-title');
+                    const aEl = nextCard.querySelector('.side-next-artist');
+                    if (img && img.getAttribute('src') !== nextArt) img.src = nextArt;
+                    if (tEl && tEl.textContent !== nextTitle) tEl.textContent = nextTitle;
+                    if (aEl && aEl.textContent !== nextArtist) aEl.textContent = nextArtist;
+                } else {
+                    const creditsCard = sideNowPlayingContent.lastElementChild;
+                    const div = document.createElement('div');
+                    div.className = 'side-next-card';
+                    div.id = 'sideNextTrackCard';
+                    div.style.cursor = 'pointer';
+                    div.innerHTML = `
+                        <img class="side-next-thumb" src="${nextArt}" alt="${escapeHtml(nextTitle)}" onerror="this.onerror=null;this.src='assets/omonk_logo.jpg';">
+                        <div class="side-next-info">
+                            <div class="side-next-label">Next in queue</div>
+                            <div class="side-next-title">${escapeHtml(nextTitle)}</div>
+                            <div class="side-next-artist" style="font-size: 12px; color: #b3b3b3;">${escapeHtml(nextArtist)}</div>
+                        </div>
+                        <button class="side-lyrics-preview-btn" id="sideOpenQueueTabBtn" style="flex-shrink: 0;">Open queue</button>
+                    `;
+                    div.addEventListener('click', () => switchSidePanelTab('queue'));
+                    div.querySelector('#sideOpenQueueTabBtn')?.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        switchSidePanelTab('queue');
+                    });
+                    if (creditsCard) sideNowPlayingContent.insertBefore(div, creditsCard);
+                    else sideNowPlayingContent.appendChild(div);
+                }
+            } else if (nextCard) {
+                nextCard.remove();
+            }
+            return;
+        }
+        _lastSideTrackKey = trackKey;
+
+        const artistMeta = isPodcast
+            ? {
+                name: cleanArtist,
+                avatar: art,
+                listeners: 'Verified Show',
+                bio: decodeHtmlEntities(track.description || 'Streaming official podcast episode on Omonk.')
+            }
+            : getArtistMetadata(cleanArtist);
+
+        const nextArt = nextTrack ? (nextTrack.artwork || nextTrack.image || 'assets/omonk_logo.jpg') : '';
+        const nextTitle = nextTrack ? decodeHtmlEntities(nextTrack.title || 'Track') : '';
+        const nextArtist = nextTrack ? decodeHtmlEntities(nextTrack.artist || 'Lossless') : '';
 
         const html = `
             <!-- 1. Cover Artwork (Full Width, Rounded Corners) -->
             <div class="side-now-art-wrap">
-                <img class="side-now-art" id="sideNowArt" src="${art}" alt="${escapeHtml(track.title)}" onerror="this.onerror=null;this.src='assets/omonk_logo.jpg';">
+                <img class="side-now-art" id="sideNowArt" src="${art}" alt="${escapeHtml(cleanTitle)}" onerror="this.onerror=null;this.src='assets/omonk_logo.jpg';">
             </div>
 
-            <!-- 2. Track Title Row with Add Button (+) & Artists Row Underneath (Matching User Reference) -->
+            <!-- 2. Track Title Row with Add Button (+) & Artists Row Underneath -->
             <div class="side-now-header-row">
                 <div class="side-now-title-row">
-                    <div class="side-now-title" title="${escapeHtml(track.title)}">${escapeHtml(track.title)}</div>
+                    <div class="side-now-title" title="${escapeHtml(cleanTitle)}">${escapeHtml(cleanTitle)}</div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <button class="side-add-circle-btn" id="sideNowShareBtn" title="Share Song" aria-label="Share Song">
                             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -4917,44 +5230,44 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </button>
                     </div>
                 </div>
-                <div class="side-now-artist" title="${escapeHtml(track.artist || track.primaryArtist || '')}">${escapeHtml(track.artist || track.primaryArtist || 'Lossless Artist')}</div>
+                <div class="side-now-artist" title="${escapeHtml(cleanArtist)}">${escapeHtml(cleanArtist)}</div>
             </div>
 
-            <!-- 3. Lyrics preview Card (Matching User Reference) -->
+            <!-- 3. Lyrics preview Card -->
             <div class="side-lyrics-preview-card" id="sideLyricsCard">
                 <div class="side-lyrics-preview-header">
-                    <span class="side-lyrics-preview-title">Lyrics preview</span>
+                    <span class="side-lyrics-preview-title">${isPodcast ? 'Episode Notes' : 'Lyrics preview'}</span>
                 </div>
                 <div class="side-lyrics-snippet" id="sideLyricsSnippet">
-                    <span class="lyrics-l1">Sing along with real-time synchronized karaoke lyrics.</span>
+                    <span class="lyrics-l1">${isPodcast ? escapeHtml(decodeHtmlEntities(track.description || 'Streaming official podcast audio.')) : 'Sing along with real-time synchronized karaoke lyrics.'}</span>
                 </div>
             </div>
 
-            <!-- 4. About the artist Card with Hero Banner Image (Matching User Reference) -->
+            <!-- 4. About the artist / show Card -->
             <div class="side-about-card">
                 <div class="side-about-banner" style="background-image: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(18,18,18,0.92) 100%), url('${artistMeta.avatar}');">
-                    <div class="side-about-banner-title">About the artist</div>
+                    <div class="side-about-banner-title">${isPodcast ? 'About the show' : 'About the artist'}</div>
                 </div>
                 <div class="side-about-details">
                     <div class="side-about-header" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <div class="side-about-name" style="font-size: 16px; font-weight: 800; color: #fff;">${escapeHtml(artistMeta.name)}</div>
-                            <div class="side-about-meta" style="font-size: 13px; color: var(--text-muted);">${artistMeta.listeners} monthly listeners</div>
+                            <div class="side-about-meta" style="font-size: 13px; color: var(--text-muted);">${isPodcast ? 'Official Podcast' : `${artistMeta.listeners} monthly listeners`}</div>
                         </div>
                         <button class="btn-chip" id="sideFollowArtistBtn" style="border-radius: 20px; font-size: 11px; font-weight: 700; padding: 5px 14px; flex-shrink: 0; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff;">Follow</button>
                     </div>
-                    <div class="side-about-body" style="font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.45;">${artistMeta.bio}</div>
+                    <div class="side-about-body" style="font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.45;">${escapeHtml(artistMeta.bio)}</div>
                 </div>
             </div>
 
             <!-- 5. Next in queue Card -->
             ${nextTrack ? `
             <div class="side-next-card" id="sideNextTrackCard" style="cursor: pointer;">
-                <img class="side-next-thumb" src="${nextTrack.artwork || nextTrack.image || 'assets/omonk_logo.jpg'}" alt="${escapeHtml(nextTrack.title)}" onerror="this.onerror=null;this.src='assets/omonk_logo.jpg';">
+                <img class="side-next-thumb" src="${nextArt}" alt="${escapeHtml(nextTitle)}" onerror="this.onerror=null;this.src='assets/omonk_logo.jpg';">
                 <div class="side-next-info">
                     <div class="side-next-label">Next in queue</div>
-                    <div class="side-next-title">${escapeHtml(nextTrack.title)}</div>
-                    <div class="side-next-artist" style="font-size: 12px; color: #b3b3b3;">${escapeHtml(nextTrack.artist || 'Lossless')}</div>
+                    <div class="side-next-title">${escapeHtml(nextTitle)}</div>
+                    <div class="side-next-artist" style="font-size: 12px; color: #b3b3b3;">${escapeHtml(nextArtist)}</div>
                 </div>
                 <button class="side-lyrics-preview-btn" id="sideOpenQueueTabBtn" style="flex-shrink: 0;">Open queue</button>
             </div>
@@ -4964,12 +5277,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="side-about-card" style="padding: 16px; gap: 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-size: 14px; font-weight: 800; color: #fff;">Credits</span>
-                    <span style="font-size: 12px; color: var(--text-muted);">Master Hi-Res</span>
+                    <span style="font-size: 12px; color: var(--text-muted);">${isPodcast ? 'Podcast Master' : 'Master Hi-Res'}</span>
                 </div>
-                <div style="font-size: 13px; color: #fff; font-weight: 600;">${escapeHtml(track.artist || 'Artist')}</div>
-                <div style="font-size: 11.5px; color: #a1a1aa;">Main Artist • Vocals</div>
-                <div style="font-size: 13px; color: #fff; font-weight: 600; margin-top: 4px;">Lossless Audio Master</div>
-                <div style="font-size: 11.5px; color: #a1a1aa;">ALAC Bit-Perfect • 24-Bit / 96kHz Direct Stream</div>
+                <div style="font-size: 13px; color: #fff; font-weight: 600;">${escapeHtml(cleanArtist)}</div>
+                <div style="font-size: 11.5px; color: #a1a1aa;">${isPodcast ? 'Podcast Host • Creator' : 'Main Artist • Vocals'}</div>
+                <div style="font-size: 13px; color: #fff; font-weight: 600; margin-top: 4px;">${isPodcast ? 'Podcast Audio Stream' : 'Lossless Audio Master'}</div>
+                <div style="font-size: 11.5px; color: #a1a1aa;">${isPodcast ? 'Official RSS / Direct Audio' : 'ALAC Bit-Perfect • 24-Bit / 96kHz Direct Stream'}</div>
             </div>
         `;
 
@@ -5116,8 +5429,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         playerLikeBtn.textContent = likedTrackIds.has(String(track.id)) ? '❤️' : '🤍';
         playerLikeBtn.classList.toggle('liked', likedTrackIds.has(String(track.id)));
 
-        lyricsTrackTitle.textContent = track.title;
-        lyricsTrackArtist.textContent = (track.artist && track.artist !== "undefined" && track.artist !== "Unknown") ? track.artist : (track.primaryArtist || track.subtitle || "Lossless Artist");
+        lyricsTrackTitle.textContent = cleanTitle;
+        lyricsTrackArtist.textContent = cleanArtist;
         Lyrics.loadLyricsForTrack(track);
 
         syncAllSongRowPlayButtons(AudioPlayer.isPlaying || !AudioPlayer.audio.paused);
@@ -5134,14 +5447,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    let _queueUiRaf = null;
     AudioPlayer.onQueueChange = (queue, currentIndex) => {
-        if (typeof renderSideQueueContent === 'function') {
-            renderSideQueueContent();
-        }
-        const cur = AudioPlayer.getCurrentTrack();
-        if (cur && typeof updateSidePanel === 'function') {
-            updateSidePanel(cur);
-        }
+        if (_queueUiRaf) return;
+        _queueUiRaf = requestAnimationFrame(() => {
+            _queueUiRaf = null;
+            if (typeof renderSideQueueContent === 'function') {
+                renderSideQueueContent();
+            }
+            const cur = AudioPlayer.getCurrentTrack();
+            if (cur && typeof updateSidePanel === 'function') {
+                updateSidePanel(cur);
+            }
+        });
     };
 
     AudioPlayer.onPlayStateChange = (isPlaying) => {
@@ -5261,8 +5579,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.currentTarget?.blur();
         AudioPlayer.togglePlay();
     });
-    prevBtn.addEventListener('click', () => AudioPlayer.prev());
-    nextBtn.addEventListener('click', () => AudioPlayer.next(true));
+    prevBtn.addEventListener('click', () => {
+        _canonicalHomePinned = false;
+        AudioPlayer.prev();
+    });
+    nextBtn.addEventListener('click', () => {
+        _canonicalHomePinned = false;
+        AudioPlayer.next(true);
+    });
     shuffleBtn.addEventListener('click', () => {
         const s = AudioPlayer.toggleShuffle();
         shuffleBtn.classList.toggle('active', s);
@@ -5477,7 +5801,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (result && result.tracks && result.tracks.length > 0) {
                 const count = result.tracks.length;
-                showToast(`Imported ${count} track${count === 1 ? '' : 's'}!`, '🎉');
+                const skipped = result._importReport?.skippedCount || 0;
+                const msg = skipped > 0
+                    ? `Imported ${count} track${count === 1 ? '' : 's'} (${skipped} unavailable skipped)`
+                    : `Imported ${count} track${count === 1 ? '' : 's'}!`;
+                importStatus.textContent = msg;
+                showToast(msg, '🎉');
                 importModal.classList.remove('active');
                 renderView('library');
                 // Immediately play imported single song directly
@@ -5698,7 +6027,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.getShareUrlForTrack = getShareUrlForTrack;
 
     function updateDynamicUrl(track) {
-        if (!track || !track.title) return;
+        if (!track || !track.title || _canonicalHomePinned) return;
         try {
             const cleanTitle = decodeHtmlEntities(track.title);
             const cleanArtist = (track.artist && track.artist !== 'undefined' && track.artist !== 'Unknown')
@@ -5901,6 +6230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Popstate navigation: keep view, URL & player synchronized on back/forward
     window.addEventListener('popstate', (e) => {
+        _canonicalHomePinned = false;
         const params = new URLSearchParams(window.location.search);
         const hasTrackParams = params.has('track') || params.has('title') || params.has('song');
         if (e.state && (e.state.trackId || e.state.title)) {
@@ -6029,6 +6359,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.syncAllSongRowPlayButtons = syncAllSongRowPlayButtons;
 
     function handleSongPlayPauseToggle(target, pool = null, idx = 0) {
+        _canonicalHomePinned = false;
         let track = (typeof target === 'object' && target !== null) ? target : findTrackById(target);
         if (!track && typeof target === 'string') {
             track = findTrackById(target);
@@ -6054,20 +6385,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // 2. Clicking a song that is not playing:
+        // 2. Clicking a song or episode that is not playing:
+        const isPodcast = Boolean(
+            track.isPodcast ||
+            track.quality === 'Podcast Audio Stream' ||
+            track.type === 'podcast' ||
+            String(track.id || '').startsWith('pod_') ||
+            currentView === 'podcasts' ||
+            currentView === 'podcast-detail'
+        );
         const isAlbumContext = currentView === 'album' || currentView === 'album-detail';
         const isPlaylistContext = currentView === 'playlist' || currentView === 'playlist-detail' || currentView === 'liked' || currentView === 'offline';
+        const cleanTitle = decodeHtmlEntities(track.title || 'Track');
 
-        if (isAlbumContext || isPlaylistContext) {
+        if (isPodcast || isAlbumContext || isPlaylistContext) {
             const effectivePool = (pool && Array.isArray(pool) && pool.length > 0) ? pool : (typeof allLoadedSongs !== 'undefined' && allLoadedSongs.length > 0 ? allLoadedSongs : (window.allLoadedSongs || [track]));
             const trackIdx = effectivePool.findIndex(t => String(t.id) === String(track.id) || (t.title && track.title && t.title === track.title));
             const finalIdx = trackIdx >= 0 ? trackIdx : idx;
 
+            if (isPodcast) AudioPlayer.isShuffled = false;
             AudioPlayer.isSequentialContext = true;
-            AudioPlayer.currentContext = isAlbumContext ? 'album' : 'playlist';
+            AudioPlayer.currentContext = isPodcast ? 'podcast' : (isAlbumContext ? 'album' : 'playlist');
             AudioPlayer.playTrack(track, effectivePool, finalIdx, true);
             syncAllSongRowPlayButtons(true);
-            showToast(`Playing "${track.title}"`, '▶️');
+            showToast(`Playing "${cleanTitle}"`, isPodcast ? '🎙️' : '▶️');
         } else {
             // In Search, Home, Hits, Discover, Artists, or general tracks:
             // When manually playing one song, seed with dynamic Spotify Vibe Recommendation
@@ -6076,7 +6417,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             AudioPlayer.currentContext = 'vibe';
             AudioPlayer.playTrackWithVibeRadio(track);
             syncAllSongRowPlayButtons(true);
-            showToast(`Playing "${track.title}" with Vibe Flow`, '✨');
+            showToast(`Playing "${cleanTitle}" with Vibe Flow`, '✨');
         }
     }
     window.handleSongPlayPauseToggle = handleSongPlayPauseToggle;

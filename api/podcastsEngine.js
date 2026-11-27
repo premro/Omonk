@@ -17,10 +17,32 @@ for (const p of featuredPodcasts) {
     if (p.id) PODCAST_CACHE[p.id] = p;
 }
 
+function isSafeExternalHttpUrl(rawUrl) {
+    try {
+        const parsed = new URL(String(rawUrl || ''));
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+        const host = (parsed.hostname || '').replace(/^\[|\]$/g, '').toLowerCase();
+        if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) {
+            return false;
+        }
+        const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+        if (ipv4) {
+            const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+            if (a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)) {
+                return false;
+            }
+        }
+        if (host === '::1' || host.startsWith('fe80:') || host.startsWith('fc') || host.startsWith('fd')) return false;
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
 function fetchWithRedirects(url, maxRedirects = 5, timeoutMs = 8000) {
     return new Promise((resolve, reject) => {
-        if (!url || maxRedirects <= 0) {
-            return reject(new Error('Invalid URL or too many redirects'));
+        if (!url || maxRedirects <= 0 || !isSafeExternalHttpUrl(url)) {
+            return reject(new Error('Invalid or unsafe URL or too many redirects'));
         }
         const client = url.startsWith('https') ? https : http;
         const req = client.get(url, {
@@ -30,10 +52,15 @@ function fetchWithRedirects(url, maxRedirects = 5, timeoutMs = 8000) {
             }
         }, (res) => {
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                res.resume();
                 let redirectUrl = res.headers.location;
-                if (!redirectUrl.startsWith('http')) {
-                    const u = new URL(url);
-                    redirectUrl = u.origin + redirectUrl;
+                try {
+                    redirectUrl = new URL(redirectUrl, url).href;
+                } catch (e) {
+                    return reject(new Error('Invalid redirect URL'));
+                }
+                if (!isSafeExternalHttpUrl(redirectUrl)) {
+                    return reject(new Error('Unsafe redirect URL'));
                 }
                 return resolve(fetchWithRedirects(redirectUrl, maxRedirects - 1, timeoutMs));
             }
@@ -50,27 +77,31 @@ function fetchWithRedirects(url, maxRedirects = 5, timeoutMs = 8000) {
 }
 
 function decodeXmlEntities(str) {
-    if (typeof str !== 'string' || !str.includes('&')) return str || '';
-    const map = {
-        '&amp;': '&',
-        '&lt;': '<',
-        '&gt;': '>',
-        '&quot;': '"',
-        '&#39;': "'",
-        '&#039;': "'",
-        '&apos;': "'",
-        '&nbsp;': ' '
-    };
-    return str
-        .replace(/&(amp|lt|gt|quot|apos|nbsp|#0*39);/gi, (m) => map[m.toLowerCase()] || map[m] || m)
-        .replace(/&#(\d+);/g, (_, code) => {
-            const n = parseInt(code, 10);
-            return Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : _;
-        })
-        .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
-            const n = parseInt(hex, 16);
-            return Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : _;
-        });
+    if (typeof str !== 'string') return '';
+    let s = str;
+    if (s.includes('&')) {
+        const map = {
+            '&amp;': '&',
+            '&lt;': '<',
+            '&gt;': '>',
+            '&quot;': '"',
+            '&#39;': "'",
+            '&#039;': "'",
+            '&apos;': "'",
+            '&nbsp;': ' '
+        };
+        s = s
+            .replace(/&(amp|lt|gt|quot|apos|nbsp|#0*39);/gi, (m) => map[m.toLowerCase()] || map[m] || m)
+            .replace(/&#(\d+);/g, (_, code) => {
+                const n = parseInt(code, 10);
+                return Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : _;
+            })
+            .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+                const n = parseInt(hex, 16);
+                return Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : _;
+            });
+    }
+    return s.replace(/\s*@@+\s*/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function hashCode(str) {
@@ -146,7 +177,7 @@ function parseRss(xml, fallbackShow) {
                 album: channelMeta.title,
                 description: desc,
                 duration,
-                artwork: epArt,
+                artwork: epArt || chArt || fallbackShow?.avatar || 'assets/foryou_radar.jpg',
                 streamUrl,
                 pubDate: cleanDate,
                 quality: 'Podcast Audio Stream',
@@ -176,14 +207,14 @@ async function searchPodcasts(query, limit = 16) {
             const pid = `pod_${item.collectionId}`;
             const podObj = {
                 id: pid,
-                name: item.collectionName || 'Podcast Show',
-                publisher: item.artistName || 'Host',
-                avatar: item.artworkUrl600 || item.artworkUrl100 || '',
-                badge: item.primaryGenreName || 'Podcast',
-                description: `${item.collectionName} by ${item.artistName}`,
-                category: item.primaryGenreName || 'Talk Show',
+                name: decodeXmlEntities(item.collectionName || 'Podcast Show'),
+                publisher: decodeXmlEntities(item.artistName || 'Host'),
+                avatar: item.artworkUrl600 || item.artworkUrl100 || 'assets/foryou_radar.jpg',
+                badge: decodeXmlEntities(item.primaryGenreName || 'Podcast'),
+                description: decodeXmlEntities(`${item.collectionName || 'Podcast Show'} by ${item.artistName || 'Host'}`),
+                category: decodeXmlEntities(item.primaryGenreName || 'Talk Show'),
                 feedUrl: item.feedUrl || '',
-                genres: item.genres || [item.primaryGenreName || 'Podcast']
+                genres: (item.genres || [item.primaryGenreName || 'Podcast']).map(g => decodeXmlEntities(g))
             };
             PODCAST_CACHE[pid] = podObj;
             results.push(podObj);
@@ -225,14 +256,14 @@ async function getPodcastDetail(podId, feedUrl) {
                 const item = data.results[0];
                 show = {
                     id: podId,
-                    name: item.collectionName || 'Podcast Show',
-                    publisher: item.artistName || 'Host',
-                    avatar: item.artworkUrl600 || item.artworkUrl100 || '',
-                    badge: item.primaryGenreName || 'Podcast',
-                    description: `${item.collectionName} by ${item.artistName}`,
-                    category: item.primaryGenreName || 'Talk Show',
+                    name: decodeXmlEntities(item.collectionName || 'Podcast Show'),
+                    publisher: decodeXmlEntities(item.artistName || 'Host'),
+                    avatar: item.artworkUrl600 || item.artworkUrl100 || 'assets/foryou_radar.jpg',
+                    badge: decodeXmlEntities(item.primaryGenreName || 'Podcast'),
+                    description: decodeXmlEntities(`${item.collectionName || 'Podcast Show'} by ${item.artistName || 'Host'}`),
+                    category: decodeXmlEntities(item.primaryGenreName || 'Talk Show'),
                     feedUrl: item.feedUrl || '',
-                    genres: item.genres || [item.primaryGenreName || 'Podcast']
+                    genres: (item.genres || [item.primaryGenreName || 'Podcast']).map(g => decodeXmlEntities(g))
                 };
                 PODCAST_CACHE[podId] = show;
             }
@@ -242,7 +273,18 @@ async function getPodcastDetail(podId, feedUrl) {
     }
 
     if (show && Array.isArray(show.episodes) && show.episodes.length > 0 && (!feedUrl || !show.feedUrl)) {
-        return { podcast: show, episodes: show.episodes };
+        const normalizedEpisodes = show.episodes.map((ep, idx) => ({
+            ...ep,
+            id: ep.id || `pod_ep_${idx}_${Math.abs(hashCode(ep.title || String(idx))) % 1000000}`,
+            title: decodeXmlEntities(ep.title || `Episode #${idx + 1}`),
+            artist: decodeXmlEntities(ep.artist || show.publisher || show.name || 'Podcast Host'),
+            album: decodeXmlEntities(ep.album || show.name || 'Podcast'),
+            description: decodeXmlEntities(ep.description || ''),
+            artwork: ep.artwork || show.avatar || 'assets/foryou_radar.jpg',
+            quality: ep.quality || 'Podcast Audio Stream',
+            isPodcast: true
+        }));
+        return { podcast: show, episodes: normalizedEpisodes };
     }
 
     const effectiveFeed = feedUrl || show?.feedUrl;

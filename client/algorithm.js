@@ -36,10 +36,12 @@ const SpotifyEngine = (() => {
             tempoBpm: 120
         },
         history: [], // [{ id, title, artist, listenedPercent, timestamp }]
+        skippedTracks: [], // [{ id, title, artist, skippedAt }]
         skipCount: 0,
         completedCount: 0,
         totalPlayTimeSeconds: 0
     };
+    if (!Array.isArray(tasteProfile.skippedTracks)) tasteProfile.skippedTracks = [];
 
     function saveTaste() {
         localStorage.setItem(getTasteKey(), JSON.stringify(tasteProfile));
@@ -99,6 +101,9 @@ const SpotifyEngine = (() => {
             // Reward: user enjoyed the track
             tasteProfile.completedCount++;
             tasteProfile.artists[artistKey] = (tasteProfile.artists[artistKey] || 0) + 8;
+            if (Array.isArray(tasteProfile.skippedTracks) && track.id) {
+                tasteProfile.skippedTracks = tasteProfile.skippedTracks.filter(s => s && String(s.id) !== String(track.id));
+            }
             
             // Adjust acoustic preferences slightly towards this track
             const alpha = 0.05; // Learning rate
@@ -107,9 +112,21 @@ const SpotifyEngine = (() => {
             tasteProfile.acousticPreferences.valence = tasteProfile.acousticPreferences.valence * (1 - alpha) + feat.valence * alpha;
             tasteProfile.acousticPreferences.acousticness = tasteProfile.acousticPreferences.acousticness * (1 - alpha) + feat.acousticness * alpha;
         } else if (listenedSeconds < 15 && totalDuration > 30) {
-            // Penalty: user skipped quickly
+            // Penalty: user skipped quickly (recent decayable penalty, never permanent blacklist)
             tasteProfile.skipCount++;
             tasteProfile.artists[artistKey] = Math.max(0, (tasteProfile.artists[artistKey] || 0) - 5);
+            if (!Array.isArray(tasteProfile.skippedTracks)) tasteProfile.skippedTracks = [];
+            const tid = track.id ? String(track.id) : '';
+            if (tid) {
+                tasteProfile.skippedTracks = tasteProfile.skippedTracks.filter(s => s && String(s.id) !== tid);
+                tasteProfile.skippedTracks.unshift({
+                    id: tid,
+                    title: track.title || '',
+                    artist: track.artist || '',
+                    skippedAt: Date.now()
+                });
+                if (tasteProfile.skippedTracks.length > 30) tasteProfile.skippedTracks.pop();
+            }
         }
 
         tasteProfile.totalPlayTimeSeconds += Math.floor(listenedSeconds);
@@ -126,6 +143,9 @@ const SpotifyEngine = (() => {
     function trackLiked(track) {
         const artistKey = (track.artist || 'Unknown').split(',')[0].trim();
         tasteProfile.artists[artistKey] = (tasteProfile.artists[artistKey] || 0) + 15;
+        if (track.id && Array.isArray(tasteProfile.skippedTracks)) {
+            tasteProfile.skippedTracks = tasteProfile.skippedTracks.filter(s => s && String(s.id) !== String(track.id));
+        }
         saveTaste();
     }
 
@@ -193,11 +213,20 @@ const SpotifyEngine = (() => {
             .sort((a, b) => b.score - a.score)
             .slice(0, 15);
 
-        // Discover Weekly: high similarity but not in recent history (deterministic comparator)
+        // Discover Weekly: high similarity + novelty & diversity bonus without recent repeats (deterministic comparator)
         const recentIds = new Set(tasteProfile.history.slice(0, 30).map(h => h.id));
+        const skippedSet = new Set((tasteProfile.skippedTracks || []).map(s => String(s.id)));
+        const artistCountsDW = {};
         const discoverWeekly = enriched
             .filter(t => !recentIds.has(t.id))
-            .map(t => ({ track: t, rankScore: t.score * 0.7 + (Math.random() * 30) }))
+            .map((t, idx) => {
+                const aKey = (t.artist || '').split(',')[0].trim().toLowerCase();
+                const seenCount = artistCountsDW[aKey] || 0;
+                if (aKey) artistCountsDW[aKey] = seenCount + 1;
+                const noveltyBonus = (1 - Math.min(0.6, seenCount * 0.2)) * 18;
+                const skipPenalty = skippedSet.has(String(t.id)) ? 25 : 0;
+                return { track: t, rankScore: t.score * 0.75 + noveltyBonus - skipPenalty - idx * 0.001 };
+            })
             .sort((a, b) => b.rankScore - a.rankScore)
             .map(item => item.track)
             .slice(0, 18);
@@ -214,21 +243,22 @@ const SpotifyEngine = (() => {
     function getNextAutoplayTrack(currentTrack, pool, excludeIds = new Set()) {
         if (!pool || pool.length === 0) return null;
         const currentFeat = currentTrack ? deriveAcousticFeatures(currentTrack) : tasteProfile.acousticPreferences;
+        const skippedSet = new Set((tasteProfile.skippedTracks || []).map(s => String(s.id)));
         
-        const candidates = pool.filter(t => !excludeIds.has(t.id) && (!currentTrack || t.id !== currentTrack.id));
-        if (candidates.length === 0) return pool[Math.floor(Math.random() * pool.length)];
+        const candidates = pool.filter(t => t && !excludeIds.has(t.id) && (!currentTrack || t.id !== currentTrack.id));
+        if (candidates.length === 0) {
+            return pool.find(t => t && (!currentTrack || t.id !== currentTrack.id)) || pool[0];
+        }
 
-        candidates.sort((a, b) => {
-            const featA = deriveAcousticFeatures(a);
-            const featB = deriveAcousticFeatures(b);
-            const simA = calculateAcousticSimilarity(featA, currentFeat);
-            const simB = calculateAcousticSimilarity(featB, currentFeat);
-            return simB - simA;
+        const scored = candidates.map((cand, idx) => {
+            const feat = deriveAcousticFeatures(cand);
+            const sim = calculateAcousticSimilarity(feat, currentFeat);
+            const skipPenalty = skippedSet.has(String(cand.id)) ? 0.35 : 0;
+            return { track: cand, score: sim - skipPenalty - idx * 0.0001 };
         });
+        scored.sort((a, b) => b.score - a.score);
 
-        // Top 3 with 80% exploitation and 20% exploration
-        const pickIndex = Math.random() < 0.8 ? 0 : Math.min(candidates.length - 1, Math.floor(Math.random() * 3));
-        return candidates[pickIndex];
+        return scored[0] ? scored[0].track : candidates[0];
     }
 
     return {

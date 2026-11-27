@@ -17,12 +17,15 @@ function getCatalogTracks() {
         }
         if (data) {
             const seen = new Set();
+            const seenNorm = new Set();
             for (const [lang, tfMap] of Object.entries(data.charts || {})) {
                 for (const [tf, list] of Object.entries(tfMap || {})) {
                     if (Array.isArray(list)) {
                         for (const t of list) {
-                            if (t && t.id && !seen.has(t.id)) {
+                            const normKey = `${String(t?.title || '').toLowerCase().trim()}::${String(t?.artist || '').toLowerCase().split(/[,&]/)[0].trim()}`;
+                            if (t && t.id && !seen.has(t.id) && !seenNorm.has(normKey)) {
                                 seen.add(t.id);
+                                seenNorm.add(normKey);
                                 _catalogTracks.push({
                                     id: String(t.id),
                                     title: t.title,
@@ -56,6 +59,33 @@ const https = require('https');
 const UPSTREAM_HOST = 'backend.listenfree.in';
 const SEARCH_CACHE = new Map();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+function cleanDisplayText(str) {
+    if (typeof str !== 'string') return '';
+    let s = str;
+    if (s.includes('&')) {
+        const entityMap = {
+            '&amp;': '&',
+            '&lt;': '<',
+            '&gt;': '>',
+            '&quot;': '"',
+            '&#39;': "'",
+            '&#039;': "'",
+            '&apos;': "'",
+            '&nbsp;': ' '
+        };
+        s = s.replace(/&(amp|lt|gt|quot|apos|nbsp|#0*39);/gi, (m) => entityMap[m.toLowerCase()] || m)
+            .replace(/&#(\d+);/g, (_, code) => {
+                const n = parseInt(code, 10);
+                return Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : _;
+            })
+            .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+                const n = parseInt(hex, 16);
+                return Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : _;
+            });
+    }
+    return s.replace(/\s*@@+\s*/g, ' ').replace(/\s+/g, ' ').trim();
+}
 
 const LANGUAGES = [
     'tamil', 'hindi', 'telugu', 'malayalam', 'kannada', 
@@ -118,7 +148,9 @@ function fetchHttps(path, timeoutMs = 3500) {
 
 function normalize(str) {
     if (!str || typeof str !== 'string') return '';
-    return str
+    return cleanDisplayText(str)
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase()
         .replace(/[^\w\s]/gi, '')
         .replace(/\s+/g, ' ')
@@ -169,6 +201,7 @@ function phonetics(str) {
 function parseQuery(raw) {
     let clean = (raw || '').replace(/["'`“”‘’()[\]]/g, ' ').replace(/\s+/g, ' ').trim();
     let detectedLang = null;
+    let explicitLanguage = false;
     let detectedEra = null;
     let entityHint = null;
     let isRemix = false;
@@ -192,6 +225,7 @@ function parseQuery(raw) {
         const regex = new RegExp(`\\b${l}\\b`, 'i');
         if (regex.test(clean)) {
             detectedLang = l;
+            explicitLanguage = true;
             clean = clean.replace(regex, '').trim();
             break;
         }
@@ -261,6 +295,7 @@ function parseQuery(raw) {
         raw: raw,
         cleanText: clean || raw,
         language: detectedLang,
+        explicitLanguage,
         era: detectedEra,
         entityHint: entityHint,
         artistHint: artistHint,
@@ -363,26 +398,21 @@ function normalizeSong(raw) {
     const art = raw.image?.[2]?.url || raw.image?.[1]?.url || raw.image?.[0]?.url || 
                 (Array.isArray(raw.image) ? raw.image[0]?.url : raw.image) || '';
 
-    const title = (raw.name || raw.title || 'Studio Song')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>');
+    const title = cleanDisplayText(raw.name || raw.title || 'Studio Song') || 'Studio Song';
 
     let primaryArtists = [];
     if (raw.artists?.primary && Array.isArray(raw.artists.primary)) {
-        primaryArtists = raw.artists.primary.map(a => typeof a === 'string' ? a : (a.name || '')).filter(Boolean);
+        primaryArtists = raw.artists.primary.map(a => cleanDisplayText(typeof a === 'string' ? a : (a.name || ''))).filter(Boolean);
     } else if (raw.more_info?.primary_artists) {
-        primaryArtists = String(raw.more_info.primary_artists).split(',').map(s => s.trim()).filter(Boolean);
+        primaryArtists = String(raw.more_info.primary_artists).split(',').map(s => cleanDisplayText(s)).filter(Boolean);
     } else if (raw.more_info?.singers) {
-        primaryArtists = String(raw.more_info.singers).split(',').map(s => s.trim()).filter(Boolean);
+        primaryArtists = String(raw.more_info.singers).split(',').map(s => cleanDisplayText(s)).filter(Boolean);
     } else if (raw.artist) {
-        primaryArtists = [raw.artist];
+        primaryArtists = [cleanDisplayText(raw.artist)].filter(Boolean);
     } else if (raw.artists && Array.isArray(raw.artists)) {
-        primaryArtists = raw.artists.map(a => typeof a === 'string' ? a : (a.name || '')).filter(Boolean);
+        primaryArtists = raw.artists.map(a => cleanDisplayText(typeof a === 'string' ? a : (a.name || ''))).filter(Boolean);
     } else if (raw.description) {
-        primaryArtists = [raw.description.split('-')[0].trim()];
+        primaryArtists = [cleanDisplayText(raw.description.split('-')[0])].filter(Boolean);
     }
 
     const cleanArtistString = primaryArtists.length > 0 ? primaryArtists.join(', ') : 'Soundtrack';
@@ -392,10 +422,7 @@ function normalizeSong(raw) {
         year = raw.releaseDate.slice(0, 4);
     }
 
-    const album = (raw.album?.name || raw.album || raw.more_info?.album || 'Single')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&amp;/g, '&');
+    const album = cleanDisplayText(raw.album?.name || raw.album || raw.more_info?.album || 'Single') || 'Single';
 
     const playCount = parseInt(raw.playCount || raw.play_count || 0, 10);
 
@@ -448,15 +475,15 @@ function normalizeAlbum(raw) {
     if (!raw) return null;
     const art = raw.image?.[2]?.url || raw.image?.[1]?.url || raw.image?.[0]?.url || 
                 (Array.isArray(raw.image) ? raw.image[0]?.url : raw.image) || '';
-    const title = (raw.name || raw.title || 'Album').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+    const title = cleanDisplayText(raw.name || raw.title || 'Album') || 'Album';
     
     let artists = [];
     if (raw.artists?.primary && Array.isArray(raw.artists.primary)) {
-        artists = raw.artists.primary.map(a => a.name).filter(Boolean);
+        artists = raw.artists.primary.map(a => cleanDisplayText(a.name)).filter(Boolean);
     } else if (raw.artist) {
-        artists = [raw.artist];
+        artists = [cleanDisplayText(raw.artist)].filter(Boolean);
     } else if (Array.isArray(raw.artists)) {
-        artists = raw.artists.map(a => typeof a === 'string' ? a : (a.name || '')).filter(Boolean);
+        artists = raw.artists.map(a => cleanDisplayText(typeof a === 'string' ? a : (a.name || ''))).filter(Boolean);
     }
     if (artists.length === 0) artists = ['Soundtrack'];
 
@@ -467,7 +494,7 @@ function normalizeAlbum(raw) {
         id: String(raw.id || ''),
         type: 'album',
         title: title,
-        artist: artists.join(', ') || raw.artist || 'Soundtrack',
+        artist: artists.join(', ') || cleanDisplayText(raw.artist) || 'Soundtrack',
         artists: artists,
         primaryArtist: artists[0] || 'Soundtrack',
         album: title,
@@ -485,7 +512,7 @@ function normalizeArtist(raw) {
     if (!raw) return null;
     const art = raw.image?.[2]?.url || raw.image?.[1]?.url || raw.image?.[0]?.url || 
                 (Array.isArray(raw.image) ? raw.image[0]?.url : raw.image) || '';
-    const name = (raw.name || raw.title || 'Artist').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+    const name = cleanDisplayText(raw.name || raw.title || 'Artist') || 'Artist';
 
     return {
         id: String(raw.id || ''),
@@ -495,7 +522,7 @@ function normalizeArtist(raw) {
         artists: [name],
         primaryArtist: name,
         artwork: art,
-        role: raw.role || 'Artist',
+        role: cleanDisplayText(raw.role || 'Artist') || 'Artist',
         popularity: 100
     };
 }
@@ -509,12 +536,14 @@ function calcItemScore(item, parsed) {
     const itemLang = (item.language || '').toLowerCase();
     const itemYear = parseInt(item.year, 10) || 0;
 
-    if (titleNorm === qNorm || titleNorm === (qNorm + 'an') || (qNorm.endsWith('an') && titleNorm === qNorm.slice(0, -2))) {
+    if (qNorm && (titleNorm === qNorm || titleNorm === (qNorm + 'an') || (qNorm.endsWith('an') && titleNorm === qNorm.slice(0, -2)))) {
+        score += 175;
+    } else if (qNorm && (titleNorm.startsWith(qNorm + ' ') || titleNorm === qNorm)) {
+        score += 140;
+    } else if (qNorm && titleNorm.startsWith(qNorm)) {
         score += 110;
-    } else if (titleNorm.startsWith(qNorm)) {
-        score += 75;
-    } else if (titleNorm.includes(qNorm)) {
-        score += 50;
+    } else if (qNorm && titleNorm.includes(qNorm)) {
+        score += 55;
     }
 
     // Phonetic similarity scoring (transliteration invariant)
@@ -609,12 +638,15 @@ function calcItemScore(item, parsed) {
     }
 
     if (parsed.language) {
+        const isStrongTitleMatch = qNorm && (titleNorm === qNorm || titleNorm.startsWith(qNorm + ' ') || titleNorm.startsWith(qNorm));
         if (itemLang === parsed.language || itemLang.includes(parsed.language)) {
             score += 50;
-        } else if (parsed.language === 'english' && itemLang && itemLang !== 'english') {
-            score -= 120;
-        } else if (itemLang && itemLang !== 'unknown' && itemLang !== 'english') {
-            score -= 100;
+        } else if (parsed.explicitLanguage && !isStrongTitleMatch) {
+            if (parsed.language === 'english' && itemLang && itemLang !== 'english') {
+                score -= 120;
+            } else if (itemLang && itemLang !== 'unknown' && itemLang !== 'english') {
+                score -= 100;
+            }
         }
     }
 
@@ -672,11 +704,11 @@ function normalizePlaylist(p) {
         artwork = p.image;
     }
     const songCount = parseInt(p.songCount || p.trackCount || p.count || p.more_info?.song_count || '0', 10);
-    const creator = (p.firstname ? `${p.firstname} ${p.lastname || ''}`.trim() : (p.creator || p.subtitle || p.headerDesc || 'Curated Playlist')).replace(/&amp;/g, '&');
+    const creator = cleanDisplayText(p.firstname ? `${p.firstname} ${p.lastname || ''}`.trim() : (p.creator || p.subtitle || p.headerDesc || 'Curated Playlist')) || 'Curated Playlist';
     return {
         id: String(p.id),
         type: 'playlist',
-        title: (p.name || p.title || '').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&'),
+        title: cleanDisplayText(p.name || p.title || ''),
         creator: creator,
         subtitle: `Playlist • ${creator}`,
         trackCount: songCount,
@@ -827,12 +859,15 @@ async function searchAll(rawQuery, limit = 30, targetLang = '') {
     }
 
     // Score all items
+    const qNormSearch = normalize(parsed.cleanText);
     const scoredSongs = Array.from(songMap.values()).map(item => {
         item.score = calcItemScore(item, parsed);
         if (effectiveLang) {
             const itemLang = (item.language || '').toLowerCase();
-            if (itemLang === effectiveLang) item.score += 60;
-            else if (itemLang && itemLang !== 'unknown' && itemLang !== 'english') item.score -= 80;
+            const itemTNorm = normalize(item.title || '');
+            const isExactOrPrefix = qNormSearch && (itemTNorm === qNormSearch || itemTNorm.startsWith(qNormSearch + ' ') || itemTNorm.startsWith(qNormSearch));
+            if (itemLang === effectiveLang) item.score += 45;
+            else if (!isExactOrPrefix && parsed.explicitLanguage && itemLang && itemLang !== 'unknown' && itemLang !== 'english') item.score -= 60;
         }
         return item;
     });
@@ -842,7 +877,7 @@ async function searchAll(rawQuery, limit = 30, targetLang = '') {
         if (effectiveLang) {
             const itemLang = (item.language || '').toLowerCase();
             if (itemLang === effectiveLang) item.score += 60;
-            else if (itemLang && itemLang !== 'unknown' && itemLang !== 'english') item.score -= 80;
+            else if (parsed.explicitLanguage && itemLang && itemLang !== 'unknown' && itemLang !== 'english') item.score -= 80;
         }
         if (item.trackCount > 1) item.score += 20;
         return item;
@@ -875,35 +910,67 @@ async function searchAll(rawQuery, limit = 30, targetLang = '') {
         dedupedSongs.push(best);
     }
 
-    // Inject verified catalog tracks (e.g. Beggin' by Madcon)
+    // Inject verified catalog tracks ONLY when tokens match genuine words (never partial substring collisions like "fa" inside "khalifa"/"faheem")
     try {
         const catalog = getCatalogTracks();
         const qClean = normalize(parsed.cleanText);
         const qTokens = qClean.split(' ').filter(w => w.length > 1);
+        const existingKeys = new Set(dedupedSongs.map(s => {
+            const ct = normalize(s.title.replace(/\s*\(From\s+[^)]+\)/gi, '').replace(/\s*-\s*From\s+[^"']+/gi, ''));
+            const la = normalize((s.artists?.[0] || s.primaryArtist || s.artist || '').split(/[,&]/)[0]);
+            return `${ct}::${la}`;
+        }));
+        const existingIds = new Set(dedupedSongs.map(s => String(s.id)));
+
         if (qTokens.length > 0) {
             for (const cat of catalog) {
-                const cStr = normalize(`${cat.title} ${cat.artist} ${cat.album}`);
-                if (qTokens.every(tok => cStr.includes(tok))) {
-                    const normCat = normalizeSong({
-                        id: cat.id,
-                        title: cat.title,
-                        name: cat.title,
-                        artist: cat.artist,
-                        primaryArtists: cat.artist,
-                        album: cat.album,
-                        duration: cat.duration,
-                        language: cat.language,
-                        image: cat.image || cat.artwork,
-                        media_preview_url: cat.streamUrl,
-                        streamUrl: cat.streamUrl,
-                        downloadUrl: [{ quality: '320kbps', url: cat.streamUrl }]
-                    });
-                    if (normCat) {
-                        normCat.score = 9999;
-                        normCat.streamUrl = cat.streamUrl;
-                        dedupedSongs.unshift(normCat);
+                const cTitle = normalize(cat.title || '');
+                const cArtist = normalize(cat.artist || '');
+                const cAlbum = normalize(cat.album || '');
+                const cStr = `${cTitle} ${cArtist} ${cAlbum}`.trim();
+                const cWords = cStr.split(/\s+/).filter(Boolean);
+
+                // Count-preserving word match: e.g. "fa fa" must match >=2 distinct word positions or full phrase
+                const remainingWords = [...cWords];
+                let allTokensMatched = true;
+                for (const tok of qTokens) {
+                    const matchIdx = remainingWords.findIndex(w => w === tok || (tok.length >= 3 && w.startsWith(tok)));
+                    if (matchIdx === -1) {
+                        allTokensMatched = false;
+                        break;
                     }
+                    remainingWords.splice(matchIdx, 1);
                 }
+                const phraseMatched = qClean.length >= 3 && (cTitle === qClean || cTitle.startsWith(qClean + ' ') || (cArtist && `${cTitle} ${cArtist}`.includes(qClean)));
+                if (!allTokensMatched && !phraseMatched) continue;
+
+                const normCat = normalizeSong({
+                    id: cat.id,
+                    title: cat.title,
+                    name: cat.title,
+                    artist: cat.artist,
+                    primaryArtists: cat.artist,
+                    album: cat.album,
+                    duration: cat.duration,
+                    language: cat.language,
+                    image: cat.image || cat.artwork,
+                    media_preview_url: cat.streamUrl,
+                    streamUrl: cat.streamUrl,
+                    downloadUrl: [{ quality: '320kbps', url: cat.streamUrl }]
+                });
+                if (!normCat) continue;
+
+                const ct = normalize(normCat.title.replace(/\s*\(From\s+[^)]+\)/gi, '').replace(/\s*-\s*From\s+[^"']+/gi, ''));
+                const la = normalize((normCat.artists?.[0] || normCat.primaryArtist || normCat.artist || '').split(/[,&]/)[0]);
+                const catKey = `${ct}::${la}`;
+                if (existingIds.has(String(normCat.id)) || existingKeys.has(catKey)) continue;
+
+                normCat.score = calcItemScore(normCat, parsed) + 25;
+                normCat.isCatalogVerified = true;
+                normCat.streamUrl = cat.streamUrl;
+                existingIds.add(String(normCat.id));
+                existingKeys.add(catKey);
+                dedupedSongs.push(normCat);
             }
         }
     } catch (e) {
@@ -911,7 +978,7 @@ async function searchAll(rawQuery, limit = 30, targetLang = '') {
     }
 
     const sorter = (a, b) => (b.score - a.score) || (b.popularity - a.popularity) || a.title.localeCompare(b.title);
-        if (!parsed.filters.isKaraoke) {
+    if (!parsed.filters.isKaraoke) {
         dedupedSongs = dedupedSongs.filter(s => {
             const str = `${s.title || ""} ${s.artist || ""} ${s.album || ""}`.toLowerCase();
             return !/karaoke|instrumental|minus\s*one|party\s*tyme|prosource|ameritz|serene\s*songs|made\s*pop|backing\s*version|tribute\s*version/i.test(str);
@@ -921,11 +988,14 @@ async function searchAll(rawQuery, limit = 30, targetLang = '') {
     scoredAlbums.sort((a, b) => ((b.trackCount > 1 ? 1 : 0) - (a.trackCount > 1 ? 1 : 0)) || (b.score - a.score) || (b.popularity - a.popularity));
     scoredArtists.sort(sorter);
 
-    // If targetLang is Tamil and we have Tamil items, filter strictly for Tamil (unless international/English query)
+    // If targetLang is Tamil, prefer Tamil items while preserving exact/prefix normalized title matches across languages (e.g. FA FA -> FA FA FA)
     if (langKey === 'tamil' && effectiveLang === 'tamil') {
+        const qNormProtect = normalize(parsed.cleanText);
         const tamilSongs = dedupedSongs.filter(s => {
             const l = (s.language || '').toLowerCase();
-            return l === 'tamil' || l === 'unknown';
+            const tNorm = normalize(s.title || '');
+            const isExactOrPrefix = qNormProtect.length >= 2 && (tNorm === qNormProtect || tNorm.startsWith(qNormProtect + ' ') || tNorm.startsWith(qNormProtect));
+            return l === 'tamil' || l === 'unknown' || !l || isExactOrPrefix;
         });
         if (tamilSongs.length >= 3) {
             dedupedSongs = tamilSongs;
@@ -942,10 +1012,7 @@ async function searchAll(rawQuery, limit = 30, targetLang = '') {
 
     // Determine Top Result (Spotify-Grade)
     let topResult = null;
-    const catalogMatch = dedupedSongs.find(s => s.score >= 9000);
-    if (catalogMatch) {
-        topResult = catalogMatch;
-    } else if (parsed.entityHint === 'artist' && scoredArtists.length > 0) {
+    if (parsed.entityHint === 'artist' && scoredArtists.length > 0) {
         topResult = scoredArtists[0];
     } else if (parsed.entityHint === 'album' && scoredAlbums.length > 0) {
         topResult = scoredAlbums[0];
@@ -1117,5 +1184,7 @@ module.exports = {
     normalizeSong,
     normalizeAlbum,
     normalizeArtist,
-    phonetics
+    phonetics,
+    cleanDisplayText,
+    normalize
 };

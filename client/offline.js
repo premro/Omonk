@@ -491,9 +491,14 @@ async function savePlaylistsToDB(playlists) {
                         title: t.title || 'Untitled',
                         artist: (t.artist && t.artist !== 'undefined') ? t.artist : (t.primaryArtist || 'Unknown Artist'),
                         album: t.album || '',
+                        language: t.language || '',
+                        era: t.era || '',
                         duration: t.duration || 210,
+                        durationEstimated: Boolean(t.durationEstimated),
                         artwork: t.artwork || t.image || '',
                         image: t.image || t.artwork || '',
+                        artworkSource: t.artworkSource || '',
+                        resolvedId: t.resolvedId || '',
                         spotifyId: t.spotifyId || '',
                         youtubeId: t.youtubeId || '',
                         quality: t.quality || 'FLAC / 320kbps Hi-Fi'
@@ -519,12 +524,13 @@ async function getOfflineTrackBlobUrl(trackId) {
     if (!record || !record.audioBlob) return null;
 
     const tid = String(trackId);
-    const activeAudioSrc = (typeof window !== 'undefined' && window.AudioPlayer && window.AudioPlayer.audio)
-        ? (window.AudioPlayer.audio.src || '')
-        : '';
+    const activePlayer = (typeof window !== 'undefined' && window.AudioPlayer) ? window.AudioPlayer : null;
+    const activeAudioSrc = activePlayer?.audio?.src || '';
+    const activeCurrentSrc = activePlayer?.audio?.currentSrc || '';
+    const prefetchedSrc = activePlayer?._prefetchedUrl || '';
     if (_activeBlobUrls.has(tid)) {
         const prevBlobUrl = _activeBlobUrls.get(tid);
-        if (prevBlobUrl && prevBlobUrl === activeAudioSrc) {
+        if (prevBlobUrl && (prevBlobUrl === activeAudioSrc || prevBlobUrl === activeCurrentSrc || prevBlobUrl === prefetchedSrc)) {
             return prevBlobUrl;
         }
         try { URL.revokeObjectURL(prevBlobUrl); } catch (e) {}

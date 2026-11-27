@@ -32,6 +32,13 @@ const server = http.createServer((req, res) => {
         return apiHandler(req, res);
     }
 
+    // Vercel Edge Analytics / Speed Insights scripts are injected by Vercel in production;
+    // return an empty no-op script locally instead of falling back to index.html.
+    if (pathname.startsWith('/_vercel/')) {
+        res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8' });
+        return res.end('');
+    }
+
     // Serve static client files
     let relPath = pathname === '/' || pathname === '/app' || pathname === '/app/' ? 'index.html' : pathname;
     if (relPath.startsWith('/app/')) relPath = relPath.slice(5);

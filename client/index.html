@@ -819,6 +819,19 @@
                 navigator.serviceWorker.register('./sw.js?v=8.19.13').then((reg) => {
                     console.log('[PWA] Service Worker registered:', reg.scope);
                     reg.update().catch(() => {});
+                    if (reg.waiting && navigator.serviceWorker.controller) {
+                        const isPlayingWaiting = Boolean(
+                            window.AudioPlayer &&
+                            (window.AudioPlayer.isPlaying || (window.AudioPlayer.audio && !window.AudioPlayer.audio.paused))
+                        );
+                        if (isPlayingWaiting) {
+                            if (typeof window.showUpdateAvailableUI === 'function') {
+                                window.showUpdateAvailableUI('8.19.13');
+                            }
+                        } else {
+                            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                        }
+                    }
                     reg.addEventListener('updatefound', () => {
                         const newWorker = reg.installing;
                         if (newWorker) {

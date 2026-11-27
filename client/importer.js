@@ -8,6 +8,16 @@ class PlaylistImporter {
         this.loadPlaylists();
     }
 
+    decodeImportText(str) {
+        if (!str || typeof str !== 'string') return '';
+        let cleaned = str.replace(/@@+/g, ' ');
+        if (cleaned.includes('&')) {
+            const entities = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&#039;': "'", '&apos;': "'", '&#x27;': "'", '&nbsp;': ' ' };
+            cleaned = cleaned.replace(/&(?:amp|lt|gt|quot|apos|nbsp|#0?39|#x27);/gi, m => entities[m.toLowerCase()] || m);
+        }
+        return cleaned.replace(/\s{2,}/g, ' ').trim();
+    }
+
     getStorageKey() {
         if (window.ProfileManager && window.ProfileManager.getStorageKey) {
             return window.ProfileManager.getStorageKey('playlists');
@@ -183,18 +193,28 @@ class PlaylistImporter {
         if (!rawTracks || rawTracks.length === 0) {
             throw new Error('No tracks found in this playlist. Please ensure the playlist is public.');
         }
-        const tracks = rawTracks.map((t, idx) => ({
-            id: t.id || `sp_tr_${Date.now()}_${idx}`,
-            spotifyId: t.spotifyId || '',
-            title: t.title,
-            artist: t.artist,
-            album: t.album || (data.type === 'album' ? data.title : '') || '',
-            language: t.language || '',
-            duration: t.duration || 210,
-            artwork: t.artwork || data.artwork || '',
-            streamUrl: t.streamUrl || '',
-            quality: t.quality || 'FLAC / 320kbps Hi-Fi'
-        }));
+        const playlistCover = data.artwork || '';
+        const tracks = rawTracks.map((t, idx) => {
+            const trackArt = t.artwork || t.image || '';
+            const albumArt = t.albumArtwork || '';
+            const bestArt = trackArt || albumArt || playlistCover || '';
+            const artSource = t.artworkSource || (trackArt ? 'track' : (albumArt ? 'album' : (playlistCover ? 'playlist_fallback' : 'fallback')));
+            return {
+                id: t.id || `sp_tr_${Date.now()}_${idx}`,
+                spotifyId: t.spotifyId || '',
+                resolvedId: t.resolvedId || '',
+                title: this.decodeImportText(t.title || ''),
+                artist: this.decodeImportText(t.artist || ''),
+                album: this.decodeImportText(t.album || (data.type === 'album' ? data.title : '') || ''),
+                language: t.language || '',
+                duration: t.duration || 210,
+                artwork: bestArt,
+                image: bestArt,
+                artworkSource: artSource,
+                streamUrl: t.streamUrl || '',
+                quality: t.quality || 'FLAC / 320kbps Hi-Fi'
+            };
+        });
 
         // If single track import, pre-resolve lossless stream immediately
         if (tracks.length === 1 && !tracks[0].streamUrl) {
@@ -207,8 +227,12 @@ class PlaylistImporter {
                     if (resJson.success && resJson.track && resJson.track.streamUrl) {
                         tracks[0].streamUrl = resJson.track.streamUrl;
                         if (resJson.track.duration) tracks[0].duration = resJson.track.duration;
-                        if (!tracks[0].album && resJson.track.album) tracks[0].album = resJson.track.album;
-                        if (resJson.track.artwork && !resJson.track.artwork.includes('default_')) tracks[0].artwork = resJson.track.artwork;
+                        if (!tracks[0].album && resJson.track.album) tracks[0].album = this.decodeImportText(resJson.track.album);
+                        if (resJson.track.artwork && !resJson.track.artwork.includes('default_') && !resJson.track.artwork.includes('omonk_logo')) {
+                            tracks[0].artwork = resJson.track.artwork;
+                            tracks[0].image = resJson.track.artwork;
+                            tracks[0].artworkSource = 'omonk_track';
+                        }
                     }
                 }
             } catch (e) {}
@@ -216,17 +240,112 @@ class PlaylistImporter {
 
         const newPlaylist = {
             id: `pl_sp_${Date.now()}`,
-            name: data.title || 'Curated Playlist',
+            name: this.decodeImportText(data.title || 'Curated Playlist'),
             source: 'Curated',
-            artwork: data.artwork || (tracks[0] ? tracks[0].artwork : ''),
+            sourceUrl: url,
+            artwork: playlistCover || (tracks[0] ? tracks[0].artwork : ''),
             tracks: tracks,
+            _importReport: {
+                skippedCount: Number(data.skippedCount || 0),
+                skippedTracks: Array.isArray(data.skippedTracks) ? data.skippedTracks : [],
+                totalAttempted: Number(data.totalAttempted || tracks.length)
+            },
             createdAt: Date.now()
         };
 
         this.playlists.unshift(newPlaylist);
         this.savePlaylists();
-        if (onProgress) onProgress(100, `Imported ${newPlaylist.tracks.length} tracks!`);
+        const skippedMsg = newPlaylist._importReport.skippedCount > 0
+            ? ` (${newPlaylist._importReport.skippedCount} unavailable skipped)`
+            : '';
+        if (onProgress) onProgress(100, `Imported ${newPlaylist.tracks.length} tracks!${skippedMsg}`);
         return newPlaylist;
+    }
+
+    async repairPlaylistArtwork(playlistId, { force = false, onProgress = null } = {}) {
+        const pl = this.getPlaylistById(playlistId);
+        if (!pl || !Array.isArray(pl.tracks) || pl.tracks.length === 0) {
+            return { updated: 0, total: 0, playlist: pl || null };
+        }
+        const cover = (pl.artwork || pl.coverArt || pl.image || '').trim();
+        const artFreq = new Map();
+        pl.tracks.forEach(tr => {
+            const a = (tr?.artwork || tr?.image || '').trim();
+            if (a) artFreq.set(a, (artFreq.get(a) || 0) + 1);
+        });
+        const needsRepairIndices = [];
+        pl.tracks.forEach((tr, idx) => {
+            if (!tr || !tr.title) return;
+            const art = (tr.artwork || tr.image || '').trim();
+            const isSharedCover = Boolean((cover && art === cover && pl.tracks.length > 1) || (art && (artFreq.get(art) || 0) > 1));
+            const isFallback = !art || art.includes('icon-512') || art.includes('default_') || art.includes('omonk_logo') || art.includes('unsplash.com') || art.includes('/playlist');
+            if (force || isSharedCover || isFallback || tr.artworkSource === 'playlist_fallback' || tr.artworkSource === 'playlist_cover' || tr.artworkSource === 'fallback') {
+                needsRepairIndices.push(idx);
+            }
+        });
+
+        if (needsRepairIndices.length === 0) {
+            if (onProgress) onProgress(100, 'All tracks already have individual artwork.');
+            return { updated: 0, total: pl.tracks.length, playlist: pl };
+        }
+
+        const prefix = window.API_PREFIX || '';
+        let updatedCount = 0;
+        const batchSize = 50;
+        for (let b = 0; b < needsRepairIndices.length; b += batchSize) {
+            const batchIndices = needsRepairIndices.slice(b, b + batchSize);
+            const batchTracks = batchIndices.map(idx => {
+                const tr = pl.tracks[idx];
+                return {
+                    id: tr.id,
+                    spotifyId: tr.spotifyId || '',
+                    youtubeId: tr.youtubeId || '',
+                    title: tr.title,
+                    artist: tr.artist || '',
+                    album: tr.album || '',
+                    artwork: tr.artwork || tr.image || ''
+                };
+            });
+            try {
+                if (onProgress) {
+                    const pct = Math.min(95, Math.round(((b + batchIndices.length) / needsRepairIndices.length) * 90) + 5);
+                    onProgress(pct, `Refreshing individual track artwork (${b + 1}-${b + batchIndices.length} of ${needsRepairIndices.length})...`);
+                }
+                const resp = await fetch(`${prefix}/api/import/repair-artwork`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tracks: batchTracks, playlistCover: cover, force: Boolean(force) })
+                });
+                if (resp.ok) {
+                    const json = await resp.json();
+                    const repaired = Array.isArray(json.tracks) ? json.tracks : [];
+                    batchIndices.forEach((origIdx, rIdx) => {
+                        const existing = pl.tracks[origIdx];
+                        const rep = repaired[rIdx];
+                        if (!existing || !rep) return;
+                        const newArt = (rep.artwork || rep.image || '').trim();
+                        if (newArt && newArt !== existing.artwork && (!cover || newArt !== cover || !existing.artwork)) {
+                            // Preserve id, likes, user order, custom title/artist edits; update artwork safely
+                            existing.artwork = newArt;
+                            existing.image = newArt;
+                            if (rep.artworkSource) existing.artworkSource = rep.artworkSource;
+                            if (!existing.album && rep.album) existing.album = this.decodeImportText(rep.album);
+                            if (!existing.language && rep.language) existing.language = rep.language;
+                            if (!existing.resolvedId && rep.resolvedId) existing.resolvedId = rep.resolvedId;
+                            updatedCount++;
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('[Importer] repairPlaylistArtwork batch failed:', e);
+            }
+        }
+
+        if (updatedCount > 0) {
+            this.savePlaylists();
+        }
+        if (onProgress) onProgress(100, updatedCount > 0 ? `Updated artwork for ${updatedCount} tracks!` : 'Artwork check complete.');
+        return { updated: updatedCount, total: pl.tracks.length, playlist: pl };
     }
 
     async importYouTube(url, onProgress = null) {
@@ -242,20 +361,28 @@ class PlaylistImporter {
         }
 
         const rawTracks = data.tracks || [];
-        const tracks = rawTracks.map((t, idx) => ({
-            id: t.id || `yt_tr_${Date.now()}_${idx}`,
-            youtubeId: t.youtubeId || '',
-            title: t.title,
-            artist: t.artist,
-            album: t.album || '',
-            language: t.language || '',
-            era: t.era || '',
-            duration: t.duration || 210,
-            durationEstimated: Boolean(t.durationEstimated),
-            artwork: t.artwork || data.artwork || '',
-            streamUrl: t.streamUrl || '',
-            quality: 'FLAC / 320kbps Hi-Fi'
-        }));
+        const ytCover = data.artwork || '';
+        const tracks = rawTracks.map((t, idx) => {
+            const trackArt = t.artwork || t.image || '';
+            const bestArt = trackArt || ytCover || '';
+            return {
+                id: t.id || `yt_tr_${Date.now()}_${idx}`,
+                youtubeId: t.youtubeId || '',
+                resolvedId: t.resolvedId || '',
+                title: this.decodeImportText(t.title || ''),
+                artist: this.decodeImportText(t.artist || ''),
+                album: this.decodeImportText(t.album || ''),
+                language: t.language || '',
+                era: t.era || '',
+                duration: t.duration || 210,
+                durationEstimated: Boolean(t.durationEstimated),
+                artwork: bestArt,
+                image: bestArt,
+                artworkSource: t.artworkSource || (trackArt ? 'track' : (ytCover ? 'playlist_fallback' : 'fallback')),
+                streamUrl: t.streamUrl || '',
+                quality: 'FLAC / 320kbps Hi-Fi'
+            };
+        });
 
         if (tracks.length === 1 && !tracks[0].streamUrl) {
             try {
@@ -271,14 +398,18 @@ class PlaylistImporter {
                     if (resJson.success && resJson.track && resJson.track.streamUrl) {
                         tracks[0].streamUrl = resJson.track.streamUrl;
                         if (resJson.track.duration) tracks[0].duration = resJson.track.duration;
-                        if (resJson.track.artwork && !resJson.track.artwork.includes('default_')) tracks[0].artwork = resJson.track.artwork;
-                        if (!tracks[0].album && resJson.track.album) tracks[0].album = resJson.track.album;
+                        if (resJson.track.artwork && !resJson.track.artwork.includes('default_') && !resJson.track.artwork.includes('omonk_logo')) {
+                            tracks[0].artwork = resJson.track.artwork;
+                            tracks[0].image = resJson.track.artwork;
+                            tracks[0].artworkSource = 'omonk_track';
+                        }
+                        if (!tracks[0].album && resJson.track.album) tracks[0].album = this.decodeImportText(resJson.track.album);
                     }
                 }
             } catch (e) {}
         }
 
-        let plTitle = data.title;
+        let plTitle = this.decodeImportText(data.title || '');
         if (!plTitle || plTitle.toLowerCase() === 'undefined' || plTitle.toLowerCase() === 'youtube') {
             plTitle = tracks.length === 1 ? tracks[0].title : 'YouTube Imported Playlist';
         }
@@ -288,14 +419,22 @@ class PlaylistImporter {
             name: plTitle,
             source: 'YouTube',
             sourceUrl: url,
-            artwork: data.artwork || (tracks.length > 0 ? tracks[0].artwork : ''),
+            artwork: ytCover || (tracks.length > 0 ? tracks[0].artwork : ''),
             tracks: tracks,
+            _importReport: {
+                skippedCount: Number(data.skippedCount || 0),
+                skippedTracks: Array.isArray(data.skippedTracks) ? data.skippedTracks : [],
+                totalAttempted: Number(data.totalAttempted || tracks.length)
+            },
             createdAt: Date.now()
         };
 
         this.playlists.unshift(newPlaylist);
         this.savePlaylists();
-        if (onProgress) onProgress(100, `Imported ${newPlaylist.tracks.length} track${newPlaylist.tracks.length === 1 ? '' : 's'}!`);
+        const skippedMsg = newPlaylist._importReport.skippedCount > 0
+            ? ` (${newPlaylist._importReport.skippedCount} unavailable skipped)`
+            : '';
+        if (onProgress) onProgress(100, `Imported ${newPlaylist.tracks.length} track${newPlaylist.tracks.length === 1 ? '' : 's'}!${skippedMsg}`);
         return newPlaylist;
     }
 
@@ -362,10 +501,15 @@ class PlaylistImporter {
 
         const newPlaylist = {
             id: `pl_txt_${Date.now()}`,
-            name: playlistName || 'Custom Imported Playlist',
+            name: this.decodeImportText(playlistName || 'Custom Imported Playlist'),
             source: 'Manual / Text',
             artwork: '',
-            tracks: data.tracks || [],
+            tracks: (data.tracks || []).map(t => ({
+                ...t,
+                title: this.decodeImportText(t.title || ''),
+                artist: this.decodeImportText(t.artist || ''),
+                album: this.decodeImportText(t.album || '')
+            })),
             createdAt: Date.now()
         };
 

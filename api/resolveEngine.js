@@ -13,15 +13,30 @@ const JUNK_ARTIST_LABELS = [
     'agi music', 'simca', 'raj video vision'
 ];
 
+function cleanText(str) {
+    if (!str) return '';
+    return typeof searchEngine.cleanDisplayText === 'function'
+        ? searchEngine.cleanDisplayText(String(str))
+        : String(str).replace(/\s*@@+\s*/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeUnicode(str) {
+    return cleanText(str)
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\u2018\u2019]/g, "'")
+        .replace(/[\u201c\u201d]/g, '"');
+}
+
 function normalizeCanonicalTitle(title) {
     if (!title) return '';
-    return String(title)
+    return normalizeUnicode(title)
         .toLowerCase()
-        .replace(/\(from\s+["'\u201c\u201d\u2018\u2019]?.*?["'\u201c\u201d\u2018\u2019]?\)/gi, '')
-        .replace(/\[from\s+["'\u201c\u201d\u2018\u2019]?.*?["'\u201c\u201d\u2018\u2019]?\]/gi, '')
-        .replace(/-\s*from\s+["'\u201c\u201d\u2018\u2019]?.*?["'\u201c\u201d\u2018\u2019]?(?:\s*\([^)]*\))?$/gi, '')
+        .replace(/\(from\s+["']?.*?["']?\)/gi, '')
+        .replace(/\[from\s+["']?.*?["']?\]/gi, '')
+        .replace(/-\s*from\s+["']?.*?["']?(?:\s*\([^)]*\))?$/gi, '')
         .replace(/[\(\[].*?[\)\]]/g, '')
-        .replace(/\b(remastered|re-mastered|remaster|original motion picture soundtrack|ost|full\s*video|full\s*audio|full\s*song|lyrical\s*video|lyrical\s*song|lyric\s*video|lyrical|lyrics?|video\s*song|audio\s*song|official\s*video|official\s*audio|official|video|audio|hd|4k|8k|version|reprise|male|female|duet)\b/gi, '')
+        .replace(/\b(remastered|re-mastered|remaster|original motion picture soundtrack|ost|full\s*video|full\s*audio|full\s*song|lyrical\s*video|lyrical\s*song|lyric\s*video|lyrical|lyrics?|video\s*song|audio\s*song|official\s*video|official\s*audio|official|video|audio|hd|4k|8k|version|reprise|male|female|duet|remix|unplugged|acoustic|slowed|reverb|extended|radio edit|feat\.?|ft\.?|featuring)\b/gi, '')
         .replace(/[^a-z0-9\u0B80-\u0BFF\u0900-\u097F\u0C00-\u0C7F\u0D00-\u0D7F]/g, '')
         .trim();
 }
@@ -81,15 +96,16 @@ function extractFilmFromTitle(title) {
 
 function cleanResolveTitle(rawTitle) {
     if (!rawTitle) return '';
-    let t = String(rawTitle)
+    let t = normalizeUnicode(rawTitle)
         .replace(/#\S+/g, ' ')
         .replace(/\(\s*from\s+["'][^"']+["']\s*\)/gi, '')
         .replace(/\[\s*from\s+["']?[^"'\]]+["']?\s*\]/gi, '')
         .replace(/\s*[-–—]\s*from\s+["'][^"']+["']/gi, '')
         .replace(/\s*\(\s*from\s+[^)]+\)/gi, '')
         .replace(/\s*\[[^\]]+\]/g, '')
-        .replace(/\s*\((?:feat\.|with|ft\.|featuring|remastered|re-mastered|remaster|radio edit|original mix|single version|deluxe|version|audio|video\s*song|video|lyric\s*video|lyric\s*song|lyric|lyrical\s*video|lyrical\s*song|lyrical|lyrics|visualizer|slowed|reverb|4k|8k|hd|uhd|official|full)[^)]*\)/gi, '')
-        .replace(/\s*[-–—:]\s*(?:remastered|re-mastered|remaster|radio edit|single version|full\s*video|full\s*audio|full\s*song|video\s*song|video|audio\s*song|audio|lyric\s*video|lyric\s*song|lyric|lyrical\s*video|lyrical\s*song|lyrical|lyrics|official\s*video|official\s*audio|official|telugu|tamil|hindi|kannada|malayalam|punjabi|original soundtrack|ost)\b.*$/gi, '')
+        .replace(/\s*\((?:feat\.?|with|ft\.?|featuring|remastered|re-mastered|remaster|radio edit|original mix|single version|deluxe|version|audio|video\s*song|video|lyric\s*video|lyric\s*song|lyric|lyrical\s*video|lyrical\s*song|lyrical|lyrics|visualizer|slowed|reverb|4k|8k|hd|uhd|official|full|ost)[^)]*\)/gi, '')
+        .replace(/\s*[-–—:]\s*(?:remastered|re-mastered|remaster|radio edit|single version|full\s*video|full\s*audio|full\s*song|video\s*song|video|audio\s*song|audio|lyric\s*video|lyric\s*song|lyric|lyrical\s*video|lyrical\s*song|lyrical|lyrics|official\s*video|official\s*audio|official|telugu|tamil|hindi|kannada|malayalam|punjabi|original\s*(?:motion\s*picture\s*)?soundtrack|ost)\b.*$/gi, '')
+        .replace(/\s+(?:feat\.?|ft\.?|featuring)\s+[^-–—(|]+$/gi, '')
         .replace(/\|\s*.*$/, '')
         .replace(/\s*[-–—]\s*(?:telugu|tamil|hindi|kannada|malayalam|punjabi|english)\s*$/gi, '')
         .replace(/\s+/g, ' ')
@@ -536,9 +552,11 @@ async function resolveTrackMatch(params = {}) {
         score: ev.score,
         track: {
             id: matched.id,
-            title: matched.title,
-            artist: matched.artist || matched.primaryArtist || rawArtist,
-            album: matched.album,
+            title: cleanText(matched.title),
+            artist: cleanText(matched.artist || matched.primaryArtist || rawArtist),
+            album: cleanText(matched.album),
+            language: (matched.language || '').toLowerCase(),
+            year: matched.year || '',
             duration: matched.duration,
             artwork: matched.artwork || matched.image,
             image: matched.image || matched.artwork,

@@ -124,6 +124,29 @@ class LyricsManager {
         }
     }
 
+    cleanLyricsText(str) {
+        if (!str || typeof str !== 'string') return '';
+        const map = { '&quot;': '"', '&apos;': "'", '&amp;': '&', '&lt;': '<', '&gt;': '>', '&nbsp;': ' ' };
+        return str
+            .replace(/&(quot|apos|amp|lt|gt|nbsp|#0*39|#\d+|#x[0-9a-f]+);/gi, (m, code) => {
+                const l = m.toLowerCase();
+                if (map[l]) return map[l];
+                if (/^&#0*39;$/i.test(l)) return "'";
+                if (l.startsWith('&#x')) {
+                    const hex = parseInt(code.slice(2), 16);
+                    return Number.isFinite(hex) && hex > 0 && hex <= 0x10ffff ? String.fromCodePoint(hex) : m;
+                }
+                if (l.startsWith('&#')) {
+                    const dec = parseInt(code.slice(1), 10);
+                    return Number.isFinite(dec) && dec > 0 && dec <= 0x10ffff ? String.fromCodePoint(dec) : m;
+                }
+                return m;
+            })
+            .replace(/@@+/g, ' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+    }
+
     parseLRC(lrcString) {
         if (!lrcString || typeof lrcString !== 'string') return [];
         const lines = lrcString.split('\n');
@@ -137,7 +160,7 @@ class LyricsManager {
                 const sec = parseInt(match[2], 10);
                 const ms = match[3] ? parseInt(match[3].padEnd(3, '0').slice(0, 3), 10) : 0;
                 const totalSeconds = min * 60 + sec + ms / 1000;
-                const text = line.replace(timeRegex, '').trim();
+                const text = this.cleanLyricsText(line.replace(timeRegex, '').trim());
                 if (text) {
                     parsed.push({ time: totalSeconds, text });
                 }
@@ -149,6 +172,13 @@ class LyricsManager {
     async loadLyricsForTrack(track) {
         if (!track) return;
         const reqToken = (this._lyricsRequestToken = (this._lyricsRequestToken || 0) + 1);
+        if (this._lyricsAbortController) {
+            try { this._lyricsAbortController.abort(); } catch (e) {}
+        }
+        const abortCtrl = new AbortController();
+        this._lyricsAbortController = abortCtrl;
+        const signal = abortCtrl.signal;
+
         this.currentTrack = track;
         this.currentLyrics = [];
         this.plainLyrics = "";
@@ -168,7 +198,7 @@ class LyricsManager {
             const cached = localStorage.getItem(cacheKey);
             if (cached) {
                 const data = JSON.parse(cached);
-                if (reqToken !== this._lyricsRequestToken) return;
+                if (signal.aborted || reqToken !== this._lyricsRequestToken) return;
                 this.applyFetchedData(data);
                 return;
             }
@@ -179,14 +209,16 @@ class LyricsManager {
         try {
             const langParam = encodeURIComponent(track.language || 'tamil');
             const durParam = Math.round(Number(track.duration) || 0);
-            const res = await fetch(`${prefix}/api/lyrics?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist || '')}&duration=${durParam}&language=${langParam}`);
-            if (reqToken !== this._lyricsRequestToken) return;
+            const res = await fetch(`${prefix}/api/lyrics?title=${encodeURIComponent(this.cleanLyricsText(track.title))}&artist=${encodeURIComponent(this.cleanLyricsText(track.artist || ''))}&duration=${durParam}&language=${langParam}`, { signal });
+            if (signal.aborted || reqToken !== this._lyricsRequestToken) return;
             if (res.ok) {
                 fetchedData = await res.json();
             }
-        } catch (err) {}
+        } catch (err) {
+            if (err && err.name === 'AbortError') return;
+        }
 
-        if (reqToken !== this._lyricsRequestToken) return;
+        if (signal.aborted || reqToken !== this._lyricsRequestToken) return;
         if (fetchedData && (fetchedData.syncedLyrics || fetchedData.plainLyrics || fetchedData.hasDual)) {
             this.applyFetchedData(fetchedData);
             try {
@@ -197,21 +229,21 @@ class LyricsManager {
 
         // Duration-matched auto-apply fallback
         try {
-            const cleanTitle = (track.title || '').replace(/\(.*?\)|\[.*?\]/g, '').trim();
+            const cleanTitle = this.cleanLyricsText(track.title || '').replace(/\(.*?\)|\[.*?\]/g, '').trim();
             const durParam = Math.round(Number(track.duration) || 0);
             const searchQueries = [
-                `${cleanTitle} ${(track.artist || '').split(/[,&]/)[0]}`.trim(),
+                `${cleanTitle} ${this.cleanLyricsText(track.artist || '').split(/[,&]/)[0]}`.trim(),
                 cleanTitle,
                 cleanTitle.replace(/aa/g, 'a').replace(/ee/g, 'i')
             ];
 
             for (const sq of searchQueries) {
-                if (reqToken !== this._lyricsRequestToken) return;
-                const sRes = await fetch(`${prefix}/api/lyrics/search?q=${encodeURIComponent(sq)}&language=${encodeURIComponent(track.language || 'tamil')}&duration=${durParam}`);
-                if (reqToken !== this._lyricsRequestToken) return;
+                if (signal.aborted || reqToken !== this._lyricsRequestToken) return;
+                const sRes = await fetch(`${prefix}/api/lyrics/search?q=${encodeURIComponent(sq)}&language=${encodeURIComponent(track.language || 'tamil')}&duration=${durParam}`, { signal });
+                if (signal.aborted || reqToken !== this._lyricsRequestToken) return;
                 if (!sRes.ok) continue;
                 const sData = await sRes.json();
-                if (reqToken !== this._lyricsRequestToken) return;
+                if (signal.aborted || reqToken !== this._lyricsRequestToken) return;
                 const candidates = (sData.results || []).filter(c => !c.scriptLabel?.startsWith('⚠️'));
                 if (candidates.length > 0) {
                     const chosen = candidates.find(c => (c.syncedLyrics || c.hasSynced) && (durParam === 0 || Math.abs((c.duration || 0) - durParam) <= 10))
@@ -223,9 +255,11 @@ class LyricsManager {
                     }
                 }
             }
-        } catch (e) {}
+        } catch (e) {
+            if (e && e.name === 'AbortError') return;
+        }
 
-        if (reqToken !== this._lyricsRequestToken) return;
+        if (signal.aborted || reqToken !== this._lyricsRequestToken) return;
         this.renderError("No lyrics found for this song.");
     }
 
@@ -289,6 +323,13 @@ class LyricsManager {
         const resultsEl = document.getElementById('lrclibSearchResults');
         if (!resultsEl) return;
 
+        if (this._searchAbortController) {
+            try { this._searchAbortController.abort(); } catch (e) {}
+        }
+        const abortCtrl = new AbortController();
+        this._searchAbortController = abortCtrl;
+        const searchToken = (this._lrclibSearchToken = (this._lrclibSearchToken || 0) + 1);
+
         resultsEl.style.display = 'block';
         resultsEl.innerHTML = '<div style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 13px;"><div class="pulse-loader" style="margin-bottom:6px;"></div>Searching https://lrclib.net/...</div>';
 
@@ -296,8 +337,10 @@ class LyricsManager {
             const prefix = getLyricsApiPrefix();
             const lang = encodeURIComponent(this.currentTrack?.language || '');
             const dur = Math.round(Number(this.currentTrack?.duration) || 0);
-            const res = await fetch(`${prefix}/api/lyrics/search?q=${encodeURIComponent(query)}&language=${lang}&duration=${dur}`);
+            const res = await fetch(`${prefix}/api/lyrics/search?q=${encodeURIComponent(query)}&language=${lang}&duration=${dur}`, { signal: abortCtrl.signal });
+            if (abortCtrl.signal.aborted || searchToken !== this._lrclibSearchToken) return;
             const data = await res.json();
+            if (abortCtrl.signal.aborted || searchToken !== this._lrclibSearchToken) return;
             const list = data.results || [];
 
             if (list.length === 0) {
