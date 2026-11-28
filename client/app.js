@@ -6926,7 +6926,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ================= MULTI-DEVICE AUTO-REFRESH & LIVE UPDATE SYNC =================
-    const CURRENT_APP_VERSION = "8.19.13";
+    const CURRENT_APP_VERSION = "8.19.15";
     let latestServerTimestamp = 0;
     let latestRemoteVersion = null;
     let userDismissedUpdateVersion = null;

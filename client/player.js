@@ -763,9 +763,9 @@ class AudioPlayerEngine {
             }
             const cur = this.getCurrentTrack();
             if (cur) {
-                this.updateMediaSession(cur, !el.paused);
+                this.updateMediaSession(cur, !el.paused, !el.paused);
             }
-            if (this._msNeedsRebind) {
+            if (!el.paused || this._msNeedsRebind) {
                 this._msNeedsRebind = false;
                 this.attachMediaSessionActionHandlers(true);
             }
@@ -1482,9 +1482,9 @@ class AudioPlayerEngine {
             if (this.history.length > 50) this.history.shift();
         }
 
-        // Publish track metadata synchronously while resolving/buffering
+        // Publish track metadata synchronously while resolving/buffering (defer positionState until playback/metadata)
         this.isPlaying = true;
-        this.updateMediaSession(track, true);
+        this.updateMediaSession(track, true, false, true);
         if (this.onPlayStateChange) this.onPlayStateChange(true);
         this._notifyQueueChange();
 
@@ -1577,7 +1577,7 @@ class AudioPlayerEngine {
             }
             this._preloadedForCurrentTrack = false;
             this.ensureAudioSessionType();
-            this.updateMediaSession(track, true, true);
+            this.updateMediaSession(track, true, true, true);
             await this.audio.play();
             if (playToken !== this._playRequestToken) return;
             this._isTrackSwitching = false;
@@ -2049,17 +2049,16 @@ class AudioPlayerEngine {
             };
         }
 
-        // Explicitly clear skip/stop handlers once so iOS & Android Lock Screen keep Previous & Next Track buttons
-        try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch (e) {}
-        try { navigator.mediaSession.setActionHandler('seekforward', null); } catch (e) {}
-        try { navigator.mediaSession.setActionHandler('skipad', null); } catch (e) {}
-        try { navigator.mediaSession.setActionHandler('stop', null); } catch (e) {}
-
         try { navigator.mediaSession.setActionHandler('previoustrack', this._msHandlers.previoustrack); } catch (e) {}
         try { navigator.mediaSession.setActionHandler('nexttrack', this._msHandlers.nexttrack); } catch (e) {}
         try { navigator.mediaSession.setActionHandler('play', this._msHandlers.play); } catch (e) {}
         try { navigator.mediaSession.setActionHandler('pause', this._msHandlers.pause); } catch (e) {}
         try { navigator.mediaSession.setActionHandler('seekto', this._msHandlers.seekto); } catch (e) {}
+        // Explicitly clear skip/stop handlers after transport controls so iOS & Android Lock Screen show Previous/Next instead of +/-10s
+        try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch (e) {}
+        try { navigator.mediaSession.setActionHandler('seekforward', null); } catch (e) {}
+        try { navigator.mediaSession.setActionHandler('skipad', null); } catch (e) {}
+        try { navigator.mediaSession.setActionHandler('stop', null); } catch (e) {}
         this._msHandlersRegistered = true;
     }
 
@@ -2094,7 +2093,7 @@ class AudioPlayerEngine {
         this.syncPositionState(overridePosition);
     }
 
-    updateMediaSession(track, forcePlaying = false, forceMetadata = false) {
+    updateMediaSession(track, forcePlaying = false, forceMetadata = false, skipPositionState = false) {
         if (!track) track = this.getCurrentTrack();
         if (!track) return;
 
@@ -2176,7 +2175,9 @@ class AudioPlayerEngine {
 
             const isCurrentlyPlaying = forcePlaying || (this._isTrackSwitching && this.isPlaying) || (this.audio ? (!this.audio.paused && !this.audio.ended) : this.isPlaying);
             navigator.mediaSession.playbackState = isCurrentlyPlaying ? 'playing' : 'paused';
-            this.syncPositionState(this._isTrackSwitching ? 0 : undefined);
+            if (!skipPositionState) {
+                this.syncPositionState(this._isTrackSwitching ? 0 : undefined);
+            }
         }
     }
 

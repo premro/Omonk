@@ -1,5 +1,5 @@
 {
-  "version": "8.19.13",
-  "releaseDate": "2026-11-27",
+  "version": "8.19.15",
+  "releaseDate": "2026-11-28",
   "description": "v8.19.13: Deterministic Media Session lifecycle, canonical Logo/Home URL routing, resilient SW updates, daily Vercel Hobby chart sync cron with non-reloading manual sync & concurrency lock, Vercel Web Analytics, and SSRF hardening."
 }

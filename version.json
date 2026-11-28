@@ -1,5 +1,5 @@
 {
-  "version": "8.19.13",
+  "version": "8.19.15",
   "releaseDate": "2026-11-27",
   "description": "v8.19.13: Deterministic Media Session lock-screen lifecycle, Next icon SVG fix, canonical Logo/Home URL routing, resilient SW update lifecycle, 2-hour chart sync with cron & single-flight locking, and entity decoding across podcasts/charts."
 }

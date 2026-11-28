@@ -17,13 +17,13 @@
     <meta name="mobile-web-app-capable" content="yes">
     <script>
         (function() {
-            const CURRENT_BUILD = '8.19.13';
+            const CURRENT_BUILD = '8.19.15';
             const storedBuild = localStorage.getItem('omonk_build_v');
             if (storedBuild !== CURRENT_BUILD) {
                 localStorage.setItem('omonk_build_v', CURRENT_BUILD);
                 if ('caches' in window) {
                     caches.keys().then(keys => Promise.all(
-                        keys.filter(k => k !== 'lossless-studio-v8.19.13').map(k => caches.delete(k))
+                        keys.filter(k => k !== 'lossless-studio-v8.19.15').map(k => caches.delete(k))
                     ));
                 }
             }
@@ -785,12 +785,12 @@
     <script src="algorithm.js?v=8.19.13"></script>
     <script src="profile.js?v=8.19.13"></script>
     <script src="vibeEngine.js?v=8.19.13"></script>
-    <script src="player.js?v=8.19.14"></script>
+    <script src="player.js?v=8.19.15"></script>
     <script src="lyrics.js?v=8.19.13"></script>
     <script src="importer.js?v=8.19.13"></script>
     <script src="miniplayer.js?v=8.19.13"></script>
     <script src="pianoRoll.js?v=7.9.0"></script>
-    <script src="app.js?v=8.19.13"></script>
+    <script src="app.js?v=8.19.15"></script>
     <!-- Service Worker Auto-Update & Offline PWA Engine -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -806,7 +806,7 @@
                     );
                     if (isPlayingNow) {
                         if (typeof window.showUpdateAvailableUI === 'function') {
-                            window.showUpdateAvailableUI('8.19.13');
+                            window.showUpdateAvailableUI('8.19.15');
                         }
                         return;
                     }
@@ -816,7 +816,7 @@
                     }
                 });
 
-                navigator.serviceWorker.register('./sw.js?v=8.19.13').then((reg) => {
+                navigator.serviceWorker.register('./sw.js?v=8.19.15').then((reg) => {
                     console.log('[PWA] Service Worker registered:', reg.scope);
                     reg.update().catch(() => {});
                     if (reg.waiting && navigator.serviceWorker.controller) {
@@ -826,7 +826,7 @@
                         );
                         if (isPlayingWaiting) {
                             if (typeof window.showUpdateAvailableUI === 'function') {
-                                window.showUpdateAvailableUI('8.19.13');
+                                window.showUpdateAvailableUI('8.19.15');
                             }
                         } else {
                             reg.waiting.postMessage({ type: 'SKIP_WAITING' });
