@@ -73,8 +73,6 @@ class AudioPlayerEngine {
         this.audio.setAttribute('playsinline', 'true');
         this.audio.setAttribute('webkit-playsinline', 'true');
         this.audio.setAttribute('x-webkit-airplay', 'allow');
-        this.audio.style.display = 'none';
-        this.audio.setAttribute('aria-hidden', 'true');
         if (typeof document !== 'undefined') {
             const attachAudioEl = () => {
                 if (document.body && !this.audio.parentNode) {
@@ -100,7 +98,10 @@ class AudioPlayerEngine {
         */
         this._mediaSessionInitialized = false;
         this._msHandlersRegistered = false;
+        this._msNeedsRebind = false;
+        this._msBoundAfterGesture = false;
         this._preloadInFlight = null;
+        this._preloadForIndex = -1;
         this._isTrackSwitching = false;
         this._resolveAbortController = null;
         this._vibeSeedAbortController = null;
@@ -675,6 +676,10 @@ class AudioPlayerEngine {
         if (this.audioCtx && this.audioCtx.state === 'suspended') {
             this.audioCtx.resume().catch(() => {});
         }
+        if (!this._msBoundAfterGesture) {
+            this._msBoundAfterGesture = true;
+            this.attachMediaSessionActionHandlers(true);
+        }
     }
 
     async recoverStalledOrExpiredStream() {
@@ -689,6 +694,8 @@ class AudioPlayerEngine {
             if (freshUrl && this.getCurrentTrack()?.id === cur.id) {
                 this._isTrackSwitching = true;
                 this.audio.src = freshUrl;
+                this._lastMediaSessionMetaKey = null;
+                this._msNeedsRebind = true;
                 if (resumePos > 0) {
                     this.audio.addEventListener("loadedmetadata", () => {
                         try { this.audio.currentTime = resumePos; } catch (e) {}
@@ -702,6 +709,9 @@ class AudioPlayerEngine {
                 if ("mediaSession" in navigator) {
                     navigator.mediaSession.playbackState = "playing";
                 }
+                if (cur) this.updateMediaSession(cur, true, true);
+                this.attachMediaSessionActionHandlers(true);
+                this._msNeedsRebind = false;
                 this.syncPositionState();
                 if (this.onPlayStateChange) this.onPlayStateChange(true);
             }
@@ -720,8 +730,17 @@ class AudioPlayerEngine {
             this._isTrackSwitching = false;
             this.isPlaying = true;
             this.playStartTime = el.currentTime;
+            this.ensureAudioSessionType();
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.playbackState = el.paused ? 'paused' : 'playing';
+            }
+            if (this._msNeedsRebind) {
+                this._msNeedsRebind = false;
+                this.attachMediaSessionActionHandlers(true);
+            }
+            const cur = this.getCurrentTrack();
+            if (cur) {
+                this.updateMediaSession(cur, !el.paused);
             }
             this.syncPositionState();
             if (this.audioCtx && this.audioCtx.state === 'suspended') {
@@ -738,20 +757,29 @@ class AudioPlayerEngine {
             this._retriedWithProxy = false;
             this._retriedCurrentTrackOnError = false;
             this._stuckCounter = 0;
+            this.ensureAudioSessionType();
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.playbackState = el.paused ? 'paused' : 'playing';
+            }
+            const cur = this.getCurrentTrack();
+            if (cur) {
+                this.updateMediaSession(cur, !el.paused);
+            }
+            if (this._msNeedsRebind) {
+                this._msNeedsRebind = false;
+                this.attachMediaSessionActionHandlers(true);
             }
             this.syncPositionState();
             if (this.onPlayStateChange) this.onPlayStateChange(true);
         });
 
         el.addEventListener('pause', () => {
-            if (this._isTrackSwitching) {
+            if (this._isTrackSwitching || !el.paused) {
                 return;
             }
             this.isPlaying = false;
             if ('mediaSession' in navigator) {
-                navigator.mediaSession.playbackState = el.paused ? 'paused' : 'playing';
+                navigator.mediaSession.playbackState = 'paused';
             }
             this.syncPositionState();
             if (this.onPlayStateChange) this.onPlayStateChange(false);
@@ -763,8 +791,13 @@ class AudioPlayerEngine {
             if (cur && el.duration && Number.isFinite(el.duration) && el.duration > 0) {
                 cur.duration = Math.round(el.duration);
             }
+            const isActive = this.isPlaying || !el.paused;
             if (cur) {
-                this.updateMediaSession(cur, this.isPlaying || !el.paused);
+                this.updateMediaSession(cur, isActive, true);
+            }
+            if (isActive) {
+                this.attachMediaSessionActionHandlers(true);
+                this._msNeedsRebind = false;
             }
             this.syncPositionState();
         });
@@ -890,8 +923,12 @@ class AudioPlayerEngine {
                 this._isTrackSwitching = true;
                 this.isPlaying = true;
                 this.audio.src = handoffSrc;
+                this._lastMediaSessionMetaKey = null;
+                this._msNeedsRebind = true;
                 this.ensureAudioSessionType();
-                this.updateMediaSession(nextTrack, true);
+                this.updateMediaSession(nextTrack, true, true);
+                this.attachMediaSessionActionHandlers(true);
+                this._msNeedsRebind = false;
                 const p = this.audio.play();
                 if (p && typeof p.catch === 'function') {
                     p.catch(e => {
@@ -1019,14 +1056,18 @@ class AudioPlayerEngine {
             document.addEventListener("visibilitychange", () => {
                 const cur = this.getCurrentTrack();
                 if (document.visibilityState === "hidden") {
-                    // Phone screen locked or app backgrounded: keep AudioSession alive and warm next track without re-binding handlers
+                    // Phone screen locked or app backgrounded: keep AudioSession alive and warm next track
                     this.ensureAudioSessionType();
                     if (this.audioCtx && this.audioCtx.state === 'suspended' && this.isPlaying && !this.audio.paused) {
                         this.audioCtx.resume().catch(() => {});
                     }
                     if (cur) {
                         const playingNow = !!(this.audio && !this.audio.paused && !this.audio.ended) || (this._isTrackSwitching && this.isPlaying);
-                        this.updateMediaSession(cur, playingNow);
+                        this.updateMediaSession(cur, playingNow, playingNow);
+                        if (playingNow || this.audio?.src) {
+                            this.attachMediaSessionActionHandlers(true);
+                            this._msNeedsRebind = false;
+                        }
                         this.syncPositionState();
                         this.preloadNextTrackStream();
                     }
@@ -1038,6 +1079,10 @@ class AudioPlayerEngine {
                         const playingNow = !!(this.audio && !this.audio.paused && !this.audio.ended);
                         this.isPlaying = playingNow;
                         this.updateMediaSession(cur, playingNow);
+                        if (playingNow) {
+                            this.attachMediaSessionActionHandlers(true);
+                            this._msNeedsRebind = false;
+                        }
                         this.syncPositionState();
                         if (this.onPlayStateChange) this.onPlayStateChange(playingNow);
                     }
@@ -1159,23 +1204,35 @@ class AudioPlayerEngine {
     }
 
     async preloadNextTrackStream() {
-        if (this._preloadInFlight) return this._preloadInFlight;
+        if (this._preloadInFlight && this._preloadForIndex === this.currentIndex) return this._preloadInFlight;
+        const preloadIndex = this.currentIndex;
+        this._preloadForIndex = preloadIndex;
         const job = (async () => {
             try {
                 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
                 const resolveJobs = [];
+                const targetIndices = new Set();
                 for (const offset of [1, 2, 3, -1]) {
-                    const nextIdx = this.currentIndex + offset;
-                    if (nextIdx >= 0 && nextIdx < this.queue.length) {
-                        const nxt = this.queue[nextIdx];
-                        const isStale = nxt && nxt._resolvedAt && (Date.now() - nxt._resolvedAt > TWO_HOURS_MS);
-                        if (nxt && (!nxt.streamUrl || isStale)) {
-                            resolveJobs.push(this.refreshStreamUrlForTrack(nxt));
-                        }
-                        if (offset === 1 && nxt && nxt.streamUrl && this._prefetchedUrl !== nxt.streamUrl) {
-                            this._prefetchedUrl = nxt.streamUrl;
-                            this._preloadedNextTrack = nxt;
-                        }
+                    const idx = preloadIndex + offset;
+                    if (idx >= 0 && idx < this.queue.length) targetIndices.add(idx);
+                }
+                if (this.repeatMode === 'all' && this.queue.length > 1) {
+                    targetIndices.add(0);
+                    if (preloadIndex === 0) targetIndices.add(this.queue.length - 1);
+                }
+                if (this.isShuffled && this.queue.length > 1) {
+                    const shufIdx = this._pickNextShuffledIndex();
+                    if (shufIdx >= 0 && shufIdx < this.queue.length) targetIndices.add(shufIdx);
+                }
+                for (const nextIdx of targetIndices) {
+                    const nxt = this.queue[nextIdx];
+                    const isStale = nxt && nxt._resolvedAt && (Date.now() - nxt._resolvedAt > TWO_HOURS_MS);
+                    if (nxt && (!nxt.streamUrl || isStale)) {
+                        resolveJobs.push(this.refreshStreamUrlForTrack(nxt));
+                    }
+                    if (nextIdx === preloadIndex + 1 && nxt && nxt.streamUrl && this._prefetchedUrl !== nxt.streamUrl) {
+                        this._prefetchedUrl = nxt.streamUrl;
+                        this._preloadedNextTrack = nxt;
                     }
                 }
                 if (resolveJobs.length > 0) {
@@ -1508,6 +1565,8 @@ class AudioPlayerEngine {
 
         this._isTrackSwitching = true;
         this.audio.src = finalUrl;
+        this._lastMediaSessionMetaKey = null;
+        this._msNeedsRebind = true;
 
         if (this.onTrackChange) this.onTrackChange(track);
         this.savePlaybackState();
@@ -1518,11 +1577,14 @@ class AudioPlayerEngine {
             }
             this._preloadedForCurrentTrack = false;
             this.ensureAudioSessionType();
+            this.updateMediaSession(track, true, true);
             await this.audio.play();
             if (playToken !== this._playRequestToken) return;
             this._isTrackSwitching = false;
             this.isPlaying = true;
-            this.updateMediaSession(track, true);
+            this.updateMediaSession(track, true, true);
+            this.attachMediaSessionActionHandlers(true);
+            this._msNeedsRebind = false;
             this.syncPositionState();
             this.preloadNextTrackStream();
         } catch (playErr) {
@@ -1579,10 +1641,12 @@ class AudioPlayerEngine {
             this.notifyInstancePlaybackStart();
             this.ensureAudioSessionType();
             this.isPlaying = true;
-            if (cur) this.updateMediaSession(cur, true);
+            if (cur) this.updateMediaSession(cur, true, true);
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.playbackState = 'playing';
             }
+            this.attachMediaSessionActionHandlers(true);
+            this._msNeedsRebind = false;
             this.syncPositionState();
             if (this.audioCtx && this.audioCtx.state === 'suspended') {
                 this.audioCtx.resume().catch(() => {});
@@ -1590,6 +1654,9 @@ class AudioPlayerEngine {
             try {
                 await active.play();
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+                if (cur) this.updateMediaSession(cur, true, true);
+                this.attachMediaSessionActionHandlers(true);
+                this._msNeedsRebind = false;
                 this.syncPositionState();
             } catch (e) {
                 console.warn('Playback resume blocked:', e);
@@ -1598,6 +1665,7 @@ class AudioPlayerEngine {
                 this.syncPositionState();
             }
         } else {
+            ++this._playRequestToken;
             this._isTrackSwitching = false;
             active.pause();
             this.isPlaying = false;
@@ -1608,11 +1676,14 @@ class AudioPlayerEngine {
     }
 
     pause() {
+        ++this._playRequestToken;
         this._isTrackSwitching = false;
+        const wasPaused = this.audio.paused;
         this.audio.pause();
         this.isPlaying = false;
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
         this.syncPositionState();
+        if (wasPaused && this.onPlayStateChange) this.onPlayStateChange(false);
         this.savePlaybackState();
     }
 
@@ -1620,14 +1691,19 @@ class AudioPlayerEngine {
         this.ensureAudioSessionType();
         const cur = this.getCurrentTrack();
         this.isPlaying = true;
-        if (cur) this.updateMediaSession(cur, true);
+        if (cur) this.updateMediaSession(cur, true, true);
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+        this.attachMediaSessionActionHandlers(true);
+        this._msNeedsRebind = false;
         this.syncPositionState();
         if (this.audioCtx && this.audioCtx.state === 'suspended') {
             this.audioCtx.resume().catch(() => {});
         }
         this.audio.play().then(() => {
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+            if (cur) this.updateMediaSession(cur, true, true);
+            this.attachMediaSessionActionHandlers(true);
+            this._msNeedsRebind = false;
             this.syncPositionState();
         }).catch(e => {
             console.warn('Resume error:', e);
@@ -1873,7 +1949,9 @@ class AudioPlayerEngine {
                 await p;
                 this.isPlaying = true;
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-                if (cur) this.updateMediaSession(cur, true);
+                if (cur) this.updateMediaSession(cur, true, true);
+                this.attachMediaSessionActionHandlers(true);
+                this._msNeedsRebind = false;
                 this.syncPositionState();
                 if (this.onPlayStateChange) this.onPlayStateChange(true);
                 return;
@@ -1889,8 +1967,9 @@ class AudioPlayerEngine {
     }
 
     ensureMediaSessionHandlers() {
-        if (!this._msHandlersRegistered) {
-            this.attachMediaSessionActionHandlers(false);
+        if (!this._msHandlersRegistered || this._msNeedsRebind) {
+            this.attachMediaSessionActionHandlers(true);
+            this._msNeedsRebind = false;
         }
     }
 
@@ -1922,11 +2001,16 @@ class AudioPlayerEngine {
                     }
                     this.isPlaying = true;
                     navigator.mediaSession.playbackState = 'playing';
+                    if (cur) this.updateMediaSession(cur, true, true);
                     this.syncPositionState();
                     const p = this.audio.play();
                     if (p && typeof p.then === 'function') {
                         p.then(() => {
+                            this.isPlaying = true;
                             navigator.mediaSession.playbackState = 'playing';
+                            if (cur) this.updateMediaSession(cur, true, true);
+                            this.attachMediaSessionActionHandlers(true);
+                            this._msNeedsRebind = false;
                             this.syncPositionState();
                             if (this.onPlayStateChange) this.onPlayStateChange(true);
                         }).catch(() => {
@@ -1935,6 +2019,7 @@ class AudioPlayerEngine {
                     }
                 },
                 pause: () => {
+                    ++this._playRequestToken;
                     this._isTrackSwitching = false;
                     this.audio.pause();
                     this.isPlaying = false;
@@ -1985,7 +2070,7 @@ class AudioPlayerEngine {
         const cur = this.getCurrentTrack();
         const audioDur = (this.audio && Number.isFinite(this.audio.duration) && this.audio.duration > 0) ? this.audio.duration : 0;
         const trackDur = (cur && Number.isFinite(Number(cur.duration)) && Number(cur.duration) > 0) ? Number(cur.duration) : 0;
-        const duration = audioDur || trackDur;
+        const duration = this._isTrackSwitching ? (trackDur || audioDur) : (audioDur || trackDur);
         if (!Number.isFinite(duration) || duration <= 0) return;
 
         const rawTime = (typeof overridePosition === 'number' && Number.isFinite(overridePosition))
@@ -2009,7 +2094,7 @@ class AudioPlayerEngine {
         this.syncPositionState(overridePosition);
     }
 
-    updateMediaSession(track, forcePlaying = false) {
+    updateMediaSession(track, forcePlaying = false, forceMetadata = false) {
         if (!track) track = this.getCurrentTrack();
         if (!track) return;
 
@@ -2061,7 +2146,7 @@ class AudioPlayerEngine {
 
         if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
             const metaKey = `${String(track.id || '')}|${isPodcast ? 'podcast' : 'music'}|${sTitle}|${sArtist}|${sAlbum}|${artUrl}`;
-            if (!navigator.mediaSession.metadata || this._lastMediaSessionMetaKey !== metaKey) {
+            if (forceMetadata || !navigator.mediaSession.metadata || this._lastMediaSessionMetaKey !== metaKey) {
                 try {
                     navigator.mediaSession.metadata = new MediaMetadata({
                         title: sTitle,
@@ -2089,7 +2174,7 @@ class AudioPlayerEngine {
                 }
             }
 
-            const isCurrentlyPlaying = forcePlaying || (this._isTrackSwitching && this.isPlaying) || (this.audio ? !this.audio.paused : this.isPlaying);
+            const isCurrentlyPlaying = forcePlaying || (this._isTrackSwitching && this.isPlaying) || (this.audio ? (!this.audio.paused && !this.audio.ended) : this.isPlaying);
             navigator.mediaSession.playbackState = isCurrentlyPlaying ? 'playing' : 'paused';
             this.syncPositionState(this._isTrackSwitching ? 0 : undefined);
         }

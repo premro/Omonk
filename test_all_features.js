@@ -272,13 +272,21 @@ async function runAllFeatureTests() {
     }
     const after6Track = sandbox.AudioPlayer.getCurrentTrack();
     assertTest(
-        'FEAT-MS-02: 6-track Next keeps audio, MediaMetadata & no duplicate handler registrations',
+        'FEAT-MS-02: 6-track Next keeps audio, MediaMetadata & active bounded MediaSession handlers',
         after6Track?.id === 't_6' &&
         msMock.metadata?.title === "Track 6 & 'Mix' Live" &&
         msMock.metadata?.artist === 'Artist 6 "A"' &&
         msMock.metadata?.artwork?.[0]?.src === 'https://example.com/art_6.jpg' &&
-        handlerCounts.nexttrack === 1 &&
-        handlerCounts.previoustrack === 1,
+        typeof registeredHandlers.nexttrack === 'function' &&
+        typeof registeredHandlers.previoustrack === 'function' &&
+        typeof registeredHandlers.play === 'function' &&
+        typeof registeredHandlers.pause === 'function' &&
+        clearedHandlers.has('seekbackward') &&
+        clearedHandlers.has('seekforward') &&
+        handlerCounts.nexttrack >= 1 &&
+        handlerCounts.nexttrack <= 10 &&
+        handlerCounts.previoustrack >= 1 &&
+        handlerCounts.previoustrack <= 10,
         `Current=${after6Track?.id}, MS="${msMock.metadata?.title}", NextRegs=${handlerCounts.nexttrack}`
     );
 
